@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code Skill](https://img.shields.io/badge/Claude_Code-skill-d97757?logo=anthropic)](https://docs.anthropic.com/en/docs/claude-code)
-[![Antigravity Skill](https://img.shields.io/badge/Antigravity-skill_(release_richiesta)-4285F4?logo=google)](https://github.com/google)
+[![Antigravity Skill](https://img.shields.io/badge/Antigravity-skill-4285F4?logo=google)](https://github.com/google)
 [![Claude CLI](https://img.shields.io/badge/Claude_CLI-%E2%89%A5_2.0-d97757)](https://docs.anthropic.com/en/docs/claude-code)
 [![Codex CLI](https://img.shields.io/badge/Codex_CLI-%E2%89%A5_0.130-10a37f?logo=openai)](https://github.com/openai/codex)
 [![Antigravity CLI](https://img.shields.io/badge/Antigravity_CLI-%E2%89%A5_1.1-4285F4?logo=google)](https://github.com/google)
