@@ -1,8 +1,17 @@
 # Vibe Multiagent 🤖⚡
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Claude Code Skill](https://img.shields.io/badge/Claude_Code-skill-d97757?logo=anthropic)](https://docs.anthropic.com/en/docs/claude-code)
+[![Antigravity Skill](https://img.shields.io/badge/Antigravity-skill_(release_richiesta)-4285F4?logo=google)](https://github.com/google)
+[![Claude CLI](https://img.shields.io/badge/Claude_CLI-%E2%89%A5_2.0-d97757)](https://docs.anthropic.com/en/docs/claude-code)
+[![Codex CLI](https://img.shields.io/badge/Codex_CLI-%E2%89%A5_0.130-10a37f?logo=openai)](https://github.com/openai/codex)
+[![Antigravity CLI](https://img.shields.io/badge/Antigravity_CLI-%E2%89%A5_1.1-4285F4?logo=google)](https://github.com/google)
+[![VS Code IDE](https://img.shields.io/badge/VS_Code-IDE-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![Antigravity IDE](https://img.shields.io/badge/Antigravity-IDE-4285F4?logo=google)](https://github.com/google)
+
 > **Framework e Skill per l'avvio, coordinamento e orchestrazione di progetti di sviluppo multi-agente con Claude Code, Antigravity (AGY) e Codex CLI.**
 
-`vibe_multiagent` è una skill globale (compatibile sia con **Claude Code** che con **Antigravity IDE**) progettata per orchestrare team di agenti di codifica locali in abbonamento (senza API a pagamento per token), garantendo separazione delle responsabilità, presidi meccanici di sicurezza e tracciabilità rigorosa tramite filesystem e Git.
+`vibe_multiagent` è una skill universale per lo sviluppo software assistito da AI, progettata per orchestrare team di agenti di codifica locali in abbonamento (senza costi API a consumo per token). Fornisce una rigida separazione dei ruoli, presidi meccanici di sicurezza (hook) e una completa tracciabilità su disco tramite filesystem e Git.
 
 ---
 
@@ -195,6 +204,26 @@ Nei file task (`TASK.md`), il costo di sostituzione è suddiviso in due dimensio
 
 ---
 
+## 🔒 Privacy, Sicurezza e Note Legali
+
+### 1. Modello di Sicurezza e Privacy dei Dati
+- **Nessuna Telemetria Nascosta**: `vibe_multiagent` non invia alcun dato a server proprietari, cloud terzi o backend di tracciamento. Tutto viene elaborato e salvato **esclusivamente sul filesystem locale**.
+- **Nessun Segreto nel Repository**: Il codice e i template non contengono credenziali, password, chiavi API o dati personali. L'accesso alle quote avviene leggendo i token di autenticazione già presenti sul profilo utente locale (`.credentials.json`), senza mai stamparli né trasmetterli.
+- **Confini Dati Fornitore**: La Domanda 9 dell'intervista distingue esplicitamente tra *modello* e *fornitore*, assicurando che dati aziendali riservati non vengano instradati su canali cloud non approvati.
+
+### 2. Disclaimer sui Marchi Registrati (Trademarks)
+- **Anthropic®**, **Claude®** e **Claude Code®** sono marchi registrati di Anthropic PBC.
+- **OpenAI®**, **ChatGPT®** e **Codex®** sono marchi registrati di OpenAI, Inc.
+- **Google®** e **Antigravity®** sono marchi registrati di Google LLC.
+- **Microsoft®**, **Windows®** e **Visual Studio Code / VS Code®** sono marchi registrati di Microsoft Corporation.
+
+*`vibe_multiagent` è un progetto open-source indipendente sviluppato dalla community e non è affiliato, approvato, sponsorizzato o supportato ufficialmente da Anthropic, Google, OpenAI o Microsoft.*
+
+### 3. Limitazione di Responsabilità
+Il software viene fornito "così com'è" (*AS IS*), senza garanzie di alcun tipo, espresse o implicite. L'utente finale mantiene il pieno controllo e la responsabilità delle azioni, dei comandi shell eseguiti dalle CLI orchestrate e delle modifiche apportate ai propri repository.
+
+---
+
 ## 🧪 Esecuzione dei Test Unitari dei Tool
 
 Per verificare la suite di strumenti:
@@ -213,7 +242,8 @@ node test/agy-quota-banner.test.mjs
 ```text
 vibe_multiagent/
 ├── .gitignore
-├── README.md                     # Presentazione e manuale completo
+├── LICENSE                       # Licenza MIT (Antonio Carducci)
+├── README.md                     # Presentazione, guida completa e note legali
 ├── SKILL.md                      # Entry point principale per Claude Code
 ├── setup_skill.md                # Protocollo completo di intervista e setup
 ├── templates/                    # Template per i file di progetto
@@ -238,4 +268,4 @@ vibe_multiagent/
 
 ## 📄 Licenza
 
-Uso privato e interno. Tutti i diritti riservati.
+Distribuito sotto licenza **MIT** © 2026 Antonio Carducci. Consulta il file [LICENSE](LICENSE) per maggiori dettagli.
