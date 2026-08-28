@@ -242,7 +242,7 @@ node test/agy-quota-banner.test.mjs
 ```text
 vibe_multiagent/
 ├── .gitignore
-├── LICENSE                       # Licenza MIT (Antonio Carducci)
+├── LICENSE                       # Licenza MIT (Alessandro Carducci)
 ├── README.md                     # Presentazione, guida completa e note legali
 ├── SKILL.md                      # Entry point principale per Claude Code
 ├── setup_skill.md                # Protocollo completo di intervista e setup
@@ -268,4 +268,4 @@ vibe_multiagent/
 
 ## 📄 Licenza
 
-Distribuito sotto licenza **MIT** © 2026 Antonio Carducci. Consulta il file [LICENSE](LICENSE) per maggiori dettagli.
+Distribuito sotto licenza **MIT** © 2026 Alessandro Carducci. Consulta il file [LICENSE](LICENSE) per maggiori dettagli.
