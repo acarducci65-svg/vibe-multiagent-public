@@ -18,13 +18,136 @@
 
 ## 🏗️ I Tre Ambienti di Sviluppo
 
-Durante l'intervista iniziale (Domanda `0-bis`), scegli l'ambiente operativo del progetto:
+Durante la fase di setup iniziale, scegli l'ambiente operativo del progetto:
 
 | # | Ambiente | Sede Operativa | Orchestratore | Agenti Collaborativi | Caratteristiche & Presidi |
 |---|---|---|---|---|---|
 | **A** | **VS Code + Claude Extension** | VS Code | **Claude Code** *(Capocantiere)* | Codex CLI, AGY CLI | Ideale se il flusso primario vive nell'estensione Claude di VS Code. |
 | **B** | **Antigravity IDE** | Antigravity IDE | **AGY** *(Dispatcher)* | Claude CLI, Codex CLI | AGY lancia gli esecutori in background; presidi attivi via `.agents/hooks.json`. |
 | **C** | **Terminali Separati** | Shell indipendenti | **Claude Code** *(Capocantiere)* | Codex CLI, AGY CLI | Massimo isolamento visivo, coordinamento rigorosamente asincrono via file. |
+
+---
+
+## 🚀 Come Avviare il Setup
+
+Puoi avviare la procedura di setup in qualsiasi nuovo progetto o repository esistente:
+
+### Su Claude Code
+Digita nel terminale o nella chat dell'estensione:
+```text
+avvia progetto con vibe_multiagent
+```
+*(o trigger equivalenti: "nuovo progetto multi-agente", "setup multiagente", "configura repo multi-agente")*
+
+### Su Antigravity IDE (AGY)
+Nella chat agentica di Antigravity, digita:
+```text
+avvia setup progetto con vibe_multiagent
+```
+
+L'agente leggerà il protocollo `setup_skill.md` e avvierà immediatamente l'intervista guidata.
+
+---
+
+## 🗣️ Guida Completa all'Intervista di Setup
+
+L'intervista è il cuore della configurazione: raccoglie le decisioni architetturali, stabilisce i confini di sicurezza e mappa i ruoli e le limitazioni di ogni agente prima di creare qualsiasi file.
+
+### Formato delle Domande
+- **Domande a dominio chiuso (0, 0-bis, 2, 4, 9)**: Vengono poste con opzioni interattive a scelta multipla / singola (`AskUserQuestion` / `ask_question`).
+- **Domande aperte (1, 3, 5, 6, 7, 8, 10)**: Vengono poste a testo libero, una per messaggio, per approfondire le specifiche.
+
+---
+
+### Le 12 Domande dell'Intervista
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                             LE 12 DOMANDE DI SETUP                                │
+├──────┬──────────────────────┬────────────────────────────────────────────────────┤
+│  0   │ Cartella e Git       │ Dove risiede il progetto e se è già inizializzato   │
+│0-bis │ Ambiente di Lavoro   │ Scelta tra Ambiente A, Ambiente B o Ambiente C     │
+│  1   │ Problema e Valore    │ Problema da risolvere e criterio di successo V1    │
+│  2   │ Utenti e Piattaforme │ Target (web, desktop, mobile, CLI) ed esperienza UX│
+│  3   │ Dati e Privacy       │ Dati personali/sensibili, confini e GDPR           │
+│  4   │ Stack Tecnologico    │ Linguaggi, framework, database, librerie ammesse   │
+│  5   │ Entità e Flussi      │ Da 3 a 5 entità cardine e relazioni principali     │
+│  6   │ Integrazioni         │ API terze, device, servizi inclusi ed esclusi      │
+│  7   │ Architettura e Test  │ Pattern architetturali e strategia di test         │
+│  8   │ Rilascio e CI/CD     │ Branching, hosting, deploy e autorizzazioni utente │
+│  9   │ Agenti & Fornitori   │ CLI disponibili, quote, fornitore e sostituzioni   │
+│  10  │ Prima Milestone      │ Primo sprint, task iniziali e decisioni riservate  │
+└──────┴──────────────────────┴────────────────────────────────────────────────────┘
+```
+
+#### Dettaglio delle Domande:
+
+1. **Domanda 0 — Cartella & Git**: Identifica il percorso assoluto del progetto e il nome della cartella di coordinamento (default `.coord/`). Se Git non è presente, chiede se inizializzarlo.
+2. **Domanda 0-bis — Sede & Orchestrazione**:
+   - `Ambiente A`: VS Code con Claude Code capocantiere.
+   - `Ambiente B`: Antigravity IDE con AGY dispatcher e presidi hook.
+   - `Ambiente C`: Terminali separati per ciascun agente.
+3. **Domanda 1 — Scopo & Valore**: Qual è il problema da risolvere, per chi, e quale risultato osservabile definisce il successo della prima versione?
+4. **Domanda 2 — Utenti & Piattaforme**: Piattaforme target (web, desktop Electron, mobile, CLI) ed esperienza utente prioritaria.
+5. **Domanda 3 — Dati & Confini di Privacy**: Presenza di dati sensibili/personali, conservazione locale vs cloud, e vincoli inderogabili di privacy.
+6. **Domanda 4 — Stack & Vincoli Tecnologici**: Tecnologie obbligatorie, preferite o vietate (runtime, DB, librerie) e budget di costo.
+7. **Domanda 5 — Entità & Flussi**: Le 3-5 entità cardine dell'applicazione e come i dati fluiscono tra esse.
+8. **Domanda 6 — Integrazioni**: Quali servizi esterni o file entrano nella prima versione e quali restano esplicitamente fuori.
+9. **Domanda 7 — Architettura & Strategia di Test**: Stile architetturale, livello di disaccoppiamento, harness di test e verifiche minime necessarie prima del rilascio.
+10. **Domanda 8 — Ciclo di Sviluppo & Deploy**: Politica di branch, pipeline CI/CD, ambienti di staging/produzione e permessi di deploy riservati all'utente.
+11. **Domanda 9 — Agenti, Fornitori e Politica di Quota**:
+    - Quali CLI sono autenticate (`claude`, `agy`, `codex`).
+    - **Fornitore vs Modello**: Valutazione dei confini dati (es. Sonnet eseguito dentro Antigravity passa dall'infrastruttura Google, non Anthropic).
+    - Politica di esaurimento: chi subentra a chi, e quale lavoro invece **non** va sostituito ma aspetta il reset.
+12. **Domanda 10 — Prima Milestone & Confini Riservati**: Definizione dello Sprint 1, dei task iniziali e delle decisioni che devono rimanere sempre in capo all'utente umano (Direttore).
+
+---
+
+## 🔍 Preflight Tecnico del Sistema
+
+Prima di confermare l'intervista, la skill esegue verifiche diagnostiche sull'ambiente locale:
+
+```text
+[Preflight Check]
+├── 1. Risoluzione eseguibili CLI (path fisso vs PATH d'ambiente)
+├── 2. Rilevamento sessioni terminali contaminate (ELECTRON_RUN_AS_NODE)
+├── 3. Verifica configurazione .gitattributes (normalizzazione LF su Windows)
+└── 4. (Ambiente B) Verifica integrità hook globali e cartelle .agents/
+```
+
+- **Risoluzione PATH Stantio**: Su Windows, se una CLI è stata installata di recente ma non compare nella sessione aperta, la skill verifica i percorsi noti (`%LOCALAPPDATA%\agy\bin`, `%USERPROFILE%\.claude\...`, npm global) evitando falsi allarmi di assenza.
+- **Normalizzazione EOL**: Verifica che `.gitattributes` contenga `* text=auto eol=lf` per evitare fallimenti di test dovuti a conversioni CRLF involontarie.
+
+---
+
+## 📝 Proposta, Approvazione e Generazione File
+
+Al termine dell'intervista, l'agente presenta un **documento di sintesi** contenente:
+- Ambiente operativo scelto (A, B o C) e ruoli degli agenti.
+- Perimetro consentito e vietato per ciascun ruolo.
+- Sintesi architetturale e vincoli non negoziabili.
+- Elenco dei file che verranno generati.
+
+> **Regola Aurea**: Nessun file viene scritto su disco finché l'utente non fornisce **approvazione esplicita** ("Sì" o modifiche).
+
+### File Generati nel Progetto:
+```text
+mio-progetto/
+├── AGENTS.md                 # Protocollo operativo e vincoli non negoziabili
+├── .agents/
+│   └── hooks.json           # (Solo Ambiente B) Hook per gate, checkpoint e quota
+└── .coord/                   # Cartella di coordinamento (configurabile)
+    ├── PROJECT.md            # Fonte unica del contesto di business e architettura
+    ├── CURRENT_SPRINT.md     # Milestone attiva, criteri di completamento e rischi
+    ├── DECISIONS.md          # Registro decisionale progressivo (D-001, D-002, ...)
+    ├── DISPATCH.md           # (Solo Ambiente B) Manuale per il dispatcher AGY
+    ├── agents/
+    │   ├── verifica-tecnica/agent.md   # Ruolo Codex (se abilitato)
+    │   └── verifica-ui/agent.md        # Ruolo AGY (se abilitato)
+    ├── tasks/
+    │   └── T-001.md          # Specifica del primo task con proprietario e punto di ripresa
+    └── handover/             # Cartella di consegna report di fine task
+```
 
 ---
 
@@ -38,63 +161,37 @@ Quando si sviluppa in Antigravity IDE, i divieti e le regole non sono affidati a
 
 ---
 
-## 📋 Il Protocollo Operativo
+## 🔄 Ciclo di Vita del Task e Gestione Quote
 
-### 1. Intervista Iniziale (12 domande)
-Viene raccolta la specifica completa del progetto: cartella di lavoro, ambiente (A/B/C), obiettivi, vincoli privacy/dati, stack tecnologico, architettura, strategie di test e disponibilità degli abbonamenti/agenti.
-
-### 2. Preflight e Verifica Disponibilità
-- Verifica effettiva della presenza delle CLI (`claude`, `agy`, `codex`).
-- **Rimedio PATH stantio**: rilevamento dell'eseguibile fisico se la sessione terminale ha ereditato un ambiente non aggiornato.
-- Controllo configurazione `.gitattributes` per prevenire errori CRLF su Windows.
-
-### 3. Generazione Struttura di Coordinamento
-Nel repository del progetto target vengono generati:
 ```text
-mio-progetto/
-├── AGENTS.md                 # Protocollo operativo, ruoli e vincoli non negoziabili
-├── .agents/
-│   └── hooks.json           # (Solo Ambiente B) Hook attivi per il gate, checkpoint e quota
-└── .coord/                   # Cartella di coordinamento del progetto
-    ├── PROJECT.md            # Contesto operativo unico di business e architettura
-    ├── CURRENT_SPRINT.md     # Obiettivo e stato della milestone corrente
-    ├── DECISIONS.md          # Registro decisionale progressivo (D-001, D-002, ...)
-    ├── DISPATCH.md           # (Solo Ambiente B) Istruzioni per il dispatcher AGY
-    ├── agents/               # Ruolo, perimetro consentito e vietato per ciascun agente
-    ├── tasks/                # Specifiche dei singoli task (T-001.md, T-002.md, ...)
-    └── handover/             # Report di consegna firmati dall'agente uscente
+       ┌──────────┐
+       │  PRONTO  │
+       └────┬─────┘
+            │  (Assegna proprietario + compila Punto di Ripresa)
+            ▼
+       ┌──────────┐      (Errore / Quota esaurita)      ┌──────────┐
+       │ IN CORSO ├────────────────────────────────────►│ SOSPESO  │
+       └────┬─────┘                                     └────┬─────┘
+            │                                                │ (Sostituzione o reset)
+            │ (Lavoro ultimato + Handover scritto)           │
+            ▼                                                │
+       ┌────────────┐                                        │
+       │ CONSEGNATO │◄───────────────────────────────────────┘
+       └────┬───────┘
+            │  (SOLO Claude Code riesegue verifiche e test)
+            ▼
+       ┌───────────┐
+       │ INTEGRATO │
+       └───────────┘
 ```
 
-### 4. Ciclo di Vita del Task
-Ogni task attraversa rigorosamente questi stati:
-```text
-PRONTO ──► IN CORSO ──► CONSEGNATO ──► INTEGRATO
-   │           ▲
-   ▼           │
-SOSPESO ───────┘ (in caso di esaurimento quota o blocco)
-```
-- **Punto di ripresa**: un task non può essere portato a `IN CORSO` senza compilare data, cosa si sta per fare e file toccati.
-- **Doppio costo di sostituzione**: nei task, il costo di passaggio ad altro agente è scisso in:
-  - *Costo Capacità*: perdita qualitativa (spesso trascurabile).
-  - *Costo Garanzia*: perdita di indipendenza (es. test scritti dallo stesso che implementa). Se inaccettabile, il task attende il reset della quota (`nessuna sostituzione, attendere il reset`).
-
----
-
-## 🚀 Installazione della Skill
-
-### Per Claude Code
-La skill è situata in:
-```text
-C:\Users\<utente>\.claude\skills\vibe_multiagent\
-```
-*Attivazione automatica su Claude Code al trigger di comandi come "avvia progetto multi-agente", "nuovo progetto", "setup vibe_multiagent".*
-
-### Per Antigravity IDE (AGY)
-L'entry point è situato in:
-```text
-C:\Users\<utente>\.gemini\config\skills\vibe_multiagent\
-```
-*Viene scoperta e caricata automaticamente all'avvio delle sessioni Antigravity.*
+### Gestione dell'Esaurimento Quota
+Nei file task (`TASK.md`), il costo di sostituzione è suddiviso in due dimensioni distinte:
+1. **Costo — Capacità**: Quanto si perde in velocità/qualità delegando a un modello secondario.
+2. **Costo — Garanzia**: Quale promessa metodologica decade (es. indipendenza tra chi scrive il codice e chi scrive i test). Se la perdita di garanzia non è accettabile, il task impone:
+   ```text
+   Agente di ripiego: nessuna sostituzione, attendere il reset
+   ```
 
 ---
 
@@ -116,7 +213,7 @@ node test/agy-quota-banner.test.mjs
 ```text
 vibe_multiagent/
 ├── .gitignore
-├── README.md                     # Presentazione e manuale d'uso
+├── README.md                     # Presentazione e manuale completo
 ├── SKILL.md                      # Entry point principale per Claude Code
 ├── setup_skill.md                # Protocollo completo di intervista e setup
 ├── templates/                    # Template per i file di progetto
