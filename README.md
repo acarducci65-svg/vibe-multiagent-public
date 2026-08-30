@@ -8,6 +8,7 @@
 [![Antigravity CLI](https://img.shields.io/badge/Antigravity_CLI-%E2%89%A5_1.1-4285F4?logo=google)](https://github.com/google)
 [![VS Code IDE](https://img.shields.io/badge/VS_Code-IDE-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Antigravity IDE](https://img.shields.io/badge/Antigravity-IDE-4285F4?logo=google)](https://github.com/google)
+[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5_20.11-339933?logo=nodedotjs)](https://nodejs.org)
 
 > **Framework e Skill per l'avvio, coordinamento e orchestrazione di progetti di sviluppo multi-agente con Claude Code, Antigravity (AGY) e Codex CLI.**
 
@@ -227,8 +228,9 @@ Il software viene fornito "così com'è" (*AS IS*), senza garanzie di alcun tipo
 ## 🧪 Esecuzione dei Test Unitari dei Tool
 
 Per verificare la suite di strumenti:
-```powershell
-cd C:\Users\<utente>\.claude\skills\vibe_multiagent\tools
+```bash
+# Dalla cartella principale della skill (o da tools/):
+cd tools
 node test/agy-gate.test.mjs
 node test/agy-checkpoint.test.mjs
 node test/quota-anthropic.test.mjs

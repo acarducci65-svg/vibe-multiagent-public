@@ -71,18 +71,25 @@ if (cache) {
     });
     if (!r.ok) throw new Error("HTTP " + r.status);
     const j = await r.json();
-    // CAMPO_CINQUE_ORE, CAMPO_SETTE_GIORNI, CAMPO_RESET: sostituire con i campi osservati
-    const fiveHour = j?.five_hour?.utilization_pct ?? j?.fiveHourPct ?? null;
-    const sevenDay = j?.seven_day?.utilization_pct ?? j?.sevenDayPct ?? null;
+    const fiveHour = typeof j?.five_hour?.utilization_pct === "number" ? j.five_hour.utilization_pct
+      : typeof j?.fiveHourPct === "number" ? j.fiveHourPct : null;
+    const sevenDay = typeof j?.seven_day?.utilization_pct === "number" ? j.seven_day.utilization_pct
+      : typeof j?.sevenDayPct === "number" ? j.sevenDayPct : null;
     const resetsAt = j?.five_hour?.resets_at ?? j?.resetsAt ?? null;
-    v = {
-      ok: true, source: "live",
-      fiveHourPct: fiveHour,
-      sevenDayPct: sevenDay,
-      resetsAt: resetsAt,
-      note: "",
-    };
-    try { writeFileSync(CACHE, JSON.stringify({ t: Date.now(), v })); } catch {}
+    
+    if (fiveHour === null && sevenDay === null) {
+      // Schema non riconosciuto: degrada a transcript o unknown
+      v = daTranscript() ?? { ok: false, source: "unknown", fiveHourPct: null, sevenDayPct: null, resetsAt: null, note: "schema risposta API non riconosciuto" };
+    } else {
+      v = {
+        ok: true, source: "live",
+        fiveHourPct: fiveHour,
+        sevenDayPct: sevenDay,
+        resetsAt: resetsAt,
+        note: "",
+      };
+      try { writeFileSync(CACHE, JSON.stringify({ t: Date.now(), v })); } catch {}
+    }
   } catch (e) {
     v = daTranscript() ?? { ok: false, source: "unknown", fiveHourPct: null, sevenDayPct: null, resetsAt: null, note: String(e.message) };
   }

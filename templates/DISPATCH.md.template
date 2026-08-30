@@ -72,7 +72,9 @@ Lo vedi da un'uscita diversa da zero e da un messaggio sullo stderr. Allora:
 3. Se la garanzia perduta non è accettabile, **fermati**: aspettare il reset è la scelta corretta, non un fallimento.
 4. Se la sostituzione è prevista, registrala in `DECISIONS.md` con la garanzia perduta e il costo se fosse sbagliata.
 5. Riassegna la proprietà dei file. Mai due proprietari sullo stesso insieme.
-6. Verifica con `grep -h '^Stato:\|^Proprietario:' {{DIR_COORD}}/tasks/*.md` che i task riflettano la decisione appena registrata.
+6. Verifica che i task riflettano la decisione registrata:
+   - Bash/macOS: `grep -h '^Stato:\|^Proprietario:' {{DIR_COORD}}/tasks/*.md`
+   - PowerShell: `Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^(Stato|Proprietario):"`
 
 ## Prompt per gli esecutori — regole di costruzione
 
@@ -80,4 +82,4 @@ Quando costruisci il prompt per un esecutore, applica queste regole (lezione dal
 
 - **Non citare file di altri agenti come esempio.** Un prompt che nomina `BookForm.tsx` come riferimento per un modulo diverso fa ancorare l'agente a modificare quel file. Cita solo il task e il contesto da leggere.
 - **Non riciclare sessioni contaminate.** Se un messaggio correttivo nella stessa sessione non basta, riscrivi il prompt da zero in una sessione nuova.
-- **Dichiara il sandbox richiesto per Codex.** Se il task richiede `spawn` o test runner, il prompt deve specificare `danger-full-access`; altrimenti Codex fallisce con `EPERM` senza dire perché.
+- **Dichiara il sandbox e i permessi corretti per Codex CLI.** Configura Codex con `--sandbox workspace-write` e includi eventuali directory ausiliarie con `--add-dir <percorso>`. Se i test richiedono l'avvio di sotto-processi e falliscono con `EPERM`, valuta l'opzione di esecuzione permissiva solo su esplicita autorizzazione del Direttore.

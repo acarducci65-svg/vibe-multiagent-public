@@ -23,7 +23,10 @@ Il perimetro di ogni ruolo opzionale è in `{{DIR_COORD}}/agents/<ruolo>/agent.m
 ## Coordinamento
 
 - Prima di agire, ogni agente legge questo file, `{{DIR_COORD}}/PROJECT.md`, il task assegnato e le decisioni pertinenti.
-- **All'ingresso in una sessione nuova**, prima di qualsiasi lavoro: `grep -l '^Stato: IN CORSO' {{DIR_COORD}}/tasks/*.md`. Se qualcosa risulta in corso, qualcuno si è fermato senza chiudere: leggi il suo `Punto di ripresa` e riferisci prima di iniziare altro.
+- **All'ingresso in una sessione nuova**, prima di qualsiasi lavoro, controlla se ci sono task interrotti:
+  - Bash/macOS: `grep -l '^Stato: IN CORSO' {{DIR_COORD}}/tasks/*.md`
+  - PowerShell: `Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^Stato:\s*IN CORSO" | Select-Object -ExpandProperty Path`
+  Se qualcosa risulta in corso, qualcuno si è fermato senza chiudere: leggi il suo `Punto di ripresa` e riferisci prima di iniziare altro.
 - Iniziare a lavorare su un task significa, in un gesto solo, portarlo a `IN CORSO` e compilarne il `Punto di ripresa`. Mai l'uno senza l'altro.
 - Un task ha un solo proprietario e file riservati non sovrapposti.
 - Gli esecutori non si invocano fra loro. L'orchestratore li lancia, e la consegna passa comunque da `{{DIR_COORD}}/` e Git: un artefatto su disco è verificabile e sopravvive alla sessione, l'output di una pipe no.

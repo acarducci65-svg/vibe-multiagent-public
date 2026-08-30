@@ -147,19 +147,19 @@ Non confondere `agy` con `antigravity-ide`: il secondo è il launcher dell'IDE, 
 | Claude Code disponibile | (è il runtime) | — |
 | AGY disponibile (se scelto) | `agy --version` + check path | PATH stantio |
 | Codex disponibile (se scelto) | `codex --version` + check path | PATH stantio |
-| `.gitattributes` presente | `cat .gitattributes` | Rischio CRLF su Windows: suggerisci `* text=auto eol=lf` |
-| Contaminazione ambiente | `echo $ELECTRON_RUN_AS_NODE` | Se `1`, la sessione è contaminata: riavvia il terminale |
+| `.gitattributes` presente | `Get-Content .gitattributes` / `cat .gitattributes` | Rischio CRLF su Windows: suggerisci `* text=auto eol=lf` |
+| Contaminazione ambiente | `$env:ELECTRON_RUN_AS_NODE` (PS) / `echo $ELECTRON_RUN_AS_NODE` (Bash) | Se `1`, la sessione è contaminata: riavvia il terminale |
 
 ### Preflight per Ambiente B (Antigravity IDE)
 
 | Controllo | Comando | Esito da segnalare |
 |---|---|---|
-| Radice personalizzazioni | `ls -d .agents .agent 2>&1` | `.agent/` presente: segnala, non è letta da nessuno |
+| Radice personalizzazioni | `Get-ChildItem -Force .agents,.agent -ErrorAction SilentlyContinue` (PS) / `ls -d .agents .agent 2>/dev/null` (Bash) | `.agent/` presente: segnala, non è letta da nessuno |
 | Hook globali vivi | `node -e "const h=require(require('os').homedir()+'/.gemini/config/hooks.json'); for(const[n,c]of Object.entries(h)) console.log(n, c.enabled!==false?'attivo':'disattivo')"` | Un hook attivo che punta a un file inesistente fallisce a ogni turno |
 | Claude CLI disponibile | `claude --version` + check path | PATH stantio |
 | Codex CLI disponibile (se scelto) | `codex --version` + check path | PATH stantio |
-| `.gitattributes` presente | `cat .gitattributes` | Rischio CRLF su Windows |
-| Contaminazione ambiente | `echo $ELECTRON_RUN_AS_NODE` | Se `1`, la sessione è contaminata |
+| `.gitattributes` presente | `Get-Content .gitattributes` / `cat .gitattributes` | Rischio CRLF su Windows |
+| Contaminazione ambiente | `$env:ELECTRON_RUN_AS_NODE` (PS) / `echo $ELECTRON_RUN_AS_NODE` (Bash) | Se `1`, la sessione è contaminata |
 
 Le estensioni VS Code di Claude Code e Codex **non sono su OpenVSX**, che è il marketplace di Antigravity IDE. Vanno installate da VSIX, oppure — ed è la strada che il protocollo assume — si usano le due CLI dal terminale integrato, che funzionano comunque. Non promettere al Direttore le estensioni nel pannello prima di averle viste girare.
 
@@ -170,7 +170,7 @@ Le estensioni VS Code di Claude Code e Codex **non sono su OpenVSX**, che è il 
 | Claude Code disponibile | `claude --version` | PATH stantio |
 | AGY disponibile (se scelto) | `agy --version` + check path | PATH stantio |
 | Codex disponibile (se scelto) | `codex --version` + check path | PATH stantio |
-| `.gitattributes` presente | `cat .gitattributes` | Rischio CRLF su Windows |
+| `.gitattributes` presente | `Get-Content .gitattributes` / `cat .gitattributes` | Rischio CRLF su Windows |
 
 ### Come si avvia un task su ciascun agente
 
@@ -269,8 +269,12 @@ Nell'Ambiente B, l'hook `agy-checkpoint.mjs` scrive automaticamente la riga `Fat
 
 Quando entri in un repository che ha già una cartella di coordinamento, **prima di qualunque altra cosa**, anche prima di rispondere a ciò che ti è stato chiesto, controlla se c'è lavoro interrotto:
 
-```
+```bash
+# Bash / macOS / Linux:
 grep -l '^Stato: IN CORSO' {{DIR_COORD}}/tasks/*.md
+
+# PowerShell (Windows):
+Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^Stato:\s*IN CORSO" | Select-Object -ExpandProperty Path
 ```
 
 Se trovi un task `IN CORSO`, leggine il `Punto di ripresa` e riferisci all'utente cosa era in corso, quale fu l'ultimo passo completato e cosa proponi di fare, prima di iniziare qualsiasi lavoro nuovo. Un task lasciato `IN CORSO` non significa che qualcuno ci stia lavorando adesso: significa che qualcuno si è fermato senza chiudere.
@@ -286,7 +290,7 @@ Se sono presenti sia `Sto per:` sia `Fatti:` e si contraddicono, **credi a `Fatt
 3. Se la sostituzione è prevista, valuta cosa decade. Un ripiego non è mai neutro: se Codex possedeva i test proprio per renderli indipendenti dall'implementazione, farli scrivere a chi implementa chiude il task ma cancella la garanzia. Il risultato è peggiore di un task fermo, perché sembra completo.
 4. Registra la sostituzione in `DECISIONS.md` con la garanzia perduta e il costo se fosse sbagliata. **Nessuna sostituzione silenziosa**: un progetto che sembra verificato senza esserlo è il danno peggiore che questo protocollo possa produrre.
 5. Riassegna la proprietà dei file nel task. Non lasciare due proprietari sullo stesso insieme.
-6. **Rileggi i task toccati e verifica che stato e proprietario corrispondano alla decisione appena registrata.** Una decisione in `DECISIONS.md` che non si riflette nel task è peggio di nessuna decisione: restano due fonti che si contraddicono, e chi arriva dopo crede alla prima che legge. Il controllo è meccanico: `grep -h '^Stato:\|^Proprietario:' {{DIR_COORD}}/tasks/*.md`.
+6. **Rileggi i task toccati e verifica che stato e proprietario corrispondano alla decisione appena registrata.** Il controllo è: `grep -h '^Stato:\|^Proprietario:' {{DIR_COORD}}/tasks/*.md` (Bash) oppure `Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^(Stato|Proprietario):"` (PowerShell).
 7. **Un cambio di esecutore dettato dalla quota è una sostituzione a tutti gli effetti.** Vale anche quando il ripiego sembra equivalente — per esempio Claude Code sostituito da un esecutore Antigravity che gira su un modello Claude. Cambia il fornitore, cambiano i permessi, e soprattutto la garanzia di indipendenza non si recupera cambiando fattura.
 
 Se l'utente ha già detto quale agente subentra a quale, applicalo senza richiedere conferma a ogni occorrenza; ma i punti 4 e 6 restano obbligatori ogni volta.
