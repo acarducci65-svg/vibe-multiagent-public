@@ -14,7 +14,13 @@ try {
 const peggio = Math.max(q.fiveHourPct ?? 0, q.sevenDayPct ?? 0);
 if (!q.ok || peggio < 70) esci({});
 
-const reset = q.resetsAt ? new Date(q.resetsAt * 1000).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "ignoto";
+let reset = "ignoto";
+if (q.resetsAt) {
+  const d = typeof q.resetsAt === "number" ? new Date(q.resetsAt * 1000) : new Date(q.resetsAt);
+  if (!isNaN(d.getTime())) {
+    reset = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  }
+}
 const azione =
   peggio >= 95 ? "FERMATI: non assegnare nuovo lavoro a Claude Code. Fai scrivere l'handover e riferisci al Direttore."
   : peggio >= 85 ? "Chiudi il blocco in corso su Claude Code, fai committare, poi instrada il lavoro restante su Codex o su un esecutore AGY."

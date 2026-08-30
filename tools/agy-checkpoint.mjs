@@ -11,8 +11,14 @@ let p; try { p = JSON.parse(grezzo); } catch { fine(); }
 const radice = (p.workspacePaths ?? [])[0];
 if (!radice) fine();
 
-const dirTask = join(radice, process.env.DIR_COORD ?? ".coord", "tasks");
-if (!existsSync(dirTask)) fine();
+const possibili = [
+  process.env.DIR_COORD ? join(radice, process.env.DIR_COORD, "tasks") : null,
+  join(radice, ".coord", "tasks"),
+  join(radice, ".claude", "agents", "tasks"),
+].filter(Boolean);
+
+const dirTask = possibili.find((d) => existsSync(d));
+if (!dirTask) fine();
 
 const inCorso = readdirSync(dirTask).filter((f) => f.endsWith(".md"))
   .map((f) => join(dirTask, f))
