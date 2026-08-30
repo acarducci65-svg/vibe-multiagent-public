@@ -208,8 +208,8 @@ Nei file task (`TASK.md`), il costo di sostituzione è suddiviso in due dimensio
 ## 🔒 Privacy, Sicurezza e Note Legali
 
 ### 1. Modello di Sicurezza e Privacy dei Dati
-- **Nessuna Telemetria Nascosta**: `vibe_multiagent` non invia alcun dato a server proprietari, cloud terzi o backend di tracciamento. Tutto viene elaborato e salvato **esclusivamente sul filesystem locale**.
-- **Nessun Segreto nel Repository**: Il codice e i template non contengono credenziali, password, chiavi API o dati personali. L'accesso alle quote avviene leggendo i token di autenticazione già presenti sul profilo utente locale (`.credentials.json`), senza mai stamparli né trasmetterli.
+- **Nessuna Telemetria Nascosta & Elaborazione Locale**: `vibe_multiagent` non raccoglie dati, non invia log o codice a server terzi proprietari. L'intero framework vive ed è eseguito **sul filesystem locale**. L'unica comunicazione di rete esterna è la richiesta GET HTTPS effettuata dallo script facoltativo `tools/quota-anthropic.mjs` verso l'endpoint ufficiale `api.anthropic.com` per verificare la percentuale residua di token dell'abbonamento Claude (inviando il token OAuth già memorizzato localmente dall'utente). Nessun codice, diff o file di progetto viene mai trasmesso.
+- **Nessun Segreto nel Repository**: Il codice e i template non contengono credenziali, password o chiavi API.
 - **Confini Dati Fornitore**: La Domanda 9 dell'intervista distingue esplicitamente tra *modello* e *fornitore*, assicurando che dati aziendali riservati non vengano instradati su canali cloud non approvati.
 
 ### 2. Disclaimer sui Marchi Registrati (Trademarks)

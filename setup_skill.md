@@ -186,7 +186,7 @@ agy -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --add-dir <p
 
 **Codex CLI:**
 ```bash
-codex exec "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md, poi esegui il task rispettandone i confini."
+codex exec --sandbox workspace-write "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md, poi esegui il task rispettandone i confini."
 ```
 
 **AGY sotto-agente (dall'interno di AGY come dispatcher, Ambiente B):**
@@ -377,7 +377,10 @@ Dopo l'approvazione:
 4. Crea `CURRENT_SPRINT.md` con una prima milestone ancora pianificata, non dichiarata completata.
 5. Scomponi prima di creare task: se la milestone tocca più di cinque file di produzione, o più di un dominio applicativo, o non ha un criterio di accettazione verificabile con un comando, proponi la scomposizione e fatti approvare le parti prima di generare `tasks/`.
 6. **Solo Ambiente B**: genera `.agents/hooks.json` dal template, sostituendo `{{DIR_SKILL}}` con il percorso assoluto di questa skill. Se `.agents/hooks.json` esiste già, fondi la chiave `protocollo-multi-agente` con le chiavi esistenti. Genera `{{DIR_COORD}}/DISPATCH.md` dal template.
-7. Rileggi i file prodotti, cerca i segnaposto residui con `grep -rn "{{" AGENTS.md <DIR_COORD>/ .agents/`, e mostra `git status` e `git diff --check`.
+7. Rileggi i file prodotti, cerca i segnaposto residui con:
+   - Bash/macOS: `grep -rn "{{" AGENTS.md {{DIR_COORD}}/ .agents/`
+   - PowerShell: `Get-ChildItem -Recurse -Path AGENTS.md, {{DIR_COORD}}, .agents -File | Select-String "\{\{"`
+   e mostra `git status` e `git diff --check`.
 
 ## Protocollo operativo per i task futuri
 

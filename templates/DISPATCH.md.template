@@ -16,9 +16,9 @@ I tuoi file di gestione vivono dentro `{{DIR_COORD}}/` (e `.agents/hooks.json`).
 
 ## All'ingresso in sessione
 
-Prima di qualsiasi altra cosa:
-
-    grep -l '^Stato: IN CORSO' {{DIR_COORD}}/tasks/*.md
+Prima di qualsiasi altra cosa, controlla se ci sono task in corso:
+- Bash/macOS: `grep -l '^Stato: IN CORSO' {{DIR_COORD}}/tasks/*.md`
+- PowerShell: `Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^Stato:\s*IN CORSO" | Select-Object -ExpandProperty Path`
 
 Se trovi un task in corso, leggine il `Punto di ripresa` — sia `Sto per:` sia `Fatti:` — e riferisci al Direttore cosa era in corso prima di iniziare altro. Un task `IN CORSO` non significa che qualcuno ci stia lavorando adesso: significa che qualcuno si è fermato senza chiudere.
 
@@ -31,7 +31,7 @@ Dal terminale, con `run_command` (impostando `WaitMsBeforeAsync` a 500ms per man
 | Esecutore | Comando | Quota consumata |
 |---|---|---|
 | Claude Code | `claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json` | Anthropic |
-| Codex | `codex exec "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md."` | OpenAI |
+| Codex | `codex exec --sandbox workspace-write "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md."` | OpenAI |
 | Esecutore AGY | `invoke_subagent` con `TypeName: self` | Google, la tua |
 
 Il sistema ti notifica automaticamente al completamento di ogni task in background. Per verificare lo stato intermedio, usa `manage_task` con `status`. Per interrompere un esecutore bloccato, usa `manage_task` con `kill`.
