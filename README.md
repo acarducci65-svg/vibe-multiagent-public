@@ -19,7 +19,7 @@
 
 1. **Multi-Ambiente Flessibile**: Supporto nativo per lavorare dentro **VS Code**, dentro **Antigravity IDE** o da **terminali indipendenti**.
 2. **Tre Quote Indipendenti**: Separazione delle risorse tra Anthropic (Claude), Google (AGY/Antigravity) e OpenAI (Codex) per non bloccare lo sviluppo in caso di esaurimento di un singolo fornitore.
-3. **Garanzia di Integrazione Intoccabile**: Solo **Claude Code** valida e porta i task allo stato `INTEGRATO` dopo aver rieseguito personalmente i test e le verifiche.
+3. **Garanzia di Integrazione Intoccabile**: Solo l'**Orchestratore dell'ambiente selezionato** (Claude Code in Ambiente A/C, Antigravity in Ambiente B) valida e porta i task allo stato `INTEGRATO` dopo aver rieseguito personalmente i test e le verifiche.
 4. **Presidi Meccanici su Antigravity**: Hook automatici per bloccare comandi distruttivi (`git push`, deploy, migrazioni), checkpoint automatici su disco ad ogni modifica e semaforo di quota preventivo.
 5. **Lezioni di Produzione Integrate**: Risoluzione automatica di problemi tipici su Windows (PATH stantio delle CLI, normalizzazione CRLF/LF, conflitti di working tree condivisi).
 
@@ -29,11 +29,11 @@
 
 Durante la fase di setup iniziale, scegli l'ambiente operativo del progetto:
 
-| # | Ambiente | Sede Operativa | Orchestratore | Agenti Collaborativi | Caratteristiche & Presidi |
+| # | Ambiente | Sede Operativa | Orchestratore & Integratore | Agenti Collaborativi | Caratteristiche & Presidi |
 |---|---|---|---|---|---|
-| **A** | **VS Code + Claude Extension** | VS Code | **Claude Code** *(Capocantiere)* | Codex CLI, AGY CLI | Ideale se il flusso primario vive nell'estensione Claude di VS Code. |
-| **B** | **Antigravity IDE** | Antigravity IDE | **AGY** *(Dispatcher)* | Claude CLI, Codex CLI | AGY lancia gli esecutori in background; presidi attivi via `.agents/hooks.json`. |
-| **C** | **Terminali Separati** | Shell indipendenti | **Claude Code** *(Capocantiere)* | Codex CLI, AGY CLI | Massimo isolamento visivo, coordinamento rigorosamente asincrono via file. |
+| **A** | **VS Code + Claude Extension** | VS Code | **Claude Code** *(Capocantiere & Integratore)* | Codex CLI, AGY CLI | Ideale se il flusso primario vive nell'estensione Claude di VS Code. |
+| **B** | **Antigravity IDE** | Antigravity IDE | **AGY** *(Dispatcher & Integratore)* | Claude CLI, Codex CLI | AGY lancia gli esecutori in background, verifica e integra; presidi attivi via `.agents/hooks.json`. |
+| **C** | **Terminali Separati** | Shell indipendenti | **Claude Code** *(Capocantiere & Integratore)* | Codex CLI, AGY CLI | Massimo isolamento visivo, coordinamento rigorosamente asincrono via file. |
 
 ---
 
@@ -93,9 +93,9 @@ L'intervista è il cuore della configurazione: raccoglie le decisioni architettu
 
 1. **Domanda 0 — Cartella & Git**: Identifica il percorso assoluto del progetto e il nome della cartella di coordinamento (default `.coord/`). Se Git non è presente, chiede se inizializzarlo.
 2. **Domanda 0-bis — Sede & Orchestrazione**:
-   - `Ambiente A`: VS Code con Claude Code capocantiere.
-   - `Ambiente B`: Antigravity IDE con AGY dispatcher e presidi hook.
-   - `Ambiente C`: Terminali separati per ciascun agente.
+   - `Ambiente A`: VS Code con Claude Code capocantiere e integratore.
+   - `Ambiente B`: Antigravity IDE con AGY dispatcher e integratore (con presidi hook).
+   - `Ambiente C`: Terminali separati con Claude Code capocantiere e integratore.
 3. **Domanda 1 — Scopo & Valore**: Qual è il problema da risolvere, per chi, e quale risultato osservabile definisce il successo della prima versione?
 4. **Domanda 2 — Utenti & Piattaforme**: Piattaforme target (web, desktop Electron, mobile, CLI) ed esperienza utente prioritaria.
 5. **Domanda 3 — Dati & Confini di Privacy**: Presenza di dati sensibili/personali, conservazione locale vs cloud, e vincoli inderogabili di privacy.
@@ -184,10 +184,10 @@ Quando si sviluppa in Antigravity IDE, i divieti e le regole non sono affidati a
             │                                                │ (Sostituzione o reset)
             │ (Lavoro ultimato + Handover scritto)           │
             ▼                                                │
-       ┌────────────┐                                        │
+        ┌────────────┐                                        │
        │ CONSEGNATO │◄───────────────────────────────────────┘
        └────┬───────┘
-            │  (SOLO Claude Code riesegue verifiche e test)
+            │  (SOLO l'Orchestratore dell'ambiente riesegue verifiche e test)
             ▼
        ┌───────────┐
        │ INTEGRATO │

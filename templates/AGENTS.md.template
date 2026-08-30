@@ -14,7 +14,7 @@ Contesto completo: `{{DIR_COORD}}/PROJECT.md`. Milestone in corso: `{{DIR_COORD}
 ## Ruoli
 
 - Direttore — utente: decide requisiti, priorità, dati reali, migrazioni, deploy e pubblicazione.
-- Capocantiere / Integratore — Claude Code: pianifica, integra, verifica e documenta; è l'unico proprietario dell'integrazione. Solo Claude Code assegna `INTEGRATO`.
+- Capocantiere / Integratore — {{AGENTE_INTEGRATORE}}: pianifica, integra, verifica e documenta; è l'unico proprietario dell'integrazione. Solo {{AGENTE_INTEGRATORE}} assegna `INTEGRATO`.
 {{RUOLO_DISPATCHER}}
 {{RUOLI_OPZIONALI}}
 
@@ -28,7 +28,7 @@ Il perimetro di ogni ruolo opzionale è in `{{DIR_COORD}}/agents/<ruolo>/agent.m
 - Un task ha un solo proprietario e file riservati non sovrapposti.
 - Gli esecutori non si invocano fra loro. L'orchestratore li lancia, e la consegna passa comunque da `{{DIR_COORD}}/` e Git: un artefatto su disco è verificabile e sopravvive alla sessione, l'output di una pipe no.
 - I tre agenti attingono a **tre quote indipendenti** (Anthropic, OpenAI, Google). Un cambio di esecutore dettato dalla quota resta una sostituzione, con i due costi dichiarati nel task e la registrazione in `{{DIR_COORD}}/DECISIONS.md`.
-- Il proprietario aggiorna il task e lascia un handover in `{{DIR_COORD}}/handover/`; Claude riesegue le verifiche pertinenti prima dell'integrazione.
+- Il proprietario aggiorna il task e lascia un handover in `{{DIR_COORD}}/handover/`; {{AGENTE_INTEGRATORE}} riesegue le verifiche pertinenti prima dell'integrazione.
 - Non sovrascrivere modifiche non proprie. Controlla `git status` prima e dopo il lavoro.
 - Prima di un blocco di lavoro lungo, aggiorna il `Punto di ripresa` nel task: è l'unica traccia se la sessione si interrompe a metà.
 - Se un agente esaurisce il proprio limite di consumo, il task va in `SOSPESO` e la sostituzione si registra in `{{DIR_COORD}}/DECISIONS.md` con la garanzia che si perde. Nessuna sostituzione silenziosa.

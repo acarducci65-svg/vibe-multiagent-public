@@ -36,7 +36,7 @@ Se questo ruolo gira su un fornitore diverso da quello del modello che lo alimen
 
 {{FILE_RISERVATI}}
 
-Se un lavoro richiede un file fuori da questo elenco, fermati e chiedi a Claude Code di ridefinire i confini del task. Non allargarli da solo.
+Se un lavoro richiede un file fuori da questo elenco, fermati e chiedi a {{AGENTE_INTEGRATORE}} di ridefinire i confini del task. Non allargarli da solo.
 
 ## Verifiche obbligatorie prima della consegna
 
@@ -44,4 +44,4 @@ Se un lavoro richiede un file fuori da questo elenco, fermati e chiedi a Claude 
 
 ## Formato di consegna
 
-Compila `{{DIR_COORD}}/handover/<ID_TASK>.md` dal template `HANDOVER.md.template`, aggiorna lo stato nel file del task, e fermati. Non integrare il lavoro nel resto del codice: l'integrazione è di Claude Code, che rieseguirà le verifiche prima di dichiarare concluso il task.
+Compila `{{DIR_COORD}}/handover/<ID_TASK>.md` dal template `HANDOVER.md.template`, aggiorna lo stato nel file del task, e fermati. Non integrare il lavoro nel resto del codice: l'integrazione è di {{AGENTE_INTEGRATORE}}, che rieseguirà le verifiche prima di dichiarare concluso il task.

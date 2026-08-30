@@ -4,7 +4,7 @@ Stato: PRONTO
 Proprietario: {{PROPRIETARIO}}
 Handover atteso in: `{{DIR_COORD}}/handover/{{ID_TASK}}.md`
 
-Stati ammessi, in quest'ordine: `PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`. Solo Claude Code assegna `INTEGRATO`, e solo dopo aver rieseguito le verifiche in prima persona.
+Stati ammessi, in quest'ordine: `PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`. Solo {{AGENTE_INTEGRATORE}} assegna `INTEGRATO`, e solo dopo aver rieseguito le verifiche in prima persona.
 
 ## Obiettivo
 

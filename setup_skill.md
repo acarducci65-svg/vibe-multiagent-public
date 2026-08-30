@@ -2,7 +2,7 @@
 
 ## Esito
 
-Conduci un'intervista iniziale per configurare un singolo progetto di sviluppo. L'intervista determina l'ambiente di lavoro, l'orchestratore, gli agenti collaborativi, i ruoli e le limitazioni. Claude Code è sempre l'integratore; l'orchestratore dipende dalla sede scelta.
+Conduci un'intervista iniziale per configurare un singolo progetto di sviluppo. L'intervista determina l'ambiente di lavoro, l'orchestratore, gli agenti collaborativi, i ruoli e le limitazioni. L'integratore coincide sempre con l'orchestratore dell'ambiente selezionato: Claude Code in Ambiente A e C, Antigravity (AGY) in Ambiente B.
 
 Al termine, con l'approvazione esplicita dell'utente, crea o aggiorna nel repository selezionato `AGENTS.md` e i file della cartella di coordinamento, derivati dai template di questa skill.
 
@@ -41,24 +41,28 @@ Tre assi distinti. Confonderli è l'errore che questa sezione previene.
 | Asse | Domanda | Risposte possibili |
 |---|---|---|
 | **Sede** | dove gira la sessione | terminali separati · VS Code con Claude Extension · Antigravity IDE |
-| **Orchestrazione** | chi assegna, sorveglia e registra | Claude Code · agente Antigravity |
+| **Orchestrazione & Integrazione** | chi assegna, sorveglia, verifica e integra | Claude Code (Ambiente A/C) · Antigravity AGY (Ambiente B) |
 | **Esecuzione** | chi tocca i file di un task | Claude Code · Codex · esecutore AGY |
 
 ### I tre ambienti
 
-| # | Ambiente | Sede | Orchestratore | Agenti collaborativi |
-|---|----------|------|---------------|----------------------|
-| **A** | VS Code + Claude Extension | VS Code | Claude Code (capocantiere) | Codex CLI, AGY CLI |
-| **B** | Antigravity IDE | Antigravity IDE | AGY (dispatcher) | Claude CLI, Codex CLI |
-| **C** | Terminali separati | Terminali indipendenti | Claude Code (capocantiere) | Codex CLI, AGY CLI |
+| # | Ambiente | Sede | Orchestratore & Integratore | Agenti collaborativi |
+|---|----------|------|-----------------------------|----------------------|
+| **A** | VS Code + Claude Extension | VS Code | Claude Code (capocantiere / integratore) | Codex CLI, AGY CLI |
+| **B** | Antigravity IDE | Antigravity IDE | AGY (dispatcher / integratore) | Claude CLI, Codex CLI |
+| **C** | Terminali separati | Terminali indipendenti | Claude Code (capocantiere / integratore) | Codex CLI, AGY CLI |
 
 ### Perché l'orchestratore può non essere Claude
 
 I tre agenti attingono a **tre quote indipendenti**: Claude Code a quella Anthropic, Codex a quella OpenAI, Antigravity a quella Google — e Antigravity vi attinge **anche quando gira su modelli Claude**, perché a pagare è l'abbonamento di Antigravity. Il lavoro di orchestrazione è costante e a basso costo; quello di esecuzione è variabile e caro. Mettere l'orchestratore sul bucket che non si sta bruciando non è architettura, è aritmetica: è l'unico modo perché chi deve scrivere il punto di ripresa non si spenga insieme a chi lavora.
 
-### Cosa non cambia mai
+### Chi assegna `INTEGRATO` (Regola di Integrazione)
 
-Solo Claude Code assegna `INTEGRATO`, e solo dopo aver rieseguito le verifiche in prima persona. Il dispatcher assegna e sorveglia; non integra e non verifica. Se questa separazione cade, la topologia non vale più la sua complessità.
+Solo l'**Orchestratore dell'ambiente selezionato** assegna lo stato `INTEGRATO` a un task, e solo dopo aver rieseguito personalmente le verifiche e i test:
+- **In Ambiente A e C**: **Claude Code** è l'unico proprietario dell'integrazione e assegna `INTEGRATO`.
+- **In Ambiente B**: **Antigravity (AGY)** è l'unico proprietario dell'integrazione e assegna `INTEGRATO`.
+
+Nessun collaboratore/esecutore dichiara concluso o integrato il proprio task: consegna l'handover con stato `CONSEGNATO`, e l'orchestratore verifica e integra.
 
 ### Rischio del working tree condiviso (Ambienti A e B)
 
@@ -75,9 +79,9 @@ Ordine delle domande:
 0. Quale cartella ospita il progetto, qual è il suo nome, ed è già un repository Git? Se non sei già nella cartella giusta, fattela indicare per percorso assoluto prima di continuare.
 
 0-bis. Da quale ambiente lavorerai?
-   - **VS Code con Claude Extension** (Ambiente A): Claude Code è il capocantiere, orchestra e integra. AGY CLI e Codex CLI sono agenti collaborativi lanciati dal terminale.
-   - **Antigravity IDE** (Ambiente B): l'agente Antigravity è il dispatcher, assegna e sorveglia. Claude CLI e Codex CLI sono agenti collaborativi lanciati dal terminale integrato. Claude Code resta l'unico integratore.
-   - **Terminali separati** (Ambiente C): Claude Code è il capocantiere, come nell'Ambiente A, ma ciascun agente gira nel proprio terminale. Il coordinamento passa esclusivamente da Git e dalla cartella di coordinamento.
+   - **VS Code con Claude Extension** (Ambiente A): Claude Code è il capocantiere e integratore. AGY CLI e Codex CLI sono agenti collaborativi lanciati dal terminale.
+   - **Antigravity IDE** (Ambiente B): l'agente Antigravity (AGY) è il dispatcher e integratore. Claude CLI e Codex CLI sono agenti collaborativi lanciati dal terminale integrato.
+   - **Terminali separati** (Ambiente C): Claude Code è il capocantiere e integratore, come nell'Ambiente A, ma ciascun agente gira nel proprio terminale. Il coordinamento passa esclusivamente da Git e dalla cartella di coordinamento.
 
 1. Qual è il problema da risolvere, per chi, e quale risultato osservabile definisce il successo della prima versione?
 
@@ -170,7 +174,7 @@ Le estensioni VS Code di Claude Code e Codex **non sono su OpenVSX**, che è il 
 
 ### Come si avvia un task su ciascun agente
 
-**Claude Code (come esecutore, non orchestratore):**
+**Claude Code (come esecutore):**
 ```bash
 claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json
 ```
@@ -198,15 +202,15 @@ Applica questa matrice dopo l'intervista e dopo la verifica. Dichiara scelta, ra
 
 | Agente | Regola di selezione | Perimetro consentito |
 |---|---|---|
-| Claude Code | Sempre, come integratore. Come esecutore: implementazione, pianificazione, refactoring, test complessi. | Intervista, piano, task, implementazione, integrazione, verifiche, documentazione e commit. |
-| AGY | Solo se verificato e servono UI/UX, browser testing, esplorazione separabile, ricerca locale o test indipendenti. | Artefatti, test, analisi o file riservati nel task; non integra cambiamenti concorrenti nel codice applicativo. |
+| Claude Code | Sempre in Ambiente A/C (capocantiere e integratore). In Ambiente B come esecutore: implementazione, pianificazione, refactoring, test complessi. | Intervista, piano, task, implementazione, integrazione, verifiche, documentazione e commit. |
+| AGY | Sempre in Ambiente B (dispatcher e integratore). In Ambiente A/C: solo se verificato e servono UI/UX, browser testing, esplorazione separabile, ricerca locale o test indipendenti. | Artefatti, test, analisi o file riservati nel task; in Ambiente B possiede l'integrazione. |
 | Codex | Solo se verificato e serve diagnosi tecnica, implementazione di un modulo indipendente, refactoring delimitato o verifica separata. | Task con confini e file riservati; nessun deploy, migrazione o modifica concorrente. |
 
-Non scegliere AGY o Codex per abitudine. Un solo agente possiede i file di produzione di un task. Se servono entrambi, dividili per artefatto o usa worktree distinti e integra Claude dopo la verifica.
+Non scegliere AGY o Codex per abitudine. Un solo agente possiede i file di produzione di un task. Se servono entrambi, dividili per artefatto o usa worktree distinti e l'orchestratore integra dopo la verifica.
 
-### Dispatch nell'Ambiente B (AGY come dispatcher)
+### Dispatch nell'Ambiente B (AGY come dispatcher & integratore)
 
-Nell'Ambiente B, AGY è il dispatcher: assegna, lancia, sorveglia e registra. Gira sulla quota Google, indipendente da quella degli esecutori. Come lanciare e monitorare gli esecutori:
+Nell'Ambiente B, AGY è sia il dispatcher che l'integratore: assegna, lancia, sorveglia e registra, poi verifica e integra. Gira sulla quota Google, indipendente da quella degli esecutori. Come lanciare e monitorare gli esecutori:
 
 | Esecutore | Comando (via `run_command`) | Monitoraggio | Quota consumata |
 |---|---|---|---|
@@ -247,7 +251,7 @@ Non sono equivalenti:
 |---|---|---|
 | AGY o Codex invocati da te (`agy -p`, `codex exec`, `claude -p`) | Uscita diversa da zero e messaggio di errore su stderr. | Applica il protocollo di sostituzione qui sotto. |
 | AGY o Codex avviati dall'utente in sessione interattiva | Non lo vedi: te ne accorgi solo perché l'handover non arriva. | Fissa una scadenza nel task; scaduta, chiedi all'utente prima di riassegnare. |
-| Claude Code / l'orchestratore, cioè tu | La sessione si interrompe: non puoi reagire dopo. | Solo prevenzione, con il punto di ripresa. |
+| L'orchestratore / integratore in carica | La sessione si interrompe: non puoi reagire dopo. | Solo prevenzione, con il punto di ripresa. |
 
 ### Punto di ripresa, contro il terzo caso
 
@@ -291,7 +295,7 @@ Se l'utente ha già detto quale agente subentra a quale, applicalo senza richied
 
 Prima di creare file, presenta una sintesi che includa:
 
-- ambiente scelto (A, B o C) con orchestratore e agenti collaborativi;
+- ambiente scelto (A, B o C) con orchestratore/integratore e agenti collaborativi;
 - specifiche e confini della prima milestone;
 - stack, dati, vincoli e strategia di verifica;
 - agenti selezionati con ruoli, fornitore e motivazione, e agenti scartati con la ragione;
@@ -327,6 +331,7 @@ Compila i segnaposto da queste fonti. Non lasciarne nessuno non sostituito.
 |---|---|
 | `{{NOME_PROGETTO}}`, `{{DIR_COORD}}` | Domanda 0. |
 | `{{AMBIENTE}}` | Domanda 0-bis. Valore: `A`, `B` o `C`. Non compare nei template ma governa **quali** file si generano. |
+| `{{AGENTE_INTEGRATORE}}` | Domanda 0-bis. Valore: `Claude Code` in Ambiente A e C; `Antigravity (AGY)` in Ambiente B. |
 | `{{SCOPO_E_VALORE}}` | Domanda 1, per esteso. |
 | `{{SCOPO_UNA_RIGA}}` | Derivato: una riga dalla Domanda 1. |
 | `{{UTENTI_E_PIATTAFORME}}` | Domanda 2. |
@@ -337,8 +342,8 @@ Compila i segnaposto da queste fonti. Non lasciarne nessuno non sostituito.
 | `{{STRATEGIA_TEST}}` | Domanda 7, parte di test e verifiche. |
 | `{{STRATEGIA_RILASCIO}}` | Domanda 8. |
 | `{{VINCOLI_NON_NEGOZIABILI}}` | Divieti e autorizzazioni dalle Domande 3, 4, 8, 10. Solo obblighi, non descrizioni. |
-| `{{RUOLI_OPZIONALI}}` | Domanda 9 più la verifica di disponibilità e la matrice. Vuoto se solo Claude. |
-| `{{RUOLO_DISPATCHER}}` | Domanda 0-bis. Vuoto fuori dall'Ambiente B. Nell'Ambiente B: `- Dispatcher — agente Antigravity: assegna, lancia, sorveglia e registra. Gira sulla quota Google. Istruzioni operative in {{DIR_COORD}}/DISPATCH.md.` |
+| `{{RUOLI_OPZIONALI}}` | Domanda 9 più la verifica di disponibilità e la matrice. |
+| `{{RUOLO_DISPATCHER}}` | Domanda 0-bis. Vuoto fuori dall'Ambiente B. Nell'Ambiente B: `- Dispatcher & Integratore — agente Antigravity: assegna, lancia, sorveglia, verifica e integra. Gira sulla quota Google. Istruzioni operative in {{DIR_COORD}}/DISPATCH.md.` |
 | `{{PRIMA_MILESTONE}}`, `{{AUTORIZZAZIONI}}` | Domanda 10. |
 | `{{CRITERIO_DI_COMPLETAMENTO}}`, `{{PRIMO_TASK}}`, `{{RISCHI_E_DIPENDENZE}}` | Derivati: proponili tu e falli approvare esplicitamente. |
 | `{{ID_TASK}}`, `{{ID_DECISIONE}}`, `{{DATA}}` | Derivati: `T-001`, `D-001`, data odierna. |
@@ -372,7 +377,7 @@ Dopo l'approvazione:
 
 ## Protocollo operativo per i task futuri
 
-Ogni task nasce da `templates/TASK.md.template` e ha un solo proprietario. Il proprietario aggiorna lo stato e il punto di ripresa mentre lavora, e lascia un handover nel formato previsto. Claude integra il risultato e riesegue personalmente le verifiche pertinenti prima di dichiarare concluso il task.
+Ogni task nasce da `templates/TASK.md.template` e ha un solo proprietario. Il proprietario aggiorna lo stato e il punto di ripresa mentre lavora, e lascia un handover nel formato previsto. L'orchestratore/integratore (Claude Code in A/C, Antigravity in B) integra il risultato e riesegue personalmente le verifiche pertinenti prima di dichiarare concluso il task con `INTEGRATO`.
 
 Se un agente si esaurisce, applica il protocollo di sostituzione: stato `SOSPESO`, verifica di cosa decade, decisione registrata. Mai una sostituzione silenziosa.
 
