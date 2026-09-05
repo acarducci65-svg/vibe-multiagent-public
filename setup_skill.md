@@ -181,20 +181,24 @@ claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-
 
 **AGY CLI (come esecutore):**
 ```bash
-agy -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --add-dir <percorso repository>
+agy -p "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui il task. La compilazione dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call obbligatorie prima di uscire." --add-dir <percorso repository>
 ```
+*Nota*: Prima di lanciare AGY in headless, pre-approva in `~/.gemini/antigravity-cli/settings.json` (`permissions.allow`) i comandi esatti delle verifiche del task. `command(...)` richiede corrispondenza esatta token per token. Se l'agente esce con codice 0 ma errore `"jetski: no output produced"`, ispeziona il transcript in `~/.gemini/antigravity-cli/brain/<conv-id>/.system_generated/logs/transcript.jsonl` per identificare il comando o file negato.
 
 **Codex CLI:**
 ```bash
-codex exec --sandbox workspace-write "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md, poi esegui il task rispettandone i confini."
+codex exec -m <MODELLO_NOTO> --sandbox workspace-write "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Sei in modalità headless/non-interattiva: procedi direttamente con l'implementazione e i test senza chiedere conferme intermedie."
 ```
+*Nota*: Forza sempre `-m` esplicito per evitare blocchi da drift in `~/.codex/config.toml`. La sandbox di Codex non ha accesso di rete (niente `npm install` di nuovi pacchetti) e blocca i sottoprocessi (`spawn EPERM`). Per i test Vitest, specifica nel task `npx vitest run --configLoader runner <file>`.
 
 **AGY sotto-agente (dall'interno di AGY come dispatcher, Ambiente B):**
 ```
 invoke_subagent con TypeName: self e prompt che rimanda al task
 ```
 
-Restano due regole. Primo: non usare mai `--dangerously-skip-permissions`, `--dangerously-bypass-approvals-and-sandbox` o equivalenti per conto dell'utente. Secondo: la consegna di un task resta quella del protocollo, cioè file in `{{DIR_COORD}}/handover/` e commit Git. Un artefatto su disco è verificabile e sopravvive alla sessione, l'output di una pipe no.
+Restano due regole fondamentali:
+1. **Mai usare permessi pericolosi**: non usare mai `--dangerously-skip-permissions`, `--dangerously-bypass-approvals-and-sandbox` o equivalenti.
+2. **Consegna verificabile su disco**: la consegna di un task passa da `{{DIR_COORD}}/handover/` e commit Git. Se un agente esce con errore o codice non zero alla fine del turno (es. per limite quota scattato all'ultimo), **controlla prima lo stato effettivo su disco e Git**: se codice e test sono completi, procedi alla verifica e integrazione invece di buttare il lavoro!
 
 ## Scelta degli agenti
 
@@ -204,7 +208,7 @@ Applica questa matrice dopo l'intervista e dopo la verifica. Dichiara scelta, ra
 |---|---|---|
 | Claude Code | Sempre in Ambiente A/C (capocantiere e integratore). In Ambiente B come esecutore: implementazione, pianificazione, refactoring, test complessi. | Intervista, piano, task, implementazione, integrazione, verifiche, documentazione e commit. |
 | AGY | Sempre in Ambiente B (dispatcher e integratore). In Ambiente A/C: solo se verificato e servono UI/UX, browser testing, esplorazione separabile, ricerca locale o test indipendenti. | Artefatti, test, analisi o file riservati nel task; in Ambiente B possiede l'integrazione. |
-| Codex | Solo se verificato e serve diagnosi tecnica, implementazione di un modulo indipendente, refactoring delimitato o verifica separata. | Task con confini e file riservati; nessun deploy, migrazione o modifica concorrente. |
+| Codex | Solo se verificato e serve diagnosi tecnica, implementazione di un modulo indipendente, refactoring delimitato o verifica separata. | Task con confini e file riservati; nessun deploy, migrazione o modifica concorrente. Nessun `npm install` o generazione di migrazioni DB in sandbox. |
 
 Non scegliere AGY o Codex per abitudine. Un solo agente possiede i file di produzione di un task. Se servono entrambi, dividili per artefatto o usa worktree distinti e l'orchestratore integra dopo la verifica.
 
@@ -215,7 +219,7 @@ Nell'Ambiente B, AGY è sia il dispatcher che l'integratore: assegna, lancia, so
 | Esecutore | Comando (via `run_command`) | Monitoraggio | Quota consumata |
 |---|---|---|---|
 | Claude CLI | `claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json` | `manage_task` con `status` e `kill` | Anthropic |
-| Codex CLI | `codex exec "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md."` | `manage_task` con `status` e `kill` | OpenAI |
+| Codex CLI | `codex exec -m <MODELLO> --sandbox workspace-write "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md. Sei in headless: procedi senza chiedere conferme."` | `manage_task` con `status` e `kill` | OpenAI |
 | Esecutore AGY | `invoke_subagent` con `TypeName: self` | `manage_subagents` e `send_message` | Google (la propria) |
 
 Il dispatcher lancia un esecutore con `run_command`, impostando `WaitMsBeforeAsync` a 500ms perché l'agente resti in background. Il sistema notifica automaticamente il completamento. Per controllare lo stato intermedio, usare `manage_task` con `status`.

@@ -28,7 +28,7 @@ Fornitore e quota consumata: {{FORNITORE}}
 
 {{PERIMETRO_VIETATO}}
 
-Vietato in ogni caso: deploy, migrazioni, pubblicazioni, installazioni globali, scritture fuori dal repository, modifiche a file di cui questo ruolo non è proprietario nel task corrente.
+Vietato in ogni caso: deploy, migrazioni di database in produzione, pubblicazioni, installazioni globali, scritture fuori dal repository, modifiche a file di cui questo ruolo non è proprietario nel task corrente.
 
 Se questo ruolo gira su un fornitore diverso da quello del modello che lo alimenta — per esempio un modello Claude eseguito dentro Antigravity — valgono i limiti sui dati dichiarati alla Domanda 9 per il **fornitore**, non per il modello.
 

@@ -34,7 +34,10 @@ Il perimetro di ogni ruolo opzionale è in `{{DIR_COORD}}/agents/<ruolo>/agent.m
 - Il proprietario aggiorna il task e lascia un handover in `{{DIR_COORD}}/handover/`; {{AGENTE_INTEGRATORE}} riesegue le verifiche pertinenti prima dell'integrazione.
 - Non sovrascrivere modifiche non proprie. Controlla `git status` prima e dopo il lavoro.
 - Prima di un blocco di lavoro lungo, aggiorna il `Punto di ripresa` nel task: è l'unica traccia se la sessione si interrompe a metà.
-- Se un agente esaurisce il proprio limite di consumo, il task va in `SOSPESO` e la sostituzione si registra in `{{DIR_COORD}}/DECISIONS.md` con la garanzia che si perde. Nessuna sostituzione silenziosa.
+- Se un agente esaurisce il proprio limite di consumo o esce con errore:
+  1. Controlla sempre `git status` e i file su disco prima di dichiarare il task fallito: se il lavoro sostanziale è già completo, procedi alla verifica e integrazione.
+  2. Se il lavoro è incompleto, porta il task a `SOSPESO` e applica il protocollo di sostituzione registrando la garanzia che si perde in `{{DIR_COORD}}/DECISIONS.md`. Nessuna sostituzione silenziosa.
+- **Resilienza su filesystem (Windows / OneDrive)**: se un'operazione Git fallisce con `Permission denied` per lock concorrenti di sincronizzazione su `.git/`, attendere 2 secondi e ritentare una singola volta.
 
 ## Verifica e completamento
 

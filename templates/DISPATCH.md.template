@@ -28,11 +28,12 @@ Se `Sto per:` e `Fatti:` si contraddicono, **credi a `Fatti:`**: lo scrive l'hoo
 
 Dal terminale, con `run_command` (impostando `WaitMsBeforeAsync` a 500ms per mandarlo in background), poi lo segui con `manage_task`:
 
-| Esecutore | Comando | Quota consumata |
-|---|---|---|
-| Claude Code | `claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json` | Anthropic |
-| Codex | `codex exec --sandbox workspace-write "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md."` | OpenAI |
-| Esecutore AGY | `invoke_subagent` con `TypeName: self` | Google, la tua |
+| Esecutore | Comando | Quota consumata | Note operative essenziali |
+|---|---|---|---|
+| Claude Code | `claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json` | Anthropic | Output strutturato JSON |
+| Codex CLI | `codex exec -m <MODELLO> --sandbox workspace-write "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Sei in modalità headless non-interattiva: procedi con l'implementazione e i test senza chiedere conferme intermedie."` | OpenAI | Forza `-m` esplicito e autorizzazione headless |
+| AGY CLI | `agy -p "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui il task. La scrittura dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call obbligatorie della catena prima di terminare." --add-dir <percorso>` | Google | Pre-approvare i comandi esatti in `settings.json` |
+| Sotto-agente AGY | `invoke_subagent` con `TypeName: self` | Google | Gestito internamente |
 
 Il sistema ti notifica automaticamente al completamento di ogni task in background. Per verificare lo stato intermedio, usa `manage_task` con `status`. Per interrompere un esecutore bloccato, usa `manage_task` con `kill`.
 
@@ -63,23 +64,36 @@ Il semaforo di quota ti arriva iniettato prima del turno, quando serve. Non chie
 
 Un cambio di esecutore dettato dalla quota **è una sostituzione**: vale il protocollo del task, cioè i due costi dichiarati e la registrazione in `{{DIR_COORD}}/DECISIONS.md`. Nessuna sostituzione silenziosa, nemmeno quando il ripiego sembra equivalente.
 
-## Quando un esecutore si esaurisce
+## Quando un esecutore segnala errore o esaurimento
 
-Lo vedi da un'uscita diversa da zero e da un messaggio sullo stderr. Allora:
+Non fidarti del solo codice di uscita (lezione da 730Cardu):
 
-1. Porta il task a `SOSPESO` e trascrivi l'errore **per intero** nel task.
-2. Leggi `Costo — capacità` e `Costo — garanzia` nel task.
-3. Se la garanzia perduta non è accettabile, **fermati**: aspettare il reset è la scelta corretta, non un fallimento.
-4. Se la sostituzione è prevista, registrala in `DECISIONS.md` con la garanzia perduta e il costo se fosse sbagliata.
-5. Riassegna la proprietà dei file. Mai due proprietari sullo stesso insieme.
-6. Verifica che i task riflettano la decisione registrata:
-   - Bash/macOS: `grep -h '^Stato:\|^Proprietario:' {{DIR_COORD}}/tasks/*.md`
-   - PowerShell: `Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^(Stato|Proprietario):"`
+1. **Controlla prima lo stato reale su disco**: un agente (es. Codex) può uscire con codice 1 per quota esaurita all'ultimo secondo, avendo già scritto codice, test e handover al 100%. Se i file sono a posto e i test passano, il lavoro è valido e va integrato!
+2. Se il lavoro è davvero interrotto o incompleto:
+   - Porta il task a `SOSPESO` e trascrivi l'errore **per intero** nel task.
+   - Leggi `Costo — capacità` e `Costo — garanzia` nel task.
+   - Se la garanzia perduta non è accettabile, **fermati**: aspettare il reset è la scelta corretta, non un fallimento.
+   - Se la sostituzione è prevista, registrala in `DECISIONS.md` con la garanzia perduta e il costo se fosse sbagliata.
+   - Riassegna la proprietà dei file. Mai due proprietari sullo stesso insieme.
+   - Verifica che i task riflettano la decisione registrata:
+     - Bash/macOS: `grep -h '^Stato:\|^Proprietario:' {{DIR_COORD}}/tasks/*.md`
+     - PowerShell: `Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^(Stato|Proprietario):"`
 
-## Prompt per gli esecutori — regole di costruzione
+## Regole di costruzione prompt e diagnosi CLI (Lezioni da 730Cardu e munderdifflin)
 
-Quando costruisci il prompt per un esecutore, applica queste regole (lezione dal progetto munderdifflin-cardu):
+### Regole generali di prompt
+- **Non citare file di altri agenti come esempio**: nominare un file estraneo fa ancorare l'agente a modificarlo. Cita solo il task e il contesto da leggere.
+- **Non riciclare sessioni contaminate**: se un messaggio correttivo non basta, rilancia in una sessione pulita.
 
-- **Non citare file di altri agenti come esempio.** Un prompt che nomina `BookForm.tsx` come riferimento per un modulo diverso fa ancorare l'agente a modificare quel file. Cita solo il task e il contesto da leggere.
-- **Non riciclare sessioni contaminate.** Se un messaggio correttivo nella stessa sessione non basta, riscrivi il prompt da zero in una sessione nuova.
-- **Dichiara il sandbox e i permessi corretti per Codex CLI.** Configura Codex con `--sandbox workspace-write` e includi eventuali directory ausiliarie con `--add-dir <percorso>`. Se i test richiedono l'avvio di sotto-processi e falliscono con `EPERM`, valuta l'opzione di esecuzione permissiva solo su esplicita autorizzazione del Direttore.
+### Specifiche per Codex CLI
+- **Modalità headless esplicita**: dichiara sempre nel prompt che l'agente è in modalità non-interattiva per evitare che si fermi a chiedere "Posso procedere?".
+- **Modello esplicito (`-m`)**: specifica sempre `-m <modello>` (es. `-m gpt-5.6-terra`) per evitare che modifiche silenti a `~/.codex/config.toml` blocchino l'avvio.
+- **Vitest in sandbox**: se il task include test con Vitest, indicare di eseguire `npx vitest run --configLoader runner <file>` per evitare blocchi `spawn EPERM`.
+- **Nessun `npm install` o migrazione complessa**: la sandbox di Codex non ha accesso di rete per installare nuovi pacchetti npm né permessi per `drizzle-kit generate` / `esbuild`.
+
+### Specifiche per AGY CLI
+- **Corrispondenza esatta dei permessi**: `command(...)` in `settings.json` richiede la corrispondenza esatta carattere per carattere del comando (nessuna regex o wildcard di coda parziale). Pre-approva i comandi delle verifiche del task prima del dispatch.
+- **Chiusura vincolante con Handover**: imporre nel prompt che la scrittura di `handover/<ID>.md` e l'aggiornamento dello stato siano le ultime tool call prima di uscire.
+- **Diagnosi comandi negati**: se AGY esce con codice 0 ma con errore `"jetski: no output produced"` senza indicare il comando negato, ispeziona il transcript locale in:
+  `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`
+  nel blocco `PLANNER_RESPONSE` prima del rifiuto per risalire al comando o file esatto.

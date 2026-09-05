@@ -205,6 +205,25 @@ Nei file task (`TASK.md`), il costo di sostituzione è suddiviso in due dimensio
 
 ---
 
+## 🛡️ Lezioni Operative e Robustezza da Progetti Reali
+
+Il protocollo recepisce direttamente le evidenze empiriche maturate sul campo (progetti *730Cardu* e *munderdifflin*):
+
+1. **Verifica su Disco vs Codice di Uscita**:
+   - Un agente (es. Codex) può terminare con codice di uscita 1 solo per limite di quota scattato all'ultimo secondo, avendo già completato codice, test e handover al 100%. L'orchestratore **deve sempre verificare `git status` e i file modificati** prima di considerare interrotto un task.
+2. **Robustezza per Codex CLI**:
+   - **Forzatura Modello (`-m`)**: Specificare sempre `-m <modello>` per prevenire fallimenti da aggiornamenti silenti di `config.toml`.
+   - **Autorizzazione Headless**: Il prompt deve esplicitare che l'agente è in modalità non-interattiva per evitare che si fermi in attesa di conferme.
+   - **Sandbox e Vitest**: La sandbox di Codex non ha accesso di rete (niente `npm install`) e blocca i sottoprocessi; per eseguire Vitest senza `spawn EPERM`, usare il comando `npx vitest run --configLoader runner <file>`.
+3. **Robustezza per AGY CLI**:
+   - **Permessi Esatti**: Le regole `command(...)` in `settings.json` esigono corrispondenza esatta token per token. Pre-autorizzare in anticipo le verifiche del task.
+   - **Handover Obbligatorio**: Impone che la scrittura dell'handover sia l'ultima tool call prima di chiudere la sessione headless.
+   - **Diagnosi via Transcript**: In caso di uscita con errore generico `"jetski: no output produced"`, ispezionare il log locale `transcript.jsonl` per risalire al comando rifiutato.
+4. **Resilienza Filesystem Windows / OneDrive**:
+   - Gestione dei lock concorrenti temporanei su `.git/` con retry automatico.
+
+---
+
 ## 🔒 Privacy, Sicurezza e Note Legali
 
 ### 1. Modello di Sicurezza e Privacy dei Dati
