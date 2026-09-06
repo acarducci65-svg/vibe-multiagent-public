@@ -145,7 +145,7 @@ Non confondere `agy` con `antigravity-ide`: il secondo è il launcher dell'IDE, 
 | Controllo | Comando | Esito da segnalare |
 |---|---|---|
 | Claude Code disponibile | (è il runtime) | — |
-| AGY disponibile (se scelto) | `agy --version` + check path | PATH stantio |
+| AGY disponibile (se scelto) | `agy --version` e `agy models` | PATH stantio / verifica nomi modelli |
 | Codex disponibile (se scelto) | `codex --version` + check path | PATH stantio |
 | `.gitattributes` presente | `Get-Content .gitattributes` / `cat .gitattributes` | Rischio CRLF su Windows: suggerisci `* text=auto eol=lf` |
 | Contaminazione ambiente | `$env:ELECTRON_RUN_AS_NODE` (PS) / `echo $ELECTRON_RUN_AS_NODE` (Bash) | Se `1`, la sessione è contaminata: riavvia il terminale |
@@ -158,6 +158,7 @@ Non confondere `agy` con `antigravity-ide`: il secondo è il launcher dell'IDE, 
 | Hook globali vivi | `node -e "const h=require(require('os').homedir()+'/.gemini/config/hooks.json'); for(const[n,c]of Object.entries(h)) console.log(n, c.enabled!==false?'attivo':'disattivo')"` | Un hook attivo che punta a un file inesistente fallisce a ogni turno |
 | Claude CLI disponibile | `claude --version` + check path | PATH stantio |
 | Codex CLI disponibile (se scelto) | `codex --version` + check path | PATH stantio |
+| AGY CLI disponibile (se scelto) | `agy --version` e `agy models` | PATH stantio / verifica modelli disponibili |
 | `.gitattributes` presente | `Get-Content .gitattributes` / `cat .gitattributes` | Rischio CRLF su Windows |
 | Contaminazione ambiente | `$env:ELECTRON_RUN_AS_NODE` (PS) / `echo $ELECTRON_RUN_AS_NODE` (Bash) | Se `1`, la sessione è contaminata |
 
@@ -168,7 +169,7 @@ Le estensioni VS Code di Claude Code e Codex **non sono su OpenVSX**, che è il 
 | Controllo | Comando | Esito da segnalare |
 |---|---|---|
 | Claude Code disponibile | `claude --version` | PATH stantio |
-| AGY disponibile (se scelto) | `agy --version` + check path | PATH stantio |
+| AGY disponibile (se scelto) | `agy --version` e `agy models` | PATH stantio / verifica nomi modelli |
 | Codex disponibile (se scelto) | `codex --version` + check path | PATH stantio |
 | `.gitattributes` presente | `Get-Content .gitattributes` / `cat .gitattributes` | Rischio CRLF su Windows |
 
@@ -181,9 +182,9 @@ claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-
 
 **AGY CLI (come esecutore):**
 ```bash
-agy -p "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui il task. La compilazione dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call obbligatorie prima di uscire." --add-dir <percorso repository>
+agy -p "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui SOLO le attività e verifiche richieste; non eseguire comandi shell o test non dichiarati nel task. La compilazione dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call obbligatorie prima di uscire." --add-dir <percorso repository>
 ```
-*Nota*: Prima di lanciare AGY in headless, pre-approva in `~/.gemini/antigravity-cli/settings.json` (`permissions.allow`) i comandi esatti delle verifiche del task. `command(...)` richiede corrispondenza esatta token per token. Se l'agente esce con codice 0 ma errore `"jetski: no output produced"`, ispeziona il transcript in `~/.gemini/antigravity-cli/brain/<conv-id>/.system_generated/logs/transcript.jsonl` per identificare il comando o file negato.
+*Nota*: Se si specifica `--model`, verificare sempre i nomi reali con `agy models` (es. `gemini-3.1-pro-high`, `gemini-3.8-flash-*`). Prima di lanciare AGY in headless, pre-approva in `~/.gemini/antigravity-cli/settings.json` (`permissions.allow`) i comandi esatti delle verifiche del task: `command(...)` richiede corrispondenza esatta token per token. Se l'agente esce con codice 0 ma errore `"jetski: no output produced"`, ispeziona il transcript in `~/.gemini/antigravity-cli/brain/<conv-id>/.system_generated/logs/transcript.jsonl` (metodo verificato e confermato sul campo) per risalire al comando o file negato in un minuto.
 
 **Codex CLI:**
 ```bash

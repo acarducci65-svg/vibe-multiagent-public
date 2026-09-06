@@ -219,9 +219,11 @@ Il protocollo recepisce direttamente le evidenze empiriche maturate sul campo (p
    - **Autorizzazione Headless**: Il prompt deve esplicitare che l'agente è in modalità non-interattiva per evitare che si fermi in attesa di conferme.
    - **Sandbox e Vitest**: La sandbox di Codex non ha accesso di rete (niente `npm install`) e blocca i sottoprocessi; per eseguire Vitest senza `spawn EPERM`, usare il comando `npx vitest run --configLoader runner <file>`.
 3. **Robustezza per AGY CLI**:
+   - **Nomi Modello Reali (`agy models`)**: Verificare sempre i modelli supportati con `agy models` (es. `gemini-3.1-pro-high`, `gemini-3.8-flash-*`) prima di forzare `--model`, evitando nomi teorici o non installati.
+   - **Divieto di Azioni Fuori Perimetro**: Esplicitare nel prompt il divieto di lanciare suite di test globali o comandi pesanti non pertinenti al task (previene timeout ingiustificati).
    - **Permessi Esatti**: Le regole `command(...)` in `settings.json` esigono corrispondenza esatta token per token. Pre-autorizzare in anticipo le verifiche del task.
    - **Handover Obbligatorio**: Impone che la scrittura dell'handover sia l'ultima tool call prima di chiudere la sessione headless.
-   - **Diagnosi via Transcript**: In caso di uscita con errore generico `"jetski: no output produced"`, ispezionare il log locale `transcript.jsonl` per risalire al comando rifiutato.
+   - **Diagnosi via Transcript (Confermata sul campo)**: In caso di blocco senza indizio (`"jetski: no output produced"`), la lettura di `transcript.jsonl` nel blocco `PLANNER_RESPONSE` individua il comando negato in 1 minuto.
 4. **Resilienza Filesystem Windows / OneDrive**:
    - Gestione dei lock concorrenti temporanei su `.git/` con retry automatico.
 

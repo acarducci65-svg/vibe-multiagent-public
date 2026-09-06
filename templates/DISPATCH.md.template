@@ -32,7 +32,7 @@ Dal terminale, con `run_command` (impostando `WaitMsBeforeAsync` a 500ms per man
 |---|---|---|---|
 | Claude Code | `claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json` | Anthropic | Output strutturato JSON |
 | Codex CLI | `codex exec -m <MODELLO> --sandbox workspace-write "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Sei in modalità headless non-interattiva: procedi con l'implementazione e i test senza chiedere conferme intermedie."` | OpenAI | Forza `-m` esplicito e autorizzazione headless |
-| AGY CLI | `agy -p "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui il task. La scrittura dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call obbligatorie della catena prima di terminare." --add-dir <percorso>` | Google | Pre-approvare i comandi esatti in `settings.json` |
+| AGY CLI | `agy -p "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui SOLO le verifiche richieste; non eseguire comandi shell o test non dichiarati. La scrittura dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call obbligatorie della catena prima di terminare." --add-dir <percorso>` | Google | Pre-approvare i comandi esatti in `settings.json` (modello verificabile con `agy models`) |
 | Sotto-agente AGY | `invoke_subagent` con `TypeName: self` | Google | Gestito internamente |
 
 Il sistema ti notifica automaticamente al completamento di ogni task in background. Per verificare lo stato intermedio, usa `manage_task` con `status`. Per interrompere un esecutore bloccato, usa `manage_task` con `kill`.
@@ -92,8 +92,10 @@ Non fidarti del solo codice di uscita (lezione da 730Cardu):
 - **Nessun `npm install` o migrazione complessa**: la sandbox di Codex non ha accesso di rete per installare nuovi pacchetti npm né permessi per `drizzle-kit generate` / `esbuild`.
 
 ### Specifiche per AGY CLI
+- **Nomi modello reali (`agy models`)**: se devi forzare `--model`, non usare nomi teorici da fonti terze: verifica l'elenco esatto supportato dal client locale eseguendo `agy models` (es. `gemini-3.1-pro-high`, `gemini-3.8-flash-*`).
+- **Divieto di azioni fuori perimetro**: ribadisci nel prompt di non eseguire comandi shell o test non richiesti dal task (es. lanciare l'intera test suite `vitest` su un task di sola ricerca/documentazione causa timeout ingiustificati).
 - **Corrispondenza esatta dei permessi**: `command(...)` in `settings.json` richiede la corrispondenza esatta carattere per carattere del comando (nessuna regex o wildcard di coda parziale). Pre-approva i comandi delle verifiche del task prima del dispatch.
 - **Chiusura vincolante con Handover**: imporre nel prompt che la scrittura di `handover/<ID>.md` e l'aggiornamento dello stato siano le ultime tool call prima di uscire.
-- **Diagnosi comandi negati**: se AGY esce con codice 0 ma con errore `"jetski: no output produced"` senza indicare il comando negato, ispeziona il transcript locale in:
+- **Diagnosi comandi negati (confermata sul campo)**: se AGY esce con codice 0 ma con errore `"jetski: no output produced"` senza indicare il comando negato, ispeziona il transcript locale in:
   `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`
-  nel blocco `PLANNER_RESPONSE` prima del rifiuto per risalire al comando o file esatto.
+  nel blocco `PLANNER_RESPONSE` prima del rifiuto per risalire al comando o file esatto in 1 minuto.
