@@ -328,6 +328,7 @@ Ogni template ha una sola destinazione. `{{DIR_COORD}}` è il valore deciso in D
 | `HANDOVER.md.template` | `{{DIR_COORD}}/handover/<ID_TASK>.md` | Alla consegna di un task da parte del suo proprietario. |
 | `DISPATCH.md.template` | `{{DIR_COORD}}/DISPATCH.md` | **Solo Ambiente B.** |
 | `hooks.json.template` | `.agents/hooks.json` nella radice del repository | **Solo Ambiente B.** Se il file esiste già, aggiungi la chiave `protocollo-multi-agente` senza toccare le altre: gli hook con nomi diversi si fondono. |
+| `multiagent-rule.md.template` | `.agents/rules/multiagent-coordinator.md` nella radice del repository | **Solo Ambiente B.** Regola permanente di workspace che mantiene il modello nel ruolo di Coordinatore/Integratore ad ogni interazione. |
 
 Per il passaggio di consegne fra sessioni Claude, invece che fra agenti su un task, usa la skill `handoff-hardened` se disponibile. `HANDOVER.md.template` copre solo la consegna di un task dentro questo protocollo.
 
@@ -380,15 +381,21 @@ Dopo l'approvazione:
 3. Se `AGENTS.md` non esiste, genera il file dal template. Se esiste, conserva tutto il contenuto e aggiungi o aggiorna solo la sezione delimitata da `<!-- INIZIO CONFIGURAZIONE MULTI-AGENTE -->` e `<!-- FINE CONFIGURAZIONE MULTI-AGENTE -->`.
 4. Crea `CURRENT_SPRINT.md` con una prima milestone ancora pianificata, non dichiarata completata.
 5. Scomponi prima di creare task: se la milestone tocca più di cinque file di produzione, o più di un dominio applicativo, o non ha un criterio di accettazione verificabile con un comando, proponi la scomposizione e fatti approvare le parti prima di generare `tasks/`.
-6. **Solo Ambiente B**: genera `.agents/hooks.json` dal template, sostituendo `{{DIR_SKILL}}` con il percorso assoluto di questa skill. Se `.agents/hooks.json` esiste già, fondi la chiave `protocollo-multi-agente` con le chiavi esistenti. Genera `{{DIR_COORD}}/DISPATCH.md` dal template.
+6. **Solo Ambiente B**:
+   - Genera `.agents/hooks.json` dal template, sostituendo `{{DIR_SKILL}}` con il percorso assoluto di questa skill. Se `.agents/hooks.json` esiste già, fondi la chiave `protocollo-multi-agente` con le chiavi esistenti.
+   - Genera `.agents/rules/multiagent-coordinator.md` dal template `multiagent-rule.md.template`.
+   - Genera `{{DIR_COORD}}/DISPATCH.md` dal template.
 7. Rileggi i file prodotti, cerca i segnaposto residui con:
    - Bash/macOS: `grep -rn "{{" AGENTS.md {{DIR_COORD}}/ .agents/`
    - PowerShell: `Get-ChildItem -Recurse -Path AGENTS.md, {{DIR_COORD}}, .agents -File | Select-String "\{\{"`
    e mostra `git status` e `git diff --check`.
 
-## Protocollo operativo per i task futuri
+## Protocollo operativo per i task futuri e manutenzione post-rilascio
 
-Ogni task nasce da `templates/TASK.md.template` e ha un solo proprietario. Il proprietario aggiorna lo stato e il punto di ripresa mentre lavora, e lascia un handover nel formato previsto. L'orchestratore/integratore (Claude Code in A/C, Antigravity in B) integra il risultato e riesegue personalmente le verifiche pertinenti prima di dichiarare concluso il task con `INTEGRATO`.
+Anche dopo la conclusione della prima milestone o a progetto ultimato, **il protocollo multi-agente resta attivo e permanente per qualsiasi interazione successiva**:
+- **Nessuna modifica "a mano libera"**: per qualsiasi segnalazione di bug, nuova funzionalità, refactor o modifica richiesta dall'utente, il coordinatore/integratore **non implementa direttamente il codice applicativo**.
+- **Canalizzazione tramite Task**: ogni nuova richiesta viene trasformata in un task in `{{DIR_COORD}}/tasks/<ID>.md`, viene aggiornato `{{DIR_COORD}}/CURRENT_SPRINT.md`, e il lavoro viene instradato all'esecutore appropriato secondo la matrice in `AGENTS.md` e `DISPATCH.md`.
+- L'orchestratore/integratore (Claude Code in A/C, Antigravity in B) integra il risultato e riesegue personalmente le verifiche pertinenti prima di dichiarare concluso il task con `INTEGRATO`.
 
 Se un agente si esaurisce, applica il protocollo di sostituzione: stato `SOSPESO`, verifica di cosa decade, decisione registrata. Mai una sostituzione silenziosa.
 

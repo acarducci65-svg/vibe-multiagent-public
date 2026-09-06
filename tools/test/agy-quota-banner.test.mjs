@@ -6,11 +6,7 @@ const r = JSON.parse(execFileSync("node", ["../agy-quota-banner.mjs"], {
   input: JSON.stringify({ invocationNum: 1, initialNumSteps: 5, workspacePaths: ["C:/dev/x"] }),
 }));
 
-// Sotto soglia: oggetto vuoto. Sopra: injectSteps con un messaggio. Nient'altro è ammesso.
-if (Object.keys(r).length === 0) console.log("agy-quota-banner: sotto soglia, nessuna iniezione — corretto");
-else {
-  assert.ok(Array.isArray(r.injectSteps) && r.injectSteps.length === 1, "injectSteps malformato");
-  assert.match(r.injectSteps[0].ephemeralMessage, /\[QUOTA ANTHROPIC\]/);
-  console.log("agy-quota-banner: sopra soglia, iniezione ben formata — corretto");
-}
+assert.ok(Array.isArray(r.injectSteps) && r.injectSteps.length === 1, "injectSteps deve essere un array con 1 elemento");
+assert.match(r.injectSteps[0].ephemeralMessage, /\[PROTOCOLLO MULTI-AGENTE ATTIVO\]/, "manca il banner del protocollo multi-agente");
+console.log("agy-quota-banner: iniezione del promemoria di coordinamento verificata con successo");
 console.log("agy-quota-banner: 1 collaudo superato");
