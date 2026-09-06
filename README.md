@@ -144,9 +144,11 @@ Al termine dell'intervista, l'agente presenta un **documento di sintesi** conten
 ```text
 mio-progetto/
 ├── AGENTS.md                 # Protocollo operativo e vincoli non negoziabili
-├── .agents/
-│   └── hooks.json           # (Solo Ambiente B) Hook per gate, checkpoint e quota
-└── .coord/                   # Cartella di coordinamento (configurabile)
+├── .agents/                  # (Solo Ambiente B - Antigravity IDE)
+│   ├── hooks.json            # Configurazione hook PreToolUse, PostToolUse, PreInvocation
+│   └── rules/
+│       └── multiagent-coordinator.md # Regola permanente di workspace per il Dispatcher/Integratore
+└── .coord/                   # Cartella di coordinamento del progetto
     ├── PROJECT.md            # Fonte unica del contesto di business e architettura
     ├── CURRENT_SPRINT.md     # Milestone attiva, criteri di completamento e rischi
     ├── DECISIONS.md          # Registro decisionale progressivo (D-001, D-002, ...)
@@ -167,7 +169,8 @@ Quando si sviluppa in Antigravity IDE, i divieti e le regole non sono affidati a
 
 - **`agy-gate.mjs` (`PreToolUse`)**: Intercetta ed esegue un `deny` immediato per comandi di pubblicazione (`git push`, `npm publish`), deploy cloud (Vercel, AWS, GCP), migrazioni database e flag che bypassano i permessi (`--dangerously-skip-permissions`). Chiede conferma (`ask`) per cancellazioni fuori dal workspace.
 - **`agy-checkpoint.mjs` (`PostToolUse`)**: Ad ogni scrittura o modifica di file, scrive automaticamente la riga `- Fatti: <data> — modificati: <file> — ultimo commit: <hash>` nel `Punto di ripresa` del task `IN CORSO`.
-- **`quota-anthropic.mjs` & `agy-quota-banner.mjs` (`PreInvocation`)**: Interroga periodicamente l'utilizzo residuo della quota Anthropic e inietta istruzioni al dispatcher sopra il 70%, 85% e 95% (sotto soglia non consuma token).
+- **`agy-quota-banner.mjs` (`PreInvocation`)**: Inietta ad **ogni singolo turno** il promemoria di ruolo perentorio (Coordinatore/Dispatcher & Integratore) per impedire all'agente di agire da programmatore singolo "a mano libera" su nuove richieste/bug, oltre al semaforo di quota Anthropic quando rilevante.
+- **`.agents/rules/multiagent-coordinator.md` (Workspace Rule)**: Regola gerarchica permanente caricata nel system prompt di Antigravity che vieta la modifica diretta del codice applicativo e impone la canalizzazione via task.
 
 ---
 
@@ -275,6 +278,7 @@ vibe_multiagent/
 │   ├── DISPATCH.md.template      # Guida operativa Dispatcher AGY (Ambiente B)
 │   ├── HANDOVER.md.template
 │   ├── hooks.json.template       # Configurazione hook Antigravity (Ambiente B)
+│   ├── multiagent-rule.md.template # Regola permanente di workspace Antigravity (Ambiente B)
 │   ├── PROJECT.md.template
 │   └── TASK.md.template
 └── tools/                        # Script per hook Antigravity & monitoraggio
