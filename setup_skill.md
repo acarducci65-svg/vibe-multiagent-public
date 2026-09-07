@@ -208,10 +208,14 @@ Applica questa matrice dopo l'intervista e dopo la verifica. Dichiara scelta, ra
 | Agente | Regola di selezione | Perimetro consentito |
 |---|---|---|
 | Claude Code | Sempre in Ambiente A/C (capocantiere e integratore). In Ambiente B come esecutore: implementazione, pianificazione, refactoring, test complessi. | Intervista, piano, task, implementazione, integrazione, verifiche, documentazione e commit. |
-| AGY | Sempre in Ambiente B (dispatcher e integratore). In Ambiente A/C: solo se verificato e servono UI/UX, browser testing, esplorazione separabile, ricerca locale o test indipendenti. | Artefatti, test, analisi o file riservati nel task; in Ambiente B possiede l'integrazione. |
+| AGY | Sempre in Ambiente B (dispatcher e integratore). In Ambiente A/C: solo se verificato e servono UI/UX, browser testing, esplorazione separabile o compiti i cui input sono file statici sul disco (`read_file`). Sconsigliato per compiti che richiedono tool o comandi shell dinamici liberi. | Artefatti, test, analisi o file riservati nel task; in Ambiente B possiede l'integrazione. |
 | Codex | Solo se verificato e serve diagnosi tecnica, implementazione di un modulo indipendente, refactoring delimitato o verifica separata. | Task con confini e file riservati; nessun deploy, migrazione o modifica concorrente. Nessun `npm install` o generazione di migrazioni DB in sandbox. |
 
 Non scegliere AGY o Codex per abitudine. Un solo agente possiede i file di produzione di un task. Se servono entrambi, dividili per artefatto o usa worktree distinti e l'orchestratore integra dopo la verifica.
+
+### Coordinamento Git nel Working Tree Condiviso
+- Mentre un esecutore delegato lavora nel working tree, l'Integratore **non deve eseguire comandi Git in scrittura** (`commit`, `add`, `switch`, `merge`), neppure su file o rami diversi (previene `index.lock: Permission denied`).
+- Posiziona il repository sul ramo corretto prima del lancio e istruisci l'esecutore a non eseguire comandi Git di switch/commit: l'esecutore scrive solo i file e l'handover, l'integrazione spetta all'integratore.
 
 ### Dispatch nell'Ambiente B (AGY come dispatcher & integratore)
 
@@ -293,7 +297,7 @@ Se sono presenti sia `Sto per:` sia `Fatti:` e si contraddicono, **credi a `Fatt
 1. Porta il task allo stato `SOSPESO` e annota nel task l'errore ricevuto, per intero.
 2. Leggi `Costo — capacità` e `Costo — garanzia` nel task. Se il costo in garanzia non è accettabile, fermati e riferisci all'utente: aspettare il reset è la scelta corretta, non un fallimento.
 3. Se la sostituzione è prevista, valuta cosa decade. Un ripiego non è mai neutro: se Codex possedeva i test proprio per renderli indipendenti dall'implementazione, farli scrivere a chi implementa chiude il task ma cancella la garanzia. Il risultato è peggiore di un task fermo, perché sembra completo.
-4. Registra la sostituzione in `DECISIONS.md` con la garanzia perduta e il costo se fosse sbagliata. **Nessuna sostituzione silenziosa**: un progetto che sembra verificato senza esserlo è il danno peggiore che questo protocollo possa produrre.
+4. Registra la sostituzione in `DECISIONS.md` con la garanzia perduta, il costo se fosse sbagliata e una **data o condizione esplicita di riverifica del ripiego** (i ripieghi temporanei non vanno ereditati per sempre). **Nessuna sostituzione silenziosa**: un progetto che sembra verificato senza esserlo è il danno peggiore che questo protocollo possa produrre.
 5. Riassegna la proprietà dei file nel task. Non lasciare due proprietari sullo stesso insieme.
 6. **Rileggi i task toccati e verifica che stato e proprietario corrispondano alla decisione appena registrata.** Il controllo è: `grep -h '^Stato:\|^Proprietario:' {{DIR_COORD}}/tasks/*.md` (Bash) oppure `Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^(Stato|Proprietario):"` (PowerShell).
 7. **Un cambio di esecutore dettato dalla quota è una sostituzione a tutti gli effetti.** Vale anche quando il ripiego sembra equivalente — per esempio Claude Code sostituito da un esecutore Antigravity che gira su un modello Claude. Cambia il fornitore, cambiano i permessi, e soprattutto la garanzia di indipendenza non si recupera cambiando fattura.

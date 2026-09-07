@@ -41,6 +41,10 @@ Non usare mai `--dangerously-skip-permissions` o `--dangerously-bypass-approvals
 
 Un task ha **un solo** proprietario. Non lanciare due esecutori sullo stesso insieme di file riservati, neanche in momenti diversi, finché il primo non ha consegnato. Se devono lavorare davvero in parallelo, servono worktree distinti: la sede è condivisa e il working tree è uno solo.
 
+### Coordinamento Git nel Working Tree Condiviso
+- **Nessuna scrittura concorrente su Git**: mentre un esecutore delegato sta lavorando nel working tree, tu (Integratore) **NON devi eseguire alcun comando Git in scrittura** (`commit`, `add`, `switch`, `merge`), neppure su file o rami non correlati (evita blocchi su `index.lock`).
+- **Semplificazione per l'esecutore**: posiziona tu il repository sul ramo target prima del lancio e istruisci l'esecutore a non eseguire comandi Git di creazione ramo o commit. L'esecutore lavora sui file e compila l'handover; i commit e la gestione rami spettano esclusivamente a te.
+
 ## Come verifichi e integri un task consegnato
 
 Quando un esecutore completa il lavoro e porta il task a `CONSEGNATO`:
@@ -81,18 +85,22 @@ Non fidarti del solo codice di uscita (lezione da 730Cardu):
 
 ## Regole di costruzione prompt e diagnosi CLI (Lezioni da 730Cardu e munderdifflin)
 
-### Regole generali di prompt
+### Regole generali di prompt e capitolato
 - **Non citare file di altri agenti come esempio**: nominare un file estraneo fa ancorare l'agente a modificarlo. Cita solo il task e il contesto da leggere.
 - **Non riciclare sessioni contaminate**: se un messaggio correttivo non basta, rilancia in una sessione pulita.
+- **Chiarezza del capitolato ed esposizione dei dati**: un task deve esporre liste, parametri e tabelle in modo esplicito e confrontabile. Permette all'esecutore di notare discrepanze o contraddizioni prima di scrivere codice errato.
+- **Divieto di parafrasi come regole**: nessun agente deve assumere sintesi o riassunti di handover precedenti come vincoli normativi; si fa sempre riferimento alle fonti primarie.
+- **Riverifica periodica dei ripieghi**: non mantenere indefinitamente ripieghi tecnici (es. modelli forzati per vecchi bug del CLI, workaround temporanei). Annota la condizione di scadenza e riprova la soluzione ideale non appena l'ambiente si aggiorna.
 
 ### Specifiche per Codex CLI
 - **Modalità headless esplicita**: dichiara sempre nel prompt che l'agente è in modalità non-interattiva per evitare che si fermi a chiedere "Posso procedere?".
-- **Modello esplicito (`-m`)**: specifica sempre `-m <modello>` (es. `-m gpt-5.6-terra`) per evitare che modifiche silenti a `~/.codex/config.toml` blocchino l'avvio.
+- **Modello esplicito (`-m`)**: specifica sempre `-m <modello>` (es. `-m gpt-6-astra` o `-m gpt-5.6-terra`) per evitare che modifiche silenti a `~/.codex/config.toml` blocchino l'avvio. Riprova i modelli più recenti dopo gli aggiornamenti del CLI (`codex --version`).
 - **Vitest in sandbox**: se il task include test con Vitest, indicare di eseguire `npx vitest run --configLoader runner <file>` per evitare blocchi `spawn EPERM`.
 - **Nessun `npm install` o migrazione complessa**: la sandbox di Codex non ha accesso di rete per installare nuovi pacchetti npm né permessi per `drizzle-kit generate` / `esbuild`.
 
 ### Specifiche per AGY CLI
 - **Nomi modello reali (`agy models`)**: se devi forzare `--model`, non usare nomi teorici da fonti terze: verifica l'elenco esatto supportato dal client locale eseguendo `agy models` (es. `gemini-3.1-pro-high`, `gemini-3.8-flash-*`).
+- **Limite strutturale su comandi shell dinamici**: non delegare ad AGY CLI headless compiti che richiedono tool o comandi shell dinamici a formattazione libera (slash vs backslash, stdout vs file, flag opzionali). Poiché `command(...)` esige corrispondenza esatta, le varianti sintattiche generano un attrito di permessi superiore al valore del task. Usa AGY CLI headless solo per compiti i cui input sono file statici già sul disco (`read_file`) o comandi di verifica fissi e pre-approvati.
 - **Divieto di azioni fuori perimetro**: ribadisci nel prompt di non eseguire comandi shell o test non richiesti dal task (es. lanciare l'intera test suite `vitest` su un task di sola ricerca/documentazione causa timeout ingiustificati).
 - **Corrispondenza esatta dei permessi**: `command(...)` in `settings.json` richiede la corrispondenza esatta carattere per carattere del comando (nessuna regex o wildcard di coda parziale). Pre-approva i comandi delle verifiche del task prima del dispatch.
 - **Chiusura vincolante con Handover**: imporre nel prompt che la scrittura di `handover/<ID>.md` e l'aggiornamento dello stato siano le ultime tool call prima di uscire.

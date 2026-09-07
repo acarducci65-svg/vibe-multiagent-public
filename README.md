@@ -215,16 +215,25 @@ Il protocollo recepisce direttamente le evidenze empiriche maturate sul campo (p
 1. **Verifica su Disco vs Codice di Uscita**:
    - Un agente (es. Codex) può terminare con codice di uscita 1 solo per limite di quota scattato all'ultimo secondo, avendo già completato codice, test e handover al 100%. L'orchestratore **deve sempre verificare `git status` e i file modificati** prima di considerare interrotto un task.
 2. **Robustezza per Codex CLI**:
-   - **Forzatura Modello (`-m`)**: Specificare sempre `-m <modello>` per prevenire fallimenti da aggiornamenti silenti di `config.toml`.
+   - **Forzatura Modello (`-m`) e Aggiornamenti**: Specificare `-m <modello>` (es. `-m gpt-6-astra` o `-m gpt-5.6-terra`) e riverificare periodicamente con `codex --version`: i ripieghi temporanei vanno rimossi non appena il CLI si aggiorna.
    - **Autorizzazione Headless**: Il prompt deve esplicitare che l'agente è in modalità non-interattiva per evitare che si fermi in attesa di conferme.
    - **Sandbox e Vitest**: La sandbox di Codex non ha accesso di rete (niente `npm install`) e blocca i sottoprocessi; per eseguire Vitest senza `spawn EPERM`, usare il comando `npx vitest run --configLoader runner <file>`.
 3. **Robustezza per AGY CLI**:
-   - **Nomi Modello Reali (`agy models`)**: Verificare sempre i modelli supportati con `agy models` (es. `gemini-3.1-pro-high`, `gemini-3.8-flash-*`) prima di forzare `--model`, evitando nomi teorici o non installati.
-   - **Divieto di Azioni Fuori Perimetro**: Esplicitare nel prompt il divieto di lanciare suite di test globali o comandi pesanti non pertinenti al task (previene timeout ingiustificati).
-   - **Permessi Esatti**: Le regole `command(...)` in `settings.json` esigono corrispondenza esatta token per token. Pre-autorizzare in anticipo le verifiche del task.
+   - **Limite sui Comandi Shell Dinamici**: La corrispondenza esatta carattere-per-carattere di `command(...)` rende quasi impossibile pre-autorizzare comandi shell che dipendono da come l'agente li formatta (slash vs backslash, stdout vs file). Usare AGY CLI headless prioritariamente per task con file di input statici già su disco (`read_file`) o verifiche fisse e pre-approvate.
+   - **Nomi Modello Reali (`agy models`)**: Verificare sempre i modelli supportati con `agy models` (es. `gemini-3.1-pro-high`, `gemini-3.8-flash-*`) prima di forzare `--model`.
+   - **Divieto di Azioni Fuori Perimetro**: Esplicitare nel prompt il divieto di lanciare suite di test globali o comandi pesanti non pertinenti al task (previene timeout).
+   - **Permessi Esatti**: Pre-autorizzare in anticipo le verifiche in `settings.json`.
    - **Handover Obbligatorio**: Impone che la scrittura dell'handover sia l'ultima tool call prima di chiudere la sessione headless.
    - **Diagnosi via Transcript (Confermata sul campo)**: In caso di blocco senza indizio (`"jetski: no output produced"`), la lettura di `transcript.jsonl` nel blocco `PLANNER_RESPONSE` individua il comando negato in 1 minuto.
-4. **Resilienza Filesystem Windows / OneDrive**:
+4. **Coordinamento Git nel Working Tree Condiviso**:
+   - Mentre un esecutore delegato lavora nel working tree, l'Integratore **non esegue comandi Git in scrittura** (`commit`, `add`, `switch`, `merge`), neppure su altri file (previene conflitti su `index.lock`).
+   - L'Integratore posiziona il repository sul ramo target e l'esecutore lavora solo sui file senza toccare Git.
+5. **Disciplina delle Fonti Primarie (Divieto di Parafrasi)**:
+   - Nessun agente deve trasformare parafrasi o riassunti di handover precedenti in regole: si verifica sempre la fonte primaria.
+   - I task devono esporre parametri, liste e dati in modo esplicito e confrontabile per rendere visibili eventuali incongruenze prima della scrittura del codice.
+6. **Riverifica dei Ripieghi Tecnici**:
+   - Ogni decisione in `DECISIONS.md` che introduce un ripiego temporaneo deve recare una data o condizione di riverifica per non trascinare workaround superati.
+7. **Resilienza Filesystem Windows / OneDrive**:
    - Gestione dei lock concorrenti temporanei su `.git/` con retry automatico.
 
 ---

@@ -34,6 +34,10 @@ Il perimetro di ogni ruolo opzionale è in `{{DIR_COORD}}/agents/<ruolo>/agent.m
 - Il proprietario aggiorna il task e lascia un handover in `{{DIR_COORD}}/handover/`; {{AGENTE_INTEGRATORE}} riesegue le verifiche pertinenti prima dell'integrazione.
 - Non sovrascrivere modifiche non proprie. Controlla `git status` prima e dopo il lavoro.
 - Prima di un blocco di lavoro lungo, aggiorna il `Punto di ripresa` nel task: è l'unica traccia se la sessione si interrompe a metà.
+- **Working Tree condiviso e coordinamento Git**:
+  - Se non si usano worktree separati, mentre un esecutore delegato sta lavorando nel working tree, l'Integratore **NON esegue comandi Git in scrittura** (`commit`, `add`, `switch`, `merge`), neppure su rami o file non correlati (previene conflitti su `index.lock`).
+  - L'esecutore non esegue operazioni Git di switch/commit a meno di specifica autorizzazione: il suo compito termina con la scrittura dei file e dell'handover. L'integrazione Git spetta all'Integratore.
+- **Disciplina delle Fonti Primarie (Divieto di Parafrasi)**: nessun agente deve trasformare una parafrasi, un riassunto o un'interpretazione di un handover precedente in una regola formale. Si verifica sempre la fonte primaria o il capitolato originale.
 - Se un agente esaurisce il proprio limite di consumo o esce con errore:
   1. Controlla sempre `git status` e i file su disco prima di dichiarare il task fallito: se il lavoro sostanziale è già completo, procedi alla verifica e integrazione.
   2. Se il lavoro è incompleto, porta il task a `SOSPESO` e applica il protocollo di sostituzione registrando la garanzia che si perde in `{{DIR_COORD}}/DECISIONS.md`. Nessuna sostituzione silenziosa.
