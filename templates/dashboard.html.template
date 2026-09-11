@@ -270,7 +270,9 @@
     .badge-IN-CORSO { background: #0369a1; color: #bae6fd; }
     .badge-CONSEGNATO { background: #854d0e; color: #fef08a; }
     .badge-INTEGRATO { background: #166534; color: #bbf7d0; }
+    .badge-CHIUSO { background: #374151; color: #9ca3af; }
     .badge-SOSPESO { background: #991b1b; color: #fecaca; }
+    .badge-SCONOSCIUTO { background: #4b5563; color: #f3f4f6; }
 
     .task-title {
       font-size: 0.95rem;
@@ -521,6 +523,16 @@
       document.head.appendChild(s);
     }
 
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function aggiornaUI(data) {
       stateCache = data;
       const ora = new Date(data.updatedAt).toLocaleTimeString('it-IT');
@@ -531,12 +543,13 @@
       // 1. Milestone
       if (data.milestone) {
         document.getElementById('milestoneTitolo').innerText = data.milestone.titolo || 'Milestone attiva';
-        document.getElementById('milestoneStato').innerText = data.milestone.stato || 'IN CORSO';
+        const rawStato = data.milestone.stato || 'IN CORSO';
+        document.getElementById('milestoneStato').innerText = rawStato.replace(/\*\*/g, '').trim();
         const tot = data.milestone.totale || 0;
         const comp = data.milestone.completamento || 0;
         const pct = tot > 0 ? Math.round((comp / tot) * 100) : 0;
         document.getElementById('milestoneProgress').style.width = pct + '%';
-        document.getElementById('milestoneDettaglio').innerText = `${comp} di ${tot} task integrati`;
+        document.getElementById('milestoneDettaglio').innerText = `${comp} di ${tot} task completati / chiusi`;
         document.getElementById('milestonePercentuale').innerText = pct + '%';
       }
 
@@ -574,14 +587,14 @@
           return `
             <div class="agent-card ${cardClass}">
               <div class="agent-header">
-                <span class="agent-name">${ag.name}</span>
+                <span class="agent-name">${escapeHtml(ag.name)}</span>
                 <span class="status-badge ${badgeClass}">
                   ${badgeText}
                 </span>
               </div>
-              <div class="agent-role">${ag.defaultRole}</div>
+              <div class="agent-role">${escapeHtml(ag.defaultRole)}</div>
               <div class="agent-task">
-                ${ag.currentTask ? `Attività: <strong>${ag.currentTask}</strong>` : 'Nessuna attività in corso'}
+                ${ag.currentTask ? `Attività: <strong>${escapeHtml(ag.currentTask)}</strong>` : 'Nessuna attività in corso'}
               </div>
             </div>
           `;
@@ -592,19 +605,21 @@
       const tasksContainer = document.getElementById('tasksList');
       if (data.tasks && data.tasks.length > 0) {
         tasksContainer.innerHTML = data.tasks.map(t => {
-          const badgeClass = 'badge-' + t.stato.replace(/\s+/g, '-');
+          const statoNorm = t.stato || 'SCONOSCIUTO';
+          const badgeClass = 'badge-' + statoNorm.replace(/\s+/g, '-');
+          const mostraStoPer = statoNorm === 'IN CORSO' && t.stoPer;
           return `
-            <div class="task-card" onclick="selezionaTaskTab('${t.id}')">
+            <div class="task-card" onclick="selezionaTaskTab('${escapeHtml(t.id)}')">
               <div class="task-top">
-                <span class="task-id">${t.id}</span>
-                <span class="task-badge ${badgeClass}">${t.stato}</span>
+                <span class="task-id">${escapeHtml(t.id)}</span>
+                <span class="task-badge ${badgeClass}" title="${escapeHtml(t.statoEsteso || t.stato)}">${escapeHtml(statoNorm)}</span>
               </div>
-              <div class="task-title">${t.titolo}</div>
+              <div class="task-title">${escapeHtml(t.titolo)}</div>
               <div class="task-meta">
-                <div>Proprietario: <strong>${t.proprietario}</strong></div>
-                ${t.stoPer ? `<div>Sto per: <em>${t.stoPer}</em></div>` : ''}
+                <div>Proprietario: <strong>${escapeHtml(t.proprietario)}</strong></div>
+                ${mostraStoPer ? `<div>Sto per: <em>${escapeHtml(t.stoPer)}</em></div>` : ''}
               </div>
-              ${t.fatti ? `<div class="task-fatti" title="${t.fatti}">Fatti: ${t.fatti}</div>` : ''}
+              ${t.fatti ? `<div class="task-fatti" title="${escapeHtml(t.fatti)}">Fatti: ${escapeHtml(t.fatti)}</div>` : ''}
             </div>
           `;
         }).join('');

@@ -42,6 +42,7 @@ Il perimetro di ogni ruolo opzionale è in `{{DIR_COORD}}/agents/<ruolo>/agent.m
   1. Controlla sempre `git status` e i file su disco prima di dichiarare il task fallito: se il lavoro sostanziale è già completo, procedi alla verifica e integrazione.
   2. Se il lavoro è incompleto, porta il task a `SOSPESO` e applica il protocollo di sostituzione registrando la garanzia che si perde in `{{DIR_COORD}}/DECISIONS.md`. Nessuna sostituzione silenziosa.
 - **Resilienza su filesystem (Windows / OneDrive)**: se un'operazione Git fallisce con `Permission denied` per lock concorrenti di sincronizzazione su `.git/`, attendere 2 secondi e ritentare una singola volta.
+- **Control Room Visiva e Telemetria**: la Control Room è disponibile in `{{DIR_COORD}}/dashboard.html`. Quando gli esecutori sono lanciati tramite il runner (`node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" -- <comando>`), la telemetria si aggiorna in streaming live. Per rigenerare manualmente lo stato dopo modifiche dirette ai task senza runner: `node "{{DIR_SKILL}}/tools/telemetry.mjs" --coord "{{DIR_COORD}}"`.
 
 ## Verifica e completamento
 

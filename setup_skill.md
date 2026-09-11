@@ -369,7 +369,7 @@ Segnaposto compilati più tardi, alla creazione di un ruolo, di un task o di una
 | Segnaposto | File | Fonte |
 |---|---|---|
 | `{{RUOLO}}`, `{{AGENTE}}`, `{{FORNITORE}}`, `{{MOTIVAZIONE_DEL_RUOLO}}`, `{{PERIMETRO_CONSENTITO}}`, `{{PERIMETRO_VIETATO}}`, `{{VERIFICHE_OBBLIGATORIE}}` | `AGENT_ROLE.md` | Domanda 9 e matrice di selezione, uno per ruolo verificato. |
-| `{{COMANDO_DI_AVVIO}}` | `AGENT_ROLE.md` | Il comando che avvia la sessione di quell'agente: per AGY `agy -p "<prompt>" --add-dir <percorso>`, per Codex `codex` nella cartella del repository, per Claude CLI `claude -p "<prompt>" --output-format json`. Se il nome non risolve sul PATH, scrivi il percorso completo dell'eseguibile. |
+| `{{COMANDO_DI_AVVIO}}` | `AGENT_ROLE.md` | Il comando che avvia la sessione di quell'agente avvolto nel runner della telemetria: `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" -- <comando>` (es. per AGY `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" -- agy -p "<prompt>" --add-dir <percorso>`, per Codex `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" -- codex exec ...`, per Claude CLI `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" -- claude -p "<prompt>" --output-format json`). Se il nome non risolve sul PATH, scrivi il percorso completo dell'eseguibile. |
 | `{{TITOLO}}`, `{{PROPRIETARIO}}`, `{{OBIETTIVO}}`, `{{INCLUSO}}`, `{{ESCLUSO}}`, `{{FILE_RISERVATI}}`, `{{DIPENDENZE}}`, `{{CRITERI_ACCETTAZIONE}}`, `{{VERIFICHE}}`, `{{AUTORIZZAZIONI_O_BLOCCHI}}` | `TASK.md` | Domanda 10 per il primo task; i successivi alla loro creazione. |
 | `{{ESECUTORE_E_MODELLO}}`, `{{COSTO_STIMATO}}` | `TASK.md` | Alla nascita del task. La taglia governa le soglie: sopra il 70% non si assegnano task `L`. |
 | `{{AGENTE_DI_RIPIEGO}}`, `{{COSTO_CAPACITA}}`, `{{COSTO_GARANZIA}}` | `TASK.md` | Domanda 9, parte sull'esaurimento. Si decidono quando il task nasce, non quando l'agente si ferma. Se la garanzia perduta non è accettabile, scrivi «nessuna sostituzione, attendere il reset» in `{{AGENTE_DI_RIPIEGO}}`. |
@@ -391,7 +391,15 @@ Dopo l'approvazione:
    - Genera `.agents/hooks.json` dal template, sostituendo `{{DIR_SKILL}}` con il percorso assoluto di questa skill. Se `.agents/hooks.json` esiste già, fondi la chiave `protocollo-multi-agente` con le chiavi esistenti.
    - Genera `.agents/rules/multiagent-coordinator.md` dal template `multiagent-rule.md.template`.
    - Genera `{{DIR_COORD}}/DISPATCH.md` dal template.
-7. Rileggi i file prodotti, cerca i segnaposto residui con:
+8. Integra `.gitignore` nella radice del repository (crealo se non esiste) aggiungendo le righe per escludere i dati volatili di telemetria e i log:
+   ```gitignore
+   {{DIR_COORD}}/state.json
+   {{DIR_COORD}}/state.js
+   {{DIR_COORD}}/logs/
+   ```
+9. Genera lo snapshot iniziale di telemetria eseguendo:
+   `node "{{DIR_SKILL}}/tools/telemetry.mjs" --coord "{{DIR_COORD}}"`
+10. Rileggi i file prodotti, cerca i segnaposto residui con:
    - Bash/macOS: `grep -rn "{{" AGENTS.md {{DIR_COORD}}/ .agents/`
    - PowerShell: `Get-ChildItem -Recurse -Path AGENTS.md, {{DIR_COORD}}, .agents -File | Select-String "\{\{"`
    e mostra `git status` e `git diff --check`.
@@ -413,6 +421,30 @@ Per eliminare l'effetto "scatola nera" e consentire a utente e coordinatore di v
 - **`{{DIR_COORD}}/dashboard.html`**: dashboard reattiva dark-mode standalone. Mostra lo stato della flotta (Claude Code, Codex, AGY), l'avanzamento milestone/sprint, il mini-kanban dei task e un terminale di streaming log.
 - **`tools/runner.mjs`**: wrapper per i comandi shell degli esecutori che incanala contemporaneamente l'output su terminale e su `{{DIR_COORD}}/logs/<ID_TASK>.log`, aggiornando `{{DIR_COORD}}/state.json` ogni 2 secondi.
 - **`tools/telemetry.mjs`**: generatore di telemetria cross-platform che alimenta `state.json` con lo stato di task, quote e log.
+
+### Installare la Control Room in un progetto esistente (senza ripetere il setup)
+
+Se un progetto ha già la struttura di coordinamento (`AGENTS.md`, `{{DIR_COORD}}/tasks/`, `CURRENT_SPRINT.md`), non serve rifare l'intervista né rigenerare i file di contesto. Segui questi 5 passi:
+
+1. **Esclusioni Git**: aggiungi a `.gitignore` nella radice del progetto:
+   ```gitignore
+   {{DIR_COORD}}/state.json
+   {{DIR_COORD}}/state.js
+   {{DIR_COORD}}/logs/
+   ```
+2. **Cartella log**: crea la cartella `{{DIR_COORD}}/logs/` se non esiste.
+3. **Copia Dashboard**: copia `templates/dashboard.html.template` in `{{DIR_COORD}}/dashboard.html`, sostituendo eventuali occorrenze di `{{NOME_PROGETTO}}` con il nome reale del progetto (o il nome della cartella).
+4. **Primo Snapshot Telemetria**: genera lo stato iniziale eseguendo:
+   ```bash
+   node "{{DIR_SKILL}}/tools/telemetry.mjs" --coord "{{DIR_COORD}}"
+   ```
+   Verifica che vengano generati `{{DIR_COORD}}/state.json` e `{{DIR_COORD}}/state.js`.
+5. **Adozione del Runner (opzionale ma consigliata)**: quando lanci un esecutore per un task, incapsula il comando nel runner per catturare i log in streaming:
+   ```bash
+   node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" -- <comando abituale>
+   ```
+   Aggiungi in `AGENTS.md` (nella sezione coordinamento) l'istruzione:
+   `Control Room: apri {{DIR_COORD}}/dashboard.html nel browser. Se non usi il runner, aggiorna lo stato a mano con: node "{{DIR_SKILL}}/tools/telemetry.mjs" --coord "{{DIR_COORD}}"`
 
 ## Consegna
 

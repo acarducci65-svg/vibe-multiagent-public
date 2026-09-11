@@ -21,7 +21,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
       const mTitolo = txt.match(/^#\s+(.+)$/m);
       if (mTitolo) milestone.titolo = mTitolo[1].trim();
       const mStato = txt.match(/Stato:\s*(.+)$/m);
-      if (mStato) milestone.stato = mStato[1].trim();
+      if (mStato) milestone.stato = mStato[1].replace(/\*\*/g, "").trim();
     } catch {}
   }
 
@@ -46,14 +46,19 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           const mStoPer = raw.match(/^- Sto per:\s*([^\r\n]+)/m);
           const mFatti = raw.match(/^- Fatti:\s*([^\r\n]+)/m);
 
-          const stato = mStato ? mStato[1].trim() : "PRONTO";
-          if (stato === "INTEGRATO") completatiCount++;
+          const statoRaw = mStato ? mStato[1].trim() : "PRONTO";
+          const mMatchStato = statoRaw.match(/^(PRONTO|IN CORSO|CONSEGNATO|INTEGRATO|SOSPESO|CHIUSO)\b/i);
+          const stato = mMatchStato ? mMatchStato[1].toUpperCase() : (statoRaw ? "SCONOSCIUTO" : "PRONTO");
+          const statoEsteso = statoRaw;
+
+          if (stato === "INTEGRATO" || stato === "CHIUSO") completatiCount++;
           if (stato === "IN CORSO") inCorsoCount++;
 
           tasks.push({
             id,
             titolo: mTitolo ? mTitolo[1].trim() : id,
             stato,
+            statoEsteso,
             proprietario: mProprietario ? mProprietario[1].trim() : "Non assegnato",
             fileRiservati: mFile ? mFile[1].trim().split("\n").map((l) => l.replace(/^[-*]\s*/, "").trim()).filter(Boolean) : [],
             stoPer: mStoPer ? mStoPer[1].trim() : "",
@@ -71,6 +76,27 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
   const isAmbienteB = existsSync(join(dirCoord, "DISPATCH.md"));
   const coordinatorName = isAmbienteB ? "Antigravity AGY" : "Claude Code";
 
+  const AGENT_ALIASES = [
+    { name: "Claude Code", regex: /\bclaude\b/i },
+    { name: "Codex CLI", regex: /\bcodex\b/i },
+    { name: "Antigravity AGY", regex: /\b(agy|antigravity)\b/i },
+  ];
+
+  function trovaProprietario(proprietario) {
+    if (!proprietario) return null;
+    let primoNome = null;
+    let primoIndice = Infinity;
+
+    for (const ag of AGENT_ALIASES) {
+      const match = proprietario.match(ag.regex);
+      if (match && match.index !== undefined && match.index < primoIndice) {
+        primoIndice = match.index;
+        primoNome = ag.name;
+      }
+    }
+    return primoNome;
+  }
+
   const agents = [
     { name: "Claude Code", defaultRole: "Coordinatore / Integratore", status: "idle", currentTask: null },
     { name: "Codex CLI", defaultRole: "Esecutore", status: "idle", currentTask: null },
@@ -79,31 +105,29 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
   for (const t of tasks) {
     if (t.stato === "IN CORSO") {
-      const ag = agents.find((a) => t.proprietario.toLowerCase().includes(a.name.toLowerCase().split(" ")[0]));
-      if (ag) {
-        ag.status = "running";
-        ag.currentTask = t.id;
+      const nomeAgente = trovaProprietario(t.proprietario);
+      if (nomeAgente) {
+        const ag = agents.find((a) => a.name === nomeAgente);
+        if (ag) {
+          ag.status = "running";
+          ag.currentTask = t.id;
+        }
       }
     }
   }
 
   // Verifica attività recente del Coordinatore (ultimi 15 minuti)
+  // Limitata a CURRENT_SPRINT.md e DECISIONS.md (file propri del coordinamento)
+  // e attiva solo se nessun esecutore è attualmente 'running'
   const coordinatorAgent = agents.find((a) => a.name === coordinatorName);
-  if (coordinatorAgent && coordinatorAgent.status === "idle") {
+  const esecutoriAttivi = agents.some((a) => a.status === "running");
+
+  if (coordinatorAgent && coordinatorAgent.status === "idle" && !esecutoriAttivi) {
     let ultimoTempoModifica = 0;
     const fileDaVerificare = [
       join(dirCoord, "CURRENT_SPRINT.md"),
       join(dirCoord, "DECISIONS.md"),
     ];
-
-    if (existsSync(dirTasks)) {
-      try {
-        const tFiles = readdirSync(dirTasks).filter((f) => f.endsWith(".md"));
-        for (const tf of tFiles) {
-          fileDaVerificare.push(join(dirTasks, tf));
-        }
-      } catch {}
-    }
 
     for (const f of fileDaVerificare) {
       if (existsSync(f)) {
@@ -127,7 +151,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
       } else if (taskPronti > 0) {
         coordinatorAgent.currentTask = `Coordinamento & Dispatching (${taskPronti} pronti)`;
       } else {
-        coordinatorAgent.currentTask = "Coordinamento / Pianificazione sprint";
+        coordinatorAgent.currentTask = "Pianificazione sprint / decisioni (attività recente)";
       }
     }
   }

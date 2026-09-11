@@ -81,4 +81,61 @@ assert.equal(saved.milestone.titolo, "Sprint 1 — Setup e Core");
 
 // Pulizia
 rmSync(testDir, { recursive: true, force: true });
-console.log("telemetry: collaudi superati con successo");
+
+// =========================================================================
+// TEST REALI (da 730Cardu e riscontri campo)
+// =========================================================================
+const testDir2 = join(tmpdir(), "telemetry-real-test-" + Date.now());
+const coordDir2 = join(testDir2, ".coord");
+const tasksDir2 = join(coordDir2, "tasks");
+mkdirSync(tasksDir2, { recursive: true });
+
+writeFileSync(join(coordDir2, "CURRENT_SPRINT.md"), `# Sprint\n\nStato: **IN CORSO** — F4, chiusura sprint\n`);
+
+// 28 task INTEGRATO standard
+for (let i = 1; i <= 28; i++) {
+  const id = `T-${String(i).padStart(3, "0")}`;
+  writeFileSync(join(tasksDir2, `${id}.md`), `# ${id}\nStato: INTEGRATO\nProprietario: Claude Code\n`);
+}
+
+// 4 task CHIUSO
+writeFileSync(join(tasksDir2, "T-029.md"), `# T-029\nStato: CHIUSO\nProprietario: Claude Code\n`);
+writeFileSync(join(tasksDir2, "T-030.md"), `# T-030\nStato: CHIUSO\nProprietario: Claude Code\n`);
+writeFileSync(join(tasksDir2, "T-031.md"), `# T-031\nStato: CHIUSO\nProprietario: Claude Code\n`);
+writeFileSync(join(tasksDir2, "T-032.md"), `# T-032\nStato: CHIUSO\nProprietario: Claude Code\n`);
+
+// 2 task INTEGRATO con testo esteso
+writeFileSync(join(tasksDir2, "T-033.md"), `# T-033\nStato: INTEGRATO — parte 1 (rilevamento e avviso); la parte 2 sta in T-032\nProprietario: Codex CLI\n`);
+writeFileSync(join(tasksDir2, "T-034.md"), `# T-034\nStato: INTEGRATO — completato con test\nProprietario: AGY CLI / Claude Code\n`);
+
+const res2 = raccogliTelemetria(testDir2);
+
+// Verifica Punto 1: Tutti i 34 task devono risultare completati (28 + 4 CHIUSO + 2 INTEGRATO estesi)
+assert.equal(res2.milestone.totale, 34, "Totale task deve essere 34");
+assert.equal(res2.milestone.completamento, 34, `Attesi 34 completati, ottenuti ${res2.milestone.completamento}`);
+assert.equal(res2.milestone.stato, "IN CORSO — F4, chiusura sprint", "Markdown ** deve essere rimosso da milestone.stato");
+
+// Verifica stato normalizzato e stato esteso su T-033
+const t33 = res2.tasks.find(t => t.id === "T-033");
+assert.equal(t33.stato, "INTEGRATO", "Stato normalizzato deve essere INTEGRATO");
+assert.match(t33.statoEsteso, /parte 1 \(rilevamento e avviso\)/, "Stato esteso deve conservare il testo completo");
+
+// Verifica Punto 2: Riconoscimento AGY CLI
+// Creiamo un task IN CORSO assegnato ad AGY CLI
+writeFileSync(join(tasksDir2, "T-035.md"), `# T-035\nStato: IN CORSO — punto di ripresa aggiornato alle 18:30\nProprietario: AGY CLI\n`);
+const res3 = raccogliTelemetria(testDir2);
+const agAgy = res3.agents.find(a => a.name === "Antigravity AGY");
+assert.equal(agAgy.status, "running", "AGY CLI deve essere riconosciuto e contrassegnato come running");
+assert.equal(agAgy.currentTask, "T-035");
+
+// Verifica proprietario misto "AGY CLI / Claude Code": vince il primo nominato (AGY)
+writeFileSync(join(tasksDir2, "T-036.md"), `# T-036\nStato: IN CORSO\nProprietario: AGY CLI / Claude Code\n`);
+// Creiamo un secondo task in corso per Claude
+writeFileSync(join(tasksDir2, "T-037.md"), `# T-037\nStato: IN CORSO\nProprietario: Claude Code\n`);
+const res4 = raccogliTelemetria(testDir2);
+const agClaude4 = res4.agents.find(a => a.name === "Claude Code");
+assert.equal(agClaude4.status, "running", "Claude Code deve essere running");
+assert.equal(agClaude4.currentTask, "T-037");
+
+rmSync(testDir2, { recursive: true, force: true });
+console.log("telemetry: collaudi superati con successo (inclusi casi reali 730Cardu)");
