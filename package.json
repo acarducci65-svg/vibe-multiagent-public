@@ -1,6 +1,6 @@
 {
   "name": "vibe-multiagent",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Framework operativo rigoroso e Control Room visiva per lo sviluppo collaborativo con Claude Code, OpenAI Codex e Google Antigravity (AGY)",
   "type": "module",
   "main": "tools/telemetry.mjs",
