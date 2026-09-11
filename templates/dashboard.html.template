@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Control Room Multi-Agente — {{NOME_PROGETTO}}</title>
+  <script src="state.js"></script>
   <style>
     :root {
       --bg: #0f141c;
@@ -362,7 +363,9 @@
     <div class="heartbeat">
       <div class="pulse-dot" id="liveDot"></div>
       <span id="lastUpdate">In attesa di dati...</span>
-      <button id="btnManualReload" class="term-tab" style="margin-left: 8px;">🔄 Ricarica</button>
+      <input type="file" id="jsonFileInput" accept=".json,.js" style="display: none;">
+      <button id="btnSelectFile" class="term-tab" style="margin-left: 8px;">📁 Carica file</button>
+      <button id="btnManualReload" class="term-tab" style="margin-left: 4px;">🔄 Ricarica</button>
     </div>
   </header>
 
@@ -449,24 +452,68 @@
     let activeTaskLog = null;
     let stateCache = null;
 
-    async function caricaStato() {
-      try {
-        const res = await fetch('state.json?_t=' + Date.now());
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
+    // Callback per state.js (eseguito se caricato sincronicamente via <script src="state.js">)
+    window.__onVibeStateLoaded = function(data) {
+      if (data) {
         document.getElementById('corsBanner').style.display = 'none';
         aggiornaUI(data);
-      } catch (err) {
-        // Se siamo su file:// e fetch fallisce
-        if (window.location.protocol === 'file:') {
+      }
+    };
+
+    async function caricaStato() {
+      // 1. Su protocolli HTTP (Live Server, npx serve, Simple Browser) fetch è il metodo primario
+      if (window.location.protocol !== 'file:') {
+        try {
+          const res = await fetch('state.json?_t=' + Date.now());
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          document.getElementById('corsBanner').style.display = 'none';
+          aggiornaUI(data);
+          return;
+        } catch (err) {
+          document.getElementById('lastUpdate').innerText = 'Disconnesso: ' + err.message;
+          return;
+        }
+      }
+
+      // 2. Se siamo su file://: prova prima fetch (in caso il browser lo permetta)
+      try {
+        const res = await fetch('state.json');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('corsBanner').style.display = 'none';
+          aggiornaUI(data);
+          return;
+        }
+      } catch {}
+
+      // 3. Fallback su file://: ricarica tramite tag script dinamico su state.js
+      ricaricaDaScript();
+    }
+
+    function ricaricaDaScript() {
+      const vecchio = document.getElementById('stateScriptDynamic');
+      if (vecchio) vecchio.remove();
+
+      const s = document.createElement('script');
+      s.id = 'stateScriptDynamic';
+      s.src = 'state.js';
+      s.onload = () => {
+        if (window.__VIBE_STATE__) {
+          document.getElementById('corsBanner').style.display = 'none';
+          aggiornaUI(window.__VIBE_STATE__);
+        }
+      };
+      s.onerror = () => {
+        // Se non abbiamo ancora caricato nulla (né state.js né drag&drop)
+        if (!stateCache) {
           document.getElementById('corsBanner').style.display = 'block';
           document.getElementById('liveDot').style.backgroundColor = '#fbbf24';
           document.getElementById('liveDot').style.boxShadow = '0 0 8px #fbbf24';
-          document.getElementById('lastUpdate').innerText = 'file:// (CORS: usa Live Server o trascina state.json)';
-        } else {
-          document.getElementById('lastUpdate').innerText = 'Disconnesso: ' + err.message;
+          document.getElementById('lastUpdate').innerText = 'file:// (Usa 📁 Carica file o trascina state.json)';
         }
-      }
+      };
+      document.head.appendChild(s);
     }
 
     function aggiornaUI(data) {
@@ -622,6 +669,38 @@
     });
 
     document.getElementById('btnManualReload').addEventListener('click', caricaStato);
+
+    const btnSelect = document.getElementById('btnSelectFile');
+    const inputSelect = document.getElementById('jsonFileInput');
+    if (btnSelect && inputSelect) {
+      btnSelect.addEventListener('click', () => inputSelect.click());
+      inputSelect.addEventListener('change', e => {
+        if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          const reader = new FileReader();
+          reader.onload = evt => {
+            try {
+              let content = evt.target.result;
+              if (content.startsWith('window.__VIBE_STATE__')) {
+                content = content.replace(/^window\.__VIBE_STATE__\s*=\s*/, '').replace(/;\s*if\s*\(.*$/s, '');
+              }
+              const data = JSON.parse(content);
+              aggiornaUI(data);
+              document.getElementById('corsBanner').style.display = 'none';
+            } catch (err) {
+              alert('Errore lettura file: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+
+    // Se state.js era già stato caricato sincronicamente nel tag <head>
+    if (window.__VIBE_STATE__) {
+      document.getElementById('corsBanner').style.display = 'none';
+      aggiornaUI(window.__VIBE_STATE__);
+    }
 
     // Avvio e Polling ogni 1.5s
     caricaStato();

@@ -121,7 +121,13 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
   };
 
   try {
-    writeFileSync(join(dirCoord, "state.json"), JSON.stringify(telemetry, null, 2), "utf8");
+    const jsonStr = JSON.stringify(telemetry, null, 2);
+    writeFileSync(join(dirCoord, "state.json"), jsonStr, "utf8");
+    writeFileSync(
+      join(dirCoord, "state.js"),
+      `window.__VIBE_STATE__ = ${jsonStr};\nif (typeof window.__onVibeStateLoaded === "function") { window.__onVibeStateLoaded(window.__VIBE_STATE__); }\n`,
+      "utf8"
+    );
   } catch {}
 
   return telemetry;
