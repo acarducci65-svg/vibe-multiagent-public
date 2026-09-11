@@ -45,9 +45,11 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           const mTitolo = raw.match(/^#\s+([^\r\n]+)/m);
           const mStato = raw.match(/^[\s*-]*\**Stato[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mProprietario = raw.match(/^[\s*-]*\**Proprietario[\*:]*\s*:?\s*([^\r\n]+)/im);
-          const mFile = raw.match(/## File riservati\s+([\s\S]*?)(?=##|$)/m);
+          const mFile = raw.match(/(?:##\s*)?File riservati:?\s*([\s\S]*?)(?=(?:\n##|\n[A-Z][a-z]+:|$))/i);
           const mStoPer = raw.match(/^[\s*-]*\**Sto per[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mFatti = raw.match(/^[\s*-]*\**Fatti[\*:]*\s*:?\s*([^\r\n]+)/im);
+          const mPunto = raw.match(/##\s*Punto di ripresa\s+([\s\S]*?)(?=\n##|$)/i);
+          const mVerifiche = raw.match(/##\s*Verifiche eseguite\s+([\s\S]*?)(?=\n##|$)/i);
 
           const statoRaw = (mStato ? mStato[1].trim() : "PRONTO").replace(/\*\*/g, "").trim();
           const mMatchStato = statoRaw.match(/^(PRONTO|IN CORSO|CONSEGNATO|INTEGRATO|SOSPESO|CHIUSO)\b/i);
@@ -59,15 +61,34 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
           const proprietario = (mProprietario ? mProprietario[1].trim() : "Non assegnato").replace(/\*\*/g, "").trim();
 
+          let fattiDesc = "";
+          if (mFatti) fattiDesc = mFatti[1].trim().replace(/\*\*/g, "");
+          if (mPunto) {
+            const p = mPunto[1].trim();
+            fattiDesc = fattiDesc ? `${fattiDesc}\n\n${p}` : p;
+          }
+          if (mVerifiche) {
+            const v = mVerifiche[1].trim();
+            fattiDesc = fattiDesc ? `${fattiDesc}\n\nVerifiche:\n${v}` : v;
+          }
+
+          const fileRiservati = mFile
+            ? mFile[1]
+                .trim()
+                .split("\n")
+                .map((l) => l.replace(/^[-*]\s*/, "").replace(/[`"]/g, "").trim())
+                .filter((l) => Boolean(l) && !l.startsWith("#") && !l.includes(":"))
+            : [];
+
           tasks.push({
             id,
             titolo: mTitolo ? mTitolo[1].trim() : id,
             stato,
             statoEsteso,
             proprietario,
-            fileRiservati: mFile ? mFile[1].trim().split("\n").map((l) => l.replace(/^[-*]\s*/, "").trim()).filter(Boolean) : [],
+            fileRiservati,
             stoPer: mStoPer ? mStoPer[1].trim().replace(/\*\*/g, "") : "",
-            fatti: mFatti ? mFatti[1].trim().replace(/\*\*/g, "") : "",
+            fatti: fattiDesc,
           });
         } catch {}
       }
@@ -188,6 +209,30 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
         } catch {}
       }
     } catch {}
+  }
+
+  // Se un task non ha un file .log grezzo da runner.mjs, genera il registro di avanzamento strutturato
+  for (const t of tasks) {
+    if (!logs[t.id]) {
+      const righeAudit = [
+        `=== [${t.id}] ${t.titolo} ===`,
+        `Stato: ${t.statoEsteso || t.stato} | Assegnatario: ${t.proprietario}`,
+      ];
+      if (t.fileRiservati && t.fileRiservati.length > 0) {
+        righeAudit.push("", `--- File Riservati (${t.fileRiservati.length}) ---`);
+        t.fileRiservati.forEach((rf) => righeAudit.push(`  • ${rf}`));
+      }
+      if (t.stoPer) {
+        righeAudit.push("", `--- Intenzione Corrente ---`, `  ${t.stoPer}`);
+      }
+      if (t.fatti) {
+        righeAudit.push("", `--- Avanzamento & Verifiche Eseguite ---`);
+        t.fatti.split("\n").forEach((l) => righeAudit.push(`  ${l}`));
+      } else {
+        righeAudit.push("", `[Nessun log terminale registrato in .coord/logs/${t.id}.log. Usa tools/runner.mjs per catturare output stdout/stderr.]`);
+      }
+      logs[t.id] = righeAudit;
+    }
   }
 
   // 5. Quota Anthropic se abilitata esplicitamente (opt-in) o in modalità mock
