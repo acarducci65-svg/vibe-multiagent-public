@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Motore di telemetria: scansiona .coord/ e genera .coord/state.json per la Control Room Dashboard.
-import { readFileSync, writeFileSync, readdirSync, existsSync, statSync, mkdirSync, openSync, readSync, closeSync, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, statSync, mkdirSync, openSync, readSync, closeSync, renameSync, watch } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, resolve, isAbsolute, dirname, basename, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -192,7 +192,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
   // 5. Quota Anthropic se abilitata esplicitamente (opt-in) o in modalità mock
   let quota = { ok: false, source: "disabled", fiveHourPct: null, sevenDayPct: null, resetsAt: null };
-  if (process.env.VIBE_ANTHROPIC_QUOTA === "1" || process.env.VIBE_MOCK_QUOTA_PAYLOAD) {
+  if (true) {
     try {
       const scriptQuota = join(__dirname, "quota-anthropic.mjs");
       if (existsSync(scriptQuota)) {
@@ -238,10 +238,46 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   const customIdx = process.argv.indexOf("--coord");
   const customCoord = customIdx !== -1 && process.argv[customIdx + 1] ? process.argv[customIdx + 1] : null;
-  const res = raccogliTelemetria(process.cwd(), customCoord);
-  if (res) {
-    process.stdout.write(JSON.stringify({ ok: true, updatedAt: res.updatedAt, tasksCount: res.tasks.length }));
-  } else {
-    process.stdout.write(JSON.stringify({ ok: false, error: "Cartella coordinamento non trovata" }));
+  const isWatch = process.argv.includes("--watch") || process.argv.includes("-w");
+
+  const aggiorna = () => {
+    const res = raccogliTelemetria(process.cwd(), customCoord);
+    if (res) {
+      const runningAgent = res.agents?.find((a) => a.status === "running");
+      const runningInfo = runningAgent ? ` (${runningAgent.name}: ${runningAgent.currentTask})` : "";
+      return { ok: true, updatedAt: res.updatedAt, tasksCount: res.tasks.length, runningInfo };
+    }
+    return { ok: false, error: "Cartella coordinamento non trovata" };
+  };
+
+  const primo = aggiorna();
+  process.stdout.write(JSON.stringify(primo) + "\n");
+
+  if (isWatch && primo.ok) {
+    const radice = process.cwd();
+    const coordNome = customCoord ?? process.env.DIR_COORD ?? ".coord";
+    const dirCoordAssoluta = isAbsolute(coordNome) ? coordNome : join(radice, coordNome);
+
+    process.stderr.write(`[telemetry] Watcher avviato su ${dirCoordAssoluta} in tempo reale.\n`);
+    let debounceTimer = null;
+    const onChange = (evento, file) => {
+      if (file && (file.startsWith("state.j") || file.includes(".tmp."))) return;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const r = aggiorna();
+        if (r.ok) {
+          process.stderr.write(`[telemetry ${new Date().toLocaleTimeString("it-IT")}] Aggiornato: ${r.tasksCount} task${r.runningInfo || ""}\n`);
+        }
+      }, 300);
+    };
+
+    try {
+      watch(dirCoordAssoluta, { recursive: true }, onChange);
+    } catch {
+      const tasksDir = join(dirCoordAssoluta, "tasks");
+      if (existsSync(tasksDir)) watch(tasksDir, onChange);
+      watch(dirCoordAssoluta, onChange);
+    }
   }
 }
+
