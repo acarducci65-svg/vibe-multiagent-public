@@ -331,6 +331,7 @@ Ogni template ha una sola destinazione. `{{DIR_COORD}}` è il valore deciso in D
 | `AGENT_ROLE.md.template` | `{{DIR_COORD}}/agents/<ruolo>/agent.md` | Un file per ogni ruolo effettivamente selezionato e verificato. Nessun ruolo fittizio. |
 | `TASK.md.template` | `{{DIR_COORD}}/tasks/<ID_TASK>.md` | Un file per task, alla creazione del task. |
 | `HANDOVER.md.template` | `{{DIR_COORD}}/handover/<ID_TASK>.md` | Alla consegna di un task da parte del suo proprietario. |
+| `dashboard.html.template` | `{{DIR_COORD}}/dashboard.html` | Sempre. Control Room visiva interattiva per monitoraggio flotta, quote e log streaming. |
 | `DISPATCH.md.template` | `{{DIR_COORD}}/DISPATCH.md` | **Solo Ambiente B.** |
 | `hooks.json.template` | `.agents/hooks.json` nella radice del repository | **Solo Ambiente B.** Se il file esiste già, aggiungi la chiave `protocollo-multi-agente` senza toccare le altre: gli hook con nomi diversi si fondono. |
 | `multiagent-rule.md.template` | `.agents/rules/multiagent-coordinator.md` nella radice del repository | **Solo Ambiente B.** Regola permanente di workspace che mantiene il modello nel ruolo di Coordinatore/Integratore ad ogni interazione. |
@@ -381,8 +382,8 @@ Ogni informazione ha un solo file di riferimento: `AGENTS.md` porta il protocoll
 
 Dopo l'approvazione:
 
-1. Crea `{{DIR_COORD}}/` con le sottocartelle `agents/`, `tasks/`, `handover/` che servono.
-2. Copia i template alle destinazioni della tabella, sostituendo i segnaposto secondo la mappatura.
+1. Crea `{{DIR_COORD}}/` con le sottocartelle `agents/`, `tasks/`, `handover/`, `logs/` che servono.
+2. Copia i template alle destinazioni della tabella (incluso `{{DIR_COORD}}/dashboard.html`), sostituendo i segnaposto secondo la mappatura.
 3. Se `AGENTS.md` non esiste, genera il file dal template. Se esiste, conserva tutto il contenuto e aggiungi o aggiorna solo la sezione delimitata da `<!-- INIZIO CONFIGURAZIONE MULTI-AGENTE -->` e `<!-- FINE CONFIGURAZIONE MULTI-AGENTE -->`.
 4. Crea `CURRENT_SPRINT.md` con una prima milestone ancora pianificata, non dichiarata completata.
 5. Scomponi prima di creare task: se la milestone tocca più di cinque file di produzione, o più di un dominio applicativo, o non ha un criterio di accettazione verificabile con un comando, proponi la scomposizione e fatti approvare le parti prima di generare `tasks/`.
@@ -405,6 +406,13 @@ Anche dopo la conclusione della prima milestone o a progetto ultimato, **il prot
 Se un agente si esaurisce, applica il protocollo di sostituzione: stato `SOSPESO`, verifica di cosa decade, decisione registrata. Mai una sostituzione silenziosa.
 
 Usa `DECISIONS.md` per le decisioni che cambiano architettura, dati, confini o coordinamento; la ragione deve restare accanto alla decisione, non solo nella chat.
+
+## Control Room Visiva & Runner Telemetrico
+
+Per eliminare l'effetto "scatola nera" e consentire a utente e coordinatore di visualizzare in tempo reale l'attività degli agenti:
+- **`{{DIR_COORD}}/dashboard.html`**: dashboard reattiva dark-mode standalone. Mostra lo stato della flotta (Claude Code, Codex, AGY), l'avanzamento milestone/sprint, il mini-kanban dei task e un terminale di streaming log.
+- **`tools/runner.mjs`**: wrapper per i comandi shell degli esecutori che incanala contemporaneamente l'output su terminale e su `{{DIR_COORD}}/logs/<ID_TASK>.log`, aggiornando `{{DIR_COORD}}/state.json` ogni 2 secondi.
+- **`tools/telemetry.mjs`**: generatore di telemetria cross-platform che alimenta `state.json` con lo stato di task, quote e log.
 
 ## Consegna
 

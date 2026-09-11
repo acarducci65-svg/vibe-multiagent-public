@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, isAbsolute } from "node:path";
+import { raccogliTelemetria } from "./telemetry.mjs";
 
 let grezzo = ""; for await (const c of process.stdin) grezzo += c;
 const fine = () => { process.stdout.write("{}"); process.exit(0); };
@@ -65,6 +66,11 @@ try {
   if (nuovoTesto !== testo) {
     writeFileSync(inCorso, nuovoTesto);
   }
+} catch {}
+
+try {
+  const coordDir = dirTask.replace(/[\\/]tasks$/, "");
+  raccogliTelemetria(radice, coordDir);
 } catch {}
 
 fine();

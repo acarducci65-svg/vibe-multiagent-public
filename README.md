@@ -23,6 +23,7 @@
 3. **Garanzia di Integrazione Intoccabile**: Solo l'**Orchestratore dell'ambiente selezionato** (Claude Code in Ambiente A/C, Antigravity in Ambiente B) valida e porta i task allo stato `INTEGRATO` dopo aver rieseguito personalmente i test e le verifiche.
 4. **Presidi Meccanici su Antigravity**: Hook automatici per bloccare comandi distruttivi (`git push`, deploy, migrazioni), checkpoint automatici su disco ad ogni modifica e semaforo di quota preventivo.
 5. **Lezioni di Produzione Integrate**: Risoluzione automatica di problemi tipici su Windows (PATH stantio delle CLI, normalizzazione CRLF/LF, conflitti di working tree condivisi).
+6. **Control Room Visiva & Streaming in Tempo Reale**: Dashboard HTML5 dark-mode standalone (`dashboard.html`), telemetria di stato (`state.json`) e runner universale (`runner.mjs`) per eliminare l'effetto "scatola nera", monitorando la flotta, i log e l'avanzamento dei task in tempo reale.
 
 ---
 
@@ -238,6 +239,23 @@ Il protocollo recepisce direttamente le evidenze empiriche maturate sul campo (p
 
 ---
 
+## 🎮 Control Room Visiva & Log Streaming (`.coord/dashboard.html`)
+
+Nelle sessioni con molteplici agenti esecutori (Codex, AGY CLI, Claude Code), l'attività in background può apparire come una "scatola nera". `vibe_multiagent` risolve alla radice il problema fornendo una **Control Room interattiva locale**:
+
+- **Dashboard Standalone HTML5**: memorizzata in `{{DIR_COORD}}/dashboard.html`, funziona interamente offline senza dipendenze npm esterne né CDN.
+- **Flotta Agenti in Tempo Reale**: monitora con schede animate chi sta lavorando, quale agente è attivo (`Claude Code`, `Codex CLI`, `Antigravity AGY`) e su quale task.
+- **Terminale di Streaming Log**: incanalato da `tools/runner.mjs`, permette di selezionare le schede dei task per leggere lo streaming in tempo reale di stdout/stderr con opzione di auto-scrolling.
+- **Mini-Kanban dello Sprint**: visualizza l'avanzamento dei task (`PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`), i file riservati toccati e l'ultimo passo completato.
+- **Indicatori di Quota & Fornitori**: cruscotto visuale per monitorare i limiti a 5 ore e a 7 giorni.
+
+### Come Aprire la Dashboard:
+- **In VS Code**: clic destro su `.coord/dashboard.html` -> *Open with Live Server*, oppure `Ctrl+Shift+P` -> `Simple Browser: Show`.
+- **In Antigravity IDE**: apri il file nella finestra di anteprima interna o nel browser predefinito.
+- **Da Terminale**: `npx serve .coord` o doppio clic sul file (supporta Drag & Drop di `state.json` in caso di policy restrittive `file://`).
+
+---
+
 ## 🔒 Privacy, Sicurezza e Note Legali
 
 ### 1. Modello di Sicurezza e Privacy dei Dati
@@ -260,7 +278,7 @@ Il software viene fornito "così com'è" (*AS IS*), senza garanzie di alcun tipo
 
 ## 🧪 Esecuzione dei Test Unitari dei Tool
 
-Per verificare la suite di strumenti:
+Per verificare l'intera suite di strumenti meccanici e telemetrici:
 ```bash
 # Dalla cartella principale della skill (o da tools/):
 cd tools
@@ -268,6 +286,8 @@ node test/agy-gate.test.mjs
 node test/agy-checkpoint.test.mjs
 node test/quota-anthropic.test.mjs
 node test/agy-quota-banner.test.mjs
+node test/telemetry.test.mjs
+node test/runner.test.mjs
 ```
 
 ---
@@ -285,6 +305,7 @@ vibe_multiagent/
 │   ├── AGENTS.md.template
 │   ├── AGENT_ROLE.md.template
 │   ├── CURRENT_SPRINT.md.template
+│   ├── dashboard.html.template   # Control Room visiva interattiva (dark mode)
 │   ├── DECISIONS.md.template
 │   ├── DISPATCH.md.template      # Guida operativa Dispatcher AGY (Ambiente B)
 │   ├── HANDOVER.md.template
@@ -292,12 +313,20 @@ vibe_multiagent/
 │   ├── multiagent-rule.md.template # Regola permanente di workspace Antigravity (Ambiente B)
 │   ├── PROJECT.md.template
 │   └── TASK.md.template
-└── tools/                        # Script per hook Antigravity & monitoraggio
+└── tools/                        # Script per hook Antigravity, runner & telemetria
     ├── agy-gate.mjs
     ├── agy-checkpoint.mjs
     ├── agy-quota-banner.mjs
     ├── quota-anthropic.mjs
+    ├── runner.mjs                # Runner universale cross-platform con streaming log
+    ├── telemetry.mjs             # Motore di telemetria e generazione state.json
     └── test/                     # Suite di test automatizzati per i tool
+        ├── agy-gate.test.mjs
+        ├── agy-checkpoint.test.mjs
+        ├── agy-quota-banner.test.mjs
+        ├── quota-anthropic.test.mjs
+        ├── runner.test.mjs
+        └── telemetry.test.mjs
 ```
 
 ---

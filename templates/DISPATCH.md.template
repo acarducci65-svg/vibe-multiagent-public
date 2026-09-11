@@ -26,13 +26,16 @@ Se `Sto per:` e `Fatti:` si contraddicono, **credi a `Fatti:`**: lo scrive l'hoo
 
 ## Come lanci un esecutore
 
-Dal terminale, con `run_command` (impostando `WaitMsBeforeAsync` a 500ms per mandarlo in background), poi lo segui con `manage_task`:
+Dal terminale, con `run_command` (impostando `WaitMsBeforeAsync` a 500ms per mandarlo in background), poi lo segui con `manage_task`.
 
-| Esecutore | Comando | Quota consumata | Note operative essenziali |
+Per consentire al Direttore e a te di vedere l'output in tempo reale nella **Control Room Visiva (`{{DIR_COORD}}/dashboard.html`)**, incanala sempre l'esecuzione tramite il runner universale:
+`node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "<COMANDO>"`
+
+| Esecutore | Comando standard (tramite runner) | Quota consumata | Note operative essenziali |
 |---|---|---|---|
-| Claude Code | `claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json` | Anthropic | Output strutturato JSON |
-| Codex CLI | `codex exec -m <MODELLO> --sandbox workspace-write "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Sei in modalità headless non-interattiva: procedi con l'implementazione e i test senza chiedere conferme intermedie."` | OpenAI | Forza `-m` esplicito e autorizzazione headless |
-| AGY CLI | `agy -p "Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui SOLO le verifiche richieste; non eseguire comandi shell o test non dichiarati. La scrittura dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call obbligatorie della catena prima di terminare." --add-dir <percorso>` | Google | Pre-approvare i comandi esatti in `settings.json` (modello verificabile con `agy models`) |
+| Claude Code | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "claude -p 'Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md.' --output-format json"` | Anthropic | Output strutturato JSON e log in `{{DIR_COORD}}/logs/<ID>.log` |
+| Codex CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "codex exec -m <MODELLO> --sandbox workspace-write 'Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Sei in modalità headless non-interattiva: procedi con implementazione e test senza chiedere conferme.'"` | OpenAI | Forza `-m` esplicito e autorizzazione headless |
+| AGY CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "agy -p 'Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui SOLO le verifiche richieste; non eseguire comandi shell o test non dichiarati. La scrittura dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call prima di terminare.' --add-dir <percorso>"` | Google | Pre-approvare i comandi esatti in `settings.json` (modello verificabile con `agy models`) |
 | Sotto-agente AGY | `invoke_subagent` con `TypeName: self` | Google | Gestito internamente |
 
 Il sistema ti notifica automaticamente al completamento di ogni task in background. Per verificare lo stato intermedio, usa `manage_task` con `status`. Per interrompere un esecutore bloccato, usa `manage_task` con `kill`.
@@ -40,6 +43,18 @@ Il sistema ti notifica automaticamente al completamento di ogni task in backgrou
 Non usare mai `--dangerously-skip-permissions` o `--dangerously-bypass-approvals-and-sandbox` per conto del Direttore: il gate lo nega comunque, ma il tentativo è già un errore.
 
 Un task ha **un solo** proprietario. Non lanciare due esecutori sullo stesso insieme di file riservati, neanche in momenti diversi, finché il primo non ha consegnato. Se devono lavorare davvero in parallelo, servono worktree distinti: la sede è condivisa e il working tree è uno solo.
+
+## Control Room Visiva & Telemetria Live (`{{DIR_COORD}}/dashboard.html`)
+
+Tutto il lavoro della flotta è visibile in tempo reale aprendo `{{DIR_COORD}}/dashboard.html`:
+- **Flotta Agenti**: visualizza quale agente (Claude Code, Codex CLI, Antigravity AGY) è attivo su quale task, con indicatore animato di esecuzione.
+- **Terminal Stream**: seleziona la scheda di qualsiasi task per visualizzare i log di streaming in tempo reale generati da `runner.mjs` da `{{DIR_COORD}}/logs/`.
+- **Sprint Kanban**: panoramica a schede dello stato dei task (`PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`) con indicazione di `Sto per:` e `Fatti:`.
+- **Quota & Fornitori**: indicatore visivo delle quote residue con semafori di avviso.
+
+Come consultare la dashboard:
+- In **VS Code**: apri con estensione *Live Server* oppure tramite comando `Simple Browser: Show` puntando a `{{DIR_COORD}}/dashboard.html`.
+- In **Antigravity IDE**: apri la preview interna o qualsiasi browser locale. Se aperto via `file://`, la dashboard supporta anche il drag & drop diretto di `{{DIR_COORD}}/state.json`.
 
 ### Coordinamento Git nel Working Tree Condiviso
 - **Nessuna scrittura concorrente su Git**: mentre un esecutore delegato sta lavorando nel working tree, tu (Integratore) **NON devi eseguire alcun comando Git in scrittura** (`commit`, `add`, `switch`, `merge`), neppure su file o rami non correlati (evita blocchi su `index.lock`).
