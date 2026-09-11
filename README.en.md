@@ -5,6 +5,7 @@
 [![Claude Code Skill](https://img.shields.io/badge/Claude_Code-skill-d97757?logo=anthropic)](https://docs.anthropic.com/en/docs/claude-code)
 [![Antigravity Skill](https://img.shields.io/badge/Antigravity-skill-4285F4?logo=google)](https://github.com/google)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5_18.0-339933?logo=nodedotjs)](https://nodejs.org)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 > **A rigorous multi-agent coding framework and visual Control Room for Claude Code, OpenAI Codex, and Google Antigravity (AGY).**
 
@@ -97,6 +98,15 @@ Run the automated test suite locally:
 ```bash
 npm test
 ```
+
+---
+
+## 🤝 Community, Contributing & Code of Conduct
+
+We warmly welcome contributions, bug reports, and suggestions from the community:
+- Read our [Contributing Guidelines](CONTRIBUTING.md) to understand standards (zero runtime dependencies, deterministic test suite, and local privacy hygiene).
+- To foster an open and inclusive community, all participation is governed by our [Code of Conduct](CODE_OF_CONDUCT.md) (adapted from Contributor Covenant v2.1).
+- For security and vulnerability reporting, refer to our [Security Policy](SECURITY.md).
 
 ---
 

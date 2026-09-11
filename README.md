@@ -5,6 +5,7 @@
 [![Claude Code Skill](https://img.shields.io/badge/Claude_Code-skill-d97757?logo=anthropic)](https://docs.anthropic.com/en/docs/claude-code)
 [![Antigravity Skill](https://img.shields.io/badge/Antigravity-skill-4285F4?logo=google)](https://github.com/google)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5_18.0-339933?logo=nodedotjs)](https://nodejs.org)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 > **Framework e Skill per l'avvio, coordinamento e orchestrazione di progetti di sviluppo multi-agente con Claude Code, Antigravity (AGY) e Codex CLI.**
 
@@ -360,6 +361,15 @@ vibe-multiagent/
         ├── runner.test.mjs
         └── telemetry.test.mjs
 ```
+
+---
+
+## 🤝 Community, Contributi e Codice di Condotta
+
+Accogliamo con favore contributi, issue e idee da parte della community:
+- Consulta la [Guida per i Contributori](CONTRIBUTING.md) per comprendere il flusso di lavoro e le regole di sviluppo (standard zero-dipendenze, test deterministici e igiene privacy).
+- Per garantire un ambiente aperto, inclusivo e privo di molestie, la partecipazione al progetto è regolata dal nostro [Codice di Condotta](CODE_OF_CONDUCT.md) (adattato dal Contributor Covenant v2.1).
+- Per approfondire il modello di sicurezza o segnalare vulnerabilità, fai riferimento alla nostra [Policy di Sicurezza](SECURITY.md).
 
 ---
 

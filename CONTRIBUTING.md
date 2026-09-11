@@ -11,6 +11,7 @@ Grazie per l'interesse a contribuire a **vibe-multiagent**!
    npm test
    ```
 4. **Nessun Leak di Dati Personali**: Non includere percorsi assoluti specifici della tua macchina, credenziali o riferimenti a progetti privati.
+5. **Codice di Condotta**: Tutti i partecipanti sono tenuti a rispettare il nostro [Codice di Condotta](CODE_OF_CONDUCT.md) per mantenere una community aperta, accogliente e inclusiva.
 
 ## Processo di Pull Request
 
