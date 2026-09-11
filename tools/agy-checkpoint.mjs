@@ -45,28 +45,28 @@ try {
   }
 } catch {}
 
-if (!inCorso) fine();
+if (inCorso) {
+  const git = (...a) => { try { return execFileSync("git", ["-C", radice, ...a], { encoding: "utf8" }).trim(); } catch { return ""; } };
+  const sporchi = git("status", "--short").split("\n").filter(Boolean).map((l) => l.slice(3)).join(", ") || "nessuno";
+  const ultimo = git("log", "-1", "--format=%h %s") || "nessun commit";
+  const ora = new Date().toISOString().replace("T", " ").slice(0, 16);
 
-const git = (...a) => { try { return execFileSync("git", ["-C", radice, ...a], { encoding: "utf8" }).trim(); } catch { return ""; } };
-const sporchi = git("status", "--short").split("\n").filter(Boolean).map((l) => l.slice(3)).join(", ") || "nessuno";
-const ultimo = git("log", "-1", "--format=%h %s") || "nessun commit";
-const ora = new Date().toISOString().replace("T", " ").slice(0, 16);
-
-const riga = `- Fatti: ${ora} — modificati: ${sporchi} — ultimo commit: ${ultimo}`;
-try {
-  const testo = readFileSync(inCorso, "utf8");
-  let nuovoTesto = testo;
-  if (/^- Fatti:.*$/m.test(testo)) {
-    nuovoTesto = testo.replace(/^- Fatti:.*$/m, riga);
-  } else if (/(^- Ultimo passo completato:.*$)/m.test(testo)) {
-    nuovoTesto = testo.replace(/(^- Ultimo passo completato:.*$)/m, `$1\n${riga}`);
-  } else if (/^## Punto di ripresa/m.test(testo)) {
-    nuovoTesto = testo.replace(/^## Punto di ripresa\s*$/m, `## Punto di ripresa\n\n${riga}`);
-  }
-  if (nuovoTesto !== testo) {
-    writeFileSync(inCorso, nuovoTesto);
-  }
-} catch {}
+  const riga = `- Fatti: ${ora} — modificati: ${sporchi} — ultimo commit: ${ultimo}`;
+  try {
+    const testo = readFileSync(inCorso, "utf8");
+    let nuovoTesto = testo;
+    if (/^- Fatti:.*$/m.test(testo)) {
+      nuovoTesto = testo.replace(/^- Fatti:.*$/m, riga);
+    } else if (/(^- Ultimo passo completato:.*$)/m.test(testo)) {
+      nuovoTesto = testo.replace(/(^- Ultimo passo completato:.*$)/m, `$1\n${riga}`);
+    } else if (/^## Punto di ripresa/m.test(testo)) {
+      nuovoTesto = testo.replace(/^## Punto di ripresa\s*$/m, `## Punto di ripresa\n\n${riga}`);
+    }
+    if (nuovoTesto !== testo) {
+      writeFileSync(inCorso, nuovoTesto);
+    }
+  } catch {}
+}
 
 try {
   const coordDir = dirTask.replace(/[\\/]tasks$/, "");

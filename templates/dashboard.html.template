@@ -184,6 +184,10 @@
       border-color: var(--primary);
       box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
     }
+    .agent-card.coordinating {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(129, 140, 248, 0.2);
+    }
     .agent-header {
       display: flex;
       justify-content: space-between;
@@ -203,6 +207,7 @@
     }
     .status-idle { background: #1e293b; color: var(--text-muted); }
     .status-running { background: rgba(56, 189, 248, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+    .status-coordinating { background: rgba(129, 140, 248, 0.2); color: var(--accent); border: 1px solid var(--accent); }
     .agent-role {
       font-size: 0.8rem;
       color: var(--text-muted);
@@ -562,17 +567,21 @@
       if (data.agents && data.agents.length > 0) {
         agentsContainer.innerHTML = data.agents.map(ag => {
           const isRunning = ag.status === 'running';
+          const isCoordinating = ag.status === 'coordinating';
+          const cardClass = isRunning ? 'running' : (isCoordinating ? 'coordinating' : '');
+          const badgeClass = isRunning ? 'status-running' : (isCoordinating ? 'status-coordinating' : 'status-idle');
+          const badgeText = isRunning ? '● In esecuzione' : (isCoordinating ? '● In coordinamento' : 'In attesa');
           return `
-            <div class="agent-card ${isRunning ? 'running' : ''}">
+            <div class="agent-card ${cardClass}">
               <div class="agent-header">
                 <span class="agent-name">${ag.name}</span>
-                <span class="status-badge ${isRunning ? 'status-running' : 'status-idle'}">
-                  ${isRunning ? '● In esecuzione' : 'In attesa'}
+                <span class="status-badge ${badgeClass}">
+                  ${badgeText}
                 </span>
               </div>
               <div class="agent-role">${ag.defaultRole}</div>
               <div class="agent-task">
-                ${ag.currentTask ? `Task attivo: <strong>${ag.currentTask}</strong>` : 'Nessun task attivo'}
+                ${ag.currentTask ? `Attività: <strong>${ag.currentTask}</strong>` : 'Nessuna attività in corso'}
               </div>
             </div>
           `;

@@ -68,6 +68,9 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
   milestone.completamento = completatiCount;
 
   // 3. Flotta agenti
+  const isAmbienteB = existsSync(join(dirCoord, "DISPATCH.md"));
+  const coordinatorName = isAmbienteB ? "Antigravity AGY" : "Claude Code";
+
   const agents = [
     { name: "Claude Code", defaultRole: "Coordinatore / Integratore", status: "idle", currentTask: null },
     { name: "Codex CLI", defaultRole: "Esecutore", status: "idle", currentTask: null },
@@ -80,6 +83,51 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
       if (ag) {
         ag.status = "running";
         ag.currentTask = t.id;
+      }
+    }
+  }
+
+  // Verifica attività recente del Coordinatore (ultimi 15 minuti)
+  const coordinatorAgent = agents.find((a) => a.name === coordinatorName);
+  if (coordinatorAgent && coordinatorAgent.status === "idle") {
+    let ultimoTempoModifica = 0;
+    const fileDaVerificare = [
+      join(dirCoord, "CURRENT_SPRINT.md"),
+      join(dirCoord, "DECISIONS.md"),
+    ];
+
+    if (existsSync(dirTasks)) {
+      try {
+        const tFiles = readdirSync(dirTasks).filter((f) => f.endsWith(".md"));
+        for (const tf of tFiles) {
+          fileDaVerificare.push(join(dirTasks, tf));
+        }
+      } catch {}
+    }
+
+    for (const f of fileDaVerificare) {
+      if (existsSync(f)) {
+        try {
+          const s = statSync(f);
+          if (s.mtimeMs > ultimoTempoModifica) ultimoTempoModifica = s.mtimeMs;
+        } catch {}
+      }
+    }
+
+    const adesso = Date.now();
+    const minutiDaUltimaModifica = (adesso - ultimoTempoModifica) / (1000 * 60);
+
+    if (ultimoTempoModifica > 0 && minutiDaUltimaModifica <= 15) {
+      coordinatorAgent.status = "coordinating";
+      const taskPronti = tasks.filter((t) => t.stato === "PRONTO").length;
+      const taskConsegnati = tasks.filter((t) => t.stato === "CONSEGNATO").length;
+
+      if (taskConsegnati > 0) {
+        coordinatorAgent.currentTask = `Verifica & Integrazione (${taskConsegnati} consegnati)`;
+      } else if (taskPronti > 0) {
+        coordinatorAgent.currentTask = `Coordinamento & Dispatching (${taskPronti} pronti)`;
+      } else {
+        coordinatorAgent.currentTask = "Coordinamento / Pianificazione sprint";
       }
     }
   }
