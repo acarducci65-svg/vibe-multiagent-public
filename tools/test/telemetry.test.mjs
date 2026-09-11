@@ -49,6 +49,8 @@ Riga log 3
 const res = raccogliTelemetria(testDir);
 
 assert.ok(res, "Telemetria deve restituire un oggetto");
+assert.ok(res.projectName, "Telemetria deve contenere projectName");
+assert.equal(res.coordDir, ".coord");
 assert.equal(res.milestone.titolo, "Sprint 1 — Setup e Core");
 assert.equal(res.milestone.totale, 2);
 assert.equal(res.milestone.completamento, 1);

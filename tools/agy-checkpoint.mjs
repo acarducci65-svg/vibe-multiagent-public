@@ -32,16 +32,33 @@ if (!dirTask) fine();
 
 let inCorso = null;
 try {
-  const files = readdirSync(dirTask).filter((f) => f.endsWith(".md"));
-  for (const f of files) {
-    try {
-      const fullPath = join(dirTask, f);
-      const content = readFileSync(fullPath, "utf8");
-      if (/^Stato:\s*IN CORSO\s*$/m.test(content)) {
-        inCorso = fullPath;
-        break;
-      }
-    } catch {}
+  // Se TASK_ATTIVO è presente, prioritizza quel task
+  const idAttivo = process.env.TASK_ATTIVO?.replace(/[^a-zA-Z0-9_-]/g, "");
+  if (idAttivo) {
+    const fileAttivo = join(dirTask, `${idAttivo}.md`);
+    if (existsSync(fileAttivo)) {
+      try {
+        const content = readFileSync(fileAttivo, "utf8");
+        if (/^Stato:\s*IN CORSO\s*$/m.test(content)) {
+          inCorso = fileAttivo;
+        }
+      } catch {}
+    }
+  }
+
+  // Altrimenti scansiona i task in corso
+  if (!inCorso) {
+    const files = readdirSync(dirTask).filter((f) => f.endsWith(".md"));
+    for (const f of files) {
+      try {
+        const fullPath = join(dirTask, f);
+        const content = readFileSync(fullPath, "utf8");
+        if (/^Stato:\s*IN CORSO\s*$/m.test(content)) {
+          inCorso = fullPath;
+          break;
+        }
+      } catch {}
+    }
   }
 } catch {}
 

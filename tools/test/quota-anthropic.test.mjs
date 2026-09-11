@@ -46,7 +46,17 @@ const noCredsRun = esegui({
   USERPROFILE: "/percorso/inesistente",
   HOME: "/percorso/inesistente",
 });
-assert.equal(noCredsRun.ok, false);
-assert.equal(noCredsRun.source, "unavailable");
+// 4. Verifica gestione payload mock malformato o non-oggetto (Claude M-5 / Codex M-02)
+const badJsonRun = esegui({ VIBE_MOCK_QUOTA_PAYLOAD: "{non-json" });
+assert.equal(badJsonRun.ok, false);
+assert.equal(badJsonRun.source, "error");
 
-console.log("quota-anthropic: 3 collaudi superati (100% deterministici e offline)");
+const nonObjectRun = esegui({ VIBE_MOCK_QUOTA_PAYLOAD: JSON.stringify("string-payload") });
+assert.equal(nonObjectRun.ok, false);
+assert.equal(nonObjectRun.source, "error");
+
+const arrayRun = esegui({ VIBE_MOCK_QUOTA_PAYLOAD: JSON.stringify([1, 2, 3]) });
+assert.equal(arrayRun.ok, false);
+assert.equal(arrayRun.source, "error");
+
+console.log("quota-anthropic: 6 collaudi superati (100% deterministici e offline)");

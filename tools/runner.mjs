@@ -4,6 +4,7 @@
 import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync, existsSync } from "node:fs";
 import { join, resolve, isAbsolute } from "node:path";
+import { constants } from "node:os";
 import { raccogliTelemetria } from "./telemetry.mjs";
 
 function analizzaArgomenti(argv) {
@@ -18,9 +19,19 @@ function analizzaArgomenti(argv) {
   if (doppioTrattino !== -1) {
     opzioni = args.slice(0, doppioTrattino);
     const cmdTokens = args.slice(doppioTrattino + 1);
-    cmd = cmdTokens
-      .map((tok) => (/[\s"']/.test(tok) ? `"${tok.replace(/"/g, '\\"')}"` : tok))
-      .join(" ");
+    const quoteArg = (tok) => {
+      if (process.platform === "win32") {
+        if (/[\s"^&|<>]/.test(tok)) {
+          return `"${tok.replace(/"/g, '""')}"`;
+        }
+        return tok;
+      }
+      if (/[\s"'$`\\!&;*?~<>|^#]/.test(tok)) {
+        return `"${tok.replace(/(["\\$`])/g, "\\$1")}"`;
+      }
+      return tok;
+    };
+    cmd = cmdTokens.map(quoteArg).join(" ");
   }
 
   for (let i = 0; i < opzioni.length; i++) {
@@ -115,7 +126,11 @@ child.on("error", (err) => {
 child.on("close", (code, signal) => {
   clearInterval(timerTelemetria);
   const oraFine = new Date().toISOString();
-  const exitCode = code !== null ? code : (signal ? 128 + 15 : 1);
+  let exitCode = code;
+  if (exitCode === null) {
+    const sigNum = signal && constants?.signals?.[signal] ? constants.signals[signal] : null;
+    exitCode = sigNum ? 128 + sigNum : (signal ? 128 + 15 : 1);
+  }
   streamLog.write(`\n=== [${oraFine}] Fine esecuzione task ${safeTaskId} (exit code: ${exitCode}${signal ? `, segnale: ${signal}` : ""}) ===\n`);
   streamLog.end(() => {
     try {

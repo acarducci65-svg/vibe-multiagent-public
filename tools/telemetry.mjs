@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Motore di telemetria: scansiona .coord/ e genera .coord/state.json per la Control Room Dashboard.
-import { readFileSync, writeFileSync, readdirSync, existsSync, statSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, statSync, mkdirSync, openSync, readSync, closeSync, renameSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join, resolve, isAbsolute, dirname } from "node:path";
+import { join, resolve, isAbsolute, dirname, basename, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
@@ -161,7 +161,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     }
   }
 
-  // 4. Scansione dei log recenti da .coord/logs/
+  // 4. Scansione dei log recenti da .coord/logs/ (lettura della sola coda con limite a 64KB per file)
   const dirLogs = join(dirCoord, "logs");
   const logs = {};
   if (existsSync(dirLogs)) {
@@ -170,7 +170,18 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
       for (const lf of logFiles) {
         try {
           const lPath = join(dirLogs, lf);
-          const content = readFileSync(lPath, "utf8");
+          const stat = statSync(lPath);
+          const maxBytes = 64 * 1024;
+          let content = "";
+          if (stat.size <= maxBytes) {
+            content = readFileSync(lPath, "utf8");
+          } else {
+            const fd = openSync(lPath, "r");
+            const buf = Buffer.alloc(maxBytes);
+            readSync(fd, buf, 0, maxBytes, stat.size - maxBytes);
+            closeSync(fd);
+            content = buf.toString("utf8");
+          }
           const righe = content.split(/\r?\n/).filter(Boolean);
           const taskId = lf.replace(/\.log$/, "");
           logs[taskId] = righe.slice(-40); // Ultime 40 righe
@@ -190,8 +201,13 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     } catch {}
   }
 
+  const projectName = basename(resolve(radice));
+  const coordRel = relative(radice, dirCoord) || coordNome;
+
   const telemetry = {
     updatedAt: new Date().toISOString(),
+    projectName,
+    coordDir: coordRel,
     milestone,
     agents,
     tasks,
@@ -201,12 +217,18 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
   try {
     const jsonStr = JSON.stringify(telemetry, null, 2);
-    writeFileSync(join(dirCoord, "state.json"), jsonStr, "utf8");
-    writeFileSync(
-      join(dirCoord, "state.js"),
-      `window.__VIBE_STATE__ = ${jsonStr};\nif (typeof window.__onVibeStateLoaded === "function") { window.__onVibeStateLoaded(window.__VIBE_STATE__); }\n`,
-      "utf8"
-    );
+    const jsStr = `window.__VIBE_STATE__ = ${jsonStr};\nif (typeof window.__onVibeStateLoaded === "function") { window.__onVibeStateLoaded(window.__VIBE_STATE__); }\n`;
+    const tmpJson = join(dirCoord, `state.json.tmp.${process.pid}`);
+    const tmpJs = join(dirCoord, `state.js.tmp.${process.pid}`);
+    writeFileSync(tmpJson, jsonStr, "utf8");
+    writeFileSync(tmpJs, jsStr, "utf8");
+    try {
+      renameSync(tmpJson, join(dirCoord, "state.json"));
+      renameSync(tmpJs, join(dirCoord, "state.js"));
+    } catch {
+      writeFileSync(join(dirCoord, "state.json"), jsonStr, "utf8");
+      writeFileSync(join(dirCoord, "state.js"), jsStr, "utf8");
+    }
   } catch {}
 
   return telemetry;

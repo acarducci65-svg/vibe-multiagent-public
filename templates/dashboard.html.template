@@ -47,6 +47,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      line-height: 1.3;
     }
     .badge-coord {
       font-size: 0.75rem;
@@ -55,7 +56,15 @@
       padding: 3px 8px;
       border-radius: 6px;
       border: 1px solid #334155;
-      font-family: monospace;
+      font-family: ui-monospace, monospace;
+      display: inline-block;
+      margin-top: 4px;
+    }
+    .header-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
     }
     .heartbeat {
       display: flex;
@@ -75,6 +84,16 @@
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .header-btns {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .privacy-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      opacity: 0.8;
     }
 
     .cors-banner {
@@ -162,6 +181,22 @@
       height: 100%;
       background: var(--success);
     }
+    .quota-disabled-box {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: #111722;
+      border: 1px dashed var(--card-border);
+      padding: 10px 12px;
+      border-radius: 6px;
+      line-height: 1.4;
+    }
+    .quota-disabled-box code {
+      color: var(--primary);
+      background: #090d13;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-family: ui-monospace, monospace;
+    }
 
     /* Flotta Agenti */
     .agents-grid {
@@ -204,6 +239,7 @@
       padding: 2px 8px;
       border-radius: 12px;
       text-transform: uppercase;
+      line-height: 1.3;
     }
     .status-idle { background: #1e293b; color: var(--text-muted); }
     .status-running { background: rgba(56, 189, 248, 0.2); color: var(--primary); border: 1px solid var(--primary); }
@@ -217,11 +253,12 @@
       background: #0f172a;
       padding: 6px 10px;
       border-radius: 6px;
-      font-family: monospace;
+      font-family: ui-monospace, monospace;
       color: var(--primary);
+      line-height: 1.4;
     }
 
-    /* Kanban dei Task */
+    /* Kanban e Toolbar dei Task */
     .section-title {
       font-size: 1.1rem;
       font-weight: 700;
@@ -230,6 +267,72 @@
       align-items: center;
       gap: 8px;
     }
+
+    .tasks-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+      background: #111722;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .filter-btn {
+      background: #1e293b;
+      color: var(--text-muted);
+      border: 1px solid #334155;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .filter-btn:hover {
+      color: var(--text);
+      border-color: var(--primary);
+    }
+    .filter-btn.active {
+      background: var(--primary);
+      color: #0f172a;
+      border-color: var(--primary);
+    }
+    .filter-count {
+      font-size: 0.72rem;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 1px 5px;
+      border-radius: 10px;
+    }
+    .search-box {
+      flex: 1;
+      max-width: 320px;
+      min-width: 200px;
+    }
+    .search-box input {
+      width: 100%;
+      background: #0a0e14;
+      border: 1px solid #334155;
+      color: var(--text);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      outline: none;
+    }
+    .search-box input:focus {
+      border-color: var(--primary);
+    }
+
     .kanban-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -242,32 +345,51 @@
       border-radius: 8px;
       padding: 14px;
       cursor: pointer;
-      transition: transform 0.15s ease, border-color 0.15s ease;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
     .task-card:hover {
       transform: translateY(-2px);
       border-color: var(--primary);
     }
+    .task-card.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
     .task-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      gap: 8px;
+      min-height: 24px;
+      line-height: 1.4;
     }
     .task-id {
-      font-family: monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-weight: 700;
       color: var(--primary);
-      font-size: 0.9rem;
+      font-size: 0.92rem;
+      line-height: 1.4;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
     }
     .task-badge {
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 4px;
+      line-height: 1.2;
+      letter-spacing: 0.03em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      text-transform: uppercase;
     }
     .badge-PRONTO { background: #334155; color: #cbd5e1; }
-    .badge-IN-CORSO { background: #0369a1; color: #bae6fd; }
+    .badge-IN-CORSO { background: #0369a1; color: #bae6fd; border: 1px solid #38bdf8; }
     .badge-CONSEGNATO { background: #854d0e; color: #fef08a; }
     .badge-INTEGRATO { background: #166534; color: #bbf7d0; }
     .badge-CHIUSO { background: #374151; color: #9ca3af; }
@@ -277,8 +399,8 @@
     .task-title {
       font-size: 0.95rem;
       font-weight: 600;
-      margin-bottom: 8px;
       color: #f1f5f9;
+      line-height: 1.35;
     }
     .task-meta {
       font-size: 0.8rem;
@@ -291,13 +413,14 @@
       font-size: 0.75rem;
       color: #38bdf8;
       background: #0b1320;
-      padding: 4px 6px;
+      padding: 5px 8px;
       border-radius: 4px;
-      margin-top: 6px;
-      font-family: monospace;
+      margin-top: 4px;
+      font-family: ui-monospace, monospace;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      line-height: 1.3;
     }
 
     /* Live Log Terminal */
@@ -321,16 +444,22 @@
       display: flex;
       gap: 6px;
       overflow-x: auto;
+      max-width: 70%;
     }
     .term-tab {
       background: #1e293b;
       color: var(--text-muted);
       border: none;
-      padding: 4px 10px;
+      padding: 5px 11px;
       border-radius: 4px;
       cursor: pointer;
-      font-family: monospace;
+      font-family: ui-monospace, monospace;
       font-size: 0.8rem;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .term-tab:hover {
+      color: #fff;
     }
     .term-tab.active {
       background: var(--primary);
@@ -346,17 +475,131 @@
     }
     .terminal-body {
       padding: 14px;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
       font-size: 0.82rem;
-      color: #cbd5e1;
-      height: 280px;
+      color: #a5f3fc;
+      background: var(--term-bg);
+      height: 320px;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-all;
+      line-height: 1.45;
     }
     .terminal-body .empty-log {
       color: var(--text-muted);
       font-style: italic;
+    }
+
+    /* Modal Dettaglio Task */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(5, 8, 15, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      max-width: 640px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .modal-close:hover { color: #fff; background: #263346; }
+    .modal-body {
+      padding: 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.4;
+    }
+    .modal-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #0f1622;
+      padding: 10px 12px;
+      border-radius: 6px;
+    }
+    .modal-section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .modal-pre {
+      background: #0b111a;
+      border: 1px solid #1e293b;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-family: ui-monospace, monospace;
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+    .modal-file-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .modal-file-list li {
+      font-family: ui-monospace, monospace;
+      font-size: 0.8rem;
+      color: var(--accent);
+      background: #0f172a;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .modal-footer {
+      padding: 12px 18px;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
     }
   </style>
 </head>
@@ -364,15 +607,20 @@
 
   <header>
     <div class="title-group">
-      <h1>🎮 Control Room Multi-Agente <span>{{NOME_PROGETTO}}</span></h1>
-      <span class="badge-coord">{{DIR_COORD}}</span>
+      <h1>🎮 Control Room Multi-Agente <span id="headerProjectName">{{NOME_PROGETTO}}</span></h1>
+      <span class="badge-coord" id="headerCoordDir">{{DIR_COORD}}</span>
     </div>
-    <div class="heartbeat">
-      <div class="pulse-dot" id="liveDot"></div>
-      <span id="lastUpdate">In attesa di dati...</span>
-      <input type="file" id="jsonFileInput" accept=".json,.js" style="display: none;">
-      <button id="btnSelectFile" class="term-tab" style="margin-left: 8px;">📁 Carica file</button>
-      <button id="btnManualReload" class="term-tab" style="margin-left: 4px;">🔄 Ricarica</button>
+    <div class="header-actions">
+      <div class="heartbeat">
+        <div class="pulse-dot" id="liveDot"></div>
+        <span id="lastUpdate">In attesa di dati...</span>
+        <div class="header-btns">
+          <input type="file" id="jsonFileInput" accept=".json,.js" style="display: none;">
+          <button id="btnSelectFile" class="term-tab" title="Carica snapshot JSON locale">📁 Carica file</button>
+          <button id="btnManualReload" class="term-tab" title="Aggiorna telemetria">🔄 Ricarica</button>
+        </div>
+      </div>
+      <span class="privacy-hint">🔒 Dati e log 100% locali. Non esporre pubblicamente.</span>
     </div>
   </header>
 
@@ -432,15 +680,28 @@
     <!-- Generato dinamicamente -->
   </div>
 
-  <!-- Mini Kanban / Task Tracker -->
+  <!-- Mini Kanban / Task Tracker con Toolbar -->
   <div class="section-title">📋 Task dello Sprint</div>
+  <div class="tasks-toolbar">
+    <div class="filter-group" id="filterButtons">
+      <button class="filter-btn active" data-filter="ALL">Tutti <span class="filter-count" id="countAll">0</span></button>
+      <button class="filter-btn" data-filter="IN CORSO">In corso <span class="filter-count" id="countInCorso">0</span></button>
+      <button class="filter-btn" data-filter="PRONTO">Pronti <span class="filter-count" id="countPronto">0</span></button>
+      <button class="filter-btn" data-filter="CONSEGNATO">Consegnati <span class="filter-count" id="countConsegnato">0</span></button>
+      <button class="filter-btn" data-filter="INTEGRATO">Integrati <span class="filter-count" id="countIntegrato">0</span></button>
+      <button class="filter-btn" data-filter="CHIUSO">Chiusi <span class="filter-count" id="countChiuso">0</span></button>
+    </div>
+    <div class="search-box">
+      <input type="text" id="taskSearchInput" placeholder="🔍 Cerca task per ID o titolo..." autocomplete="off">
+    </div>
+  </div>
   <div class="kanban-grid" id="tasksList">
     <!-- Generato dinamicamente -->
   </div>
 
   <!-- Live Log Console -->
-  <div class="section-title">📺 Live Terminal Stream (.coord/logs/)</div>
-  <div class="terminal-section">
+  <div class="section-title" id="terminalAnchor">📺 Live Terminal Stream (.coord/logs/)</div>
+  <div class="terminal-section" id="terminalSection">
     <div class="terminal-header">
       <div class="terminal-tabs" id="logTabs">
         <!-- Generato dinamicamente -->
@@ -455,9 +716,52 @@
     </div>
   </div>
 
+  <!-- Modal Dettaglio Task Completo -->
+  <div id="taskModalOverlay" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <span id="modalTaskId" class="task-id"></span>
+          <span id="modalTaskBadge" class="task-badge"></span>
+        </div>
+        <button id="modalCloseBtn" class="modal-close" aria-label="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h3 id="modalTaskTitle" class="modal-title"></h3>
+        <div class="modal-meta">
+          <div><strong>Proprietario:</strong> <span id="modalTaskProprietario"></span></div>
+          <div id="modalStoPerRow" style="display: none;"><strong>Sto per:</strong> <span id="modalTaskStoPer"></span></div>
+        </div>
+        <div id="modalFattiSection">
+          <div class="modal-section-title">Fatti e Avanzamento Verificato:</div>
+          <pre id="modalTaskFatti" class="modal-pre"></pre>
+        </div>
+        <div id="modalFileSection" style="display: none;">
+          <div class="modal-section-title">File Riservati:</div>
+          <ul id="modalTaskFiles" class="modal-file-list"></ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="modalViewLogBtn" class="term-tab active">Visualizza Log nel Terminale</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let activeTaskLog = null;
     let stateCache = null;
+    let currentFilter = 'ALL';
+    let currentSearch = '';
+
+    // Whitelist rigida stati ammessi (previene XSS da file manipolati — C-01 Codex / M-2 Claude)
+    const STATI_CSS = {
+      'PRONTO': 'badge-PRONTO',
+      'IN CORSO': 'badge-IN-CORSO',
+      'CONSEGNATO': 'badge-CONSEGNATO',
+      'INTEGRATO': 'badge-INTEGRATO',
+      'SOSPESO': 'badge-SOSPESO',
+      'CHIUSO': 'badge-CHIUSO'
+    };
 
     // Callback per state.js (eseguito se caricato sincronicamente via <script src="state.js">)
     window.__onVibeStateLoaded = function(data) {
@@ -483,7 +787,7 @@
         }
       }
 
-      // 2. Se siamo su file://: prova prima fetch (in caso il browser lo permetta)
+      // 2. Se siamo su file://: prova prima fetch (se il browser con flag lo permette)
       try {
         const res = await fetch('state.json');
         if (res.ok) {
@@ -512,7 +816,6 @@
         }
       };
       s.onerror = () => {
-        // Se non abbiamo ancora caricato nulla (né state.js né drag&drop)
         if (!stateCache) {
           document.getElementById('corsBanner').style.display = 'block';
           document.getElementById('liveDot').style.backgroundColor = '#fbbf24';
@@ -535,10 +838,38 @@
 
     function aggiornaUI(data) {
       stateCache = data;
-      const ora = new Date(data.updatedAt).toLocaleTimeString('it-IT');
+      const ora = data.updatedAt ? new Date(data.updatedAt).toLocaleTimeString('it-IT') : new Date().toLocaleTimeString('it-IT');
       document.getElementById('lastUpdate').innerText = 'Aggiornato: ' + ora;
       document.getElementById('liveDot').style.backgroundColor = 'var(--success)';
       document.getElementById('liveDot').style.boxShadow = '0 0 8px var(--success)';
+
+      // 0. Auto-risoluzione Nome Progetto e Directory Coordinamento
+      const elHeaderName = document.getElementById('headerProjectName');
+      let nomeProgetto = data.projectName;
+      if (!nomeProgetto) {
+        // Fallback: ricava dalla cartella genitore dal path se presente
+        const pathParts = window.location.pathname ? window.location.pathname.replace(/\\/g, '/').split('/').filter(Boolean) : [];
+        if (pathParts.length >= 2) {
+          nomeProgetto = pathParts[pathParts.length - 2] === '.coord' ? pathParts[pathParts.length - 3] : pathParts[pathParts.length - 2];
+        }
+      }
+      if (nomeProgetto && nomeProgetto !== '{{NOME_PROGETTO}}') {
+        if (elHeaderName) elHeaderName.textContent = nomeProgetto;
+        document.title = 'Control Room Multi-Agente — ' + nomeProgetto;
+      } else if (elHeaderName && elHeaderName.textContent.includes('{{NOME_PROGETTO}}')) {
+        elHeaderName.textContent = '';
+      }
+
+      const elCoordDir = document.getElementById('headerCoordDir');
+      const dirCoordVal = data.coordDir || '.coord';
+      if (elCoordDir) {
+        if (dirCoordVal && dirCoordVal !== '{{DIR_COORD}}') {
+          elCoordDir.textContent = dirCoordVal;
+          elCoordDir.style.display = 'inline-block';
+        } else if (elCoordDir.textContent.includes('{{DIR_COORD}}')) {
+          elCoordDir.textContent = '.coord';
+        }
+      }
 
       // 1. Milestone
       if (data.milestone) {
@@ -553,27 +884,8 @@
         document.getElementById('milestonePercentuale').innerText = pct + '%';
       }
 
-      // 2. Quota
-      if (data.quota) {
-        document.getElementById('quotaSource').innerText = data.quota.source ? `[${data.quota.source}]` : '';
-        const f5 = data.quota.fiveHourPct;
-        const f7 = data.quota.sevenDayPct;
-        
-        document.getElementById('quota5hVal').innerText = f5 != null ? f5 + '%' : '--%';
-        document.getElementById('quota5hBar').style.width = (f5 || 0) + '%';
-        document.getElementById('quota5hBar').style.backgroundColor = f5 > 85 ? 'var(--danger)' : f5 > 70 ? 'var(--warning)' : 'var(--success)';
-
-        document.getElementById('quota7dVal').innerText = f7 != null ? f7 + '%' : '--%';
-        document.getElementById('quota7dBar').style.width = (f7 || 0) + '%';
-        document.getElementById('quota7dBar').style.backgroundColor = f7 > 85 ? 'var(--danger)' : f7 > 70 ? 'var(--warning)' : 'var(--success)';
-
-        if (data.quota.resetsAt) {
-          const resetDate = new Date(data.quota.resetsAt * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-          document.getElementById('quotaReset').innerText = `Reset 5h: ${resetDate}`;
-        } else {
-          document.getElementById('quotaReset').innerText = data.quota.note ? data.quota.note : 'Nessun limite attivo';
-        }
-      }
+      // 2. Quota & Fornitori
+      renderQuota(data.quota);
 
       // 3. Flotta Agenti
       const agentsContainer = document.getElementById('agentsList');
@@ -601,34 +913,136 @@
         }).join('');
       }
 
-      // 4. Task Kanban
-      const tasksContainer = document.getElementById('tasksList');
-      if (data.tasks && data.tasks.length > 0) {
-        tasksContainer.innerHTML = data.tasks.map(t => {
-          const statoNorm = t.stato || 'SCONOSCIUTO';
-          const badgeClass = 'badge-' + statoNorm.replace(/\s+/g, '-');
-          const mostraStoPer = statoNorm === 'IN CORSO' && t.stoPer;
-          return `
-            <div class="task-card" data-task-id="${escapeHtml(t.id)}">
-              <div class="task-top">
-                <span class="task-id">${escapeHtml(t.id)}</span>
-                <span class="task-badge ${badgeClass}" title="${escapeHtml(t.statoEsteso || t.stato)}">${escapeHtml(statoNorm)}</span>
-              </div>
-              <div class="task-title">${escapeHtml(t.titolo)}</div>
-              <div class="task-meta">
-                <div>Proprietario: <strong>${escapeHtml(t.proprietario)}</strong></div>
-                ${mostraStoPer ? `<div>Sto per: <em>${escapeHtml(t.stoPer)}</em></div>` : ''}
-              </div>
-              ${t.fatti ? `<div class="task-fatti" title="${escapeHtml(t.fatti)}">Fatti: ${escapeHtml(t.fatti)}</div>` : ''}
-            </div>
-          `;
-        }).join('');
-      } else {
-        tasksContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem;">Nessun task in cartella.</div>';
-      }
+      // 4. Task Kanban con filtri e contatori
+      renderTasks(data.tasks || []);
 
       // 5. Terminal Logs
-      aggiornaLogs(data.logs);
+      aggiornaLogs(data.logs || {});
+    }
+
+    function renderQuota(quota) {
+      const qContent = document.getElementById('quotaContent');
+      const qSource = document.getElementById('quotaSource');
+
+      if (!quota || quota.source === 'disabled' || (!quota.ok && quota.source !== 'live' && quota.source !== 'cache')) {
+        qSource.innerText = quota?.source ? `[${quota.source}]` : '';
+        qContent.innerHTML = `
+          <div class="quota-disabled-box">
+            <div><strong>Sensore opzionale disattivato</strong></div>
+            <div style="margin-top: 4px;">Per abilitare il monitoraggio live della quota:</div>
+            <div style="margin-top: 2px;"><code>VIBE_ANTHROPIC_QUOTA=1</code></div>
+          </div>
+        `;
+        return;
+      }
+
+      qSource.innerText = quota.source ? `[${quota.source}]` : '';
+      const f5 = quota.fiveHourPct;
+      const f7 = quota.sevenDayPct;
+
+      let resetStr = 'Nessun limite attivo';
+      if (quota.resetsAt) {
+        let d;
+        if (typeof quota.resetsAt === 'number') {
+          // Se timestamp unix in secondi o millisecondi
+          d = quota.resetsAt > 1e11 ? new Date(quota.resetsAt) : new Date(quota.resetsAt * 1000);
+        } else {
+          d = new Date(quota.resetsAt);
+        }
+        if (!isNaN(d.getTime())) {
+          resetStr = 'Reset 5h: ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        } else {
+          resetStr = quota.note || 'Reset programmato';
+        }
+      } else if (quota.note) {
+        resetStr = quota.note;
+      }
+
+      const col5 = f5 > 85 ? 'var(--danger)' : (f5 > 70 ? 'var(--warning)' : 'var(--success)');
+      const col7 = f7 > 85 ? 'var(--danger)' : (f7 > 70 ? 'var(--warning)' : 'var(--success)');
+
+      qContent.innerHTML = `
+        <div>
+          <div class="quota-row">
+            <span>Anthropic 5-Hour</span>
+            <span>${f5 != null ? f5 + '%' : '--%'}</span>
+          </div>
+          <div class="quota-bar"><div class="quota-fill" style="width: ${f5 || 0}%; background: ${col5};"></div></div>
+        </div>
+        <div>
+          <div class="quota-row">
+            <span>Anthropic 7-Day</span>
+            <span>${f7 != null ? f7 + '%' : '--%'}</span>
+          </div>
+          <div class="quota-bar"><div class="quota-fill" style="width: ${f7 || 0}%; background: ${col7};"></div></div>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+          ${escapeHtml(resetStr)}
+        </div>
+      `;
+    }
+
+    function renderTasks(allTasks) {
+      // Aggiorna contatori per la toolbar
+      const counts = { ALL: allTasks.length, 'IN CORSO': 0, 'PRONTO': 0, 'CONSEGNATO': 0, 'INTEGRATO': 0, 'CHIUSO': 0 };
+      allTasks.forEach(t => {
+        const s = (t.stato || '').trim().toUpperCase();
+        if (s in counts) counts[s]++;
+      });
+
+      const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+      setEl('countAll', counts.ALL);
+      setEl('countInCorso', counts['IN CORSO']);
+      setEl('countPronto', counts['PRONTO']);
+      setEl('countConsegnato', counts['CONSEGNATO']);
+      setEl('countIntegrato', counts['INTEGRATO']);
+      setEl('countChiuso', counts['CHIUSO']);
+
+      // Applica filtro per stato
+      let filtered = allTasks;
+      if (currentFilter !== 'ALL') {
+        filtered = filtered.filter(t => (t.stato || '').trim().toUpperCase() === currentFilter);
+      }
+
+      // Applica ricerca testuale
+      if (currentSearch) {
+        const q = currentSearch.toLowerCase();
+        filtered = filtered.filter(t => {
+          return (t.id && t.id.toLowerCase().includes(q)) ||
+                 (t.titolo && t.titolo.toLowerCase().includes(q)) ||
+                 (t.proprietario && t.proprietario.toLowerCase().includes(q)) ||
+                 (t.fatti && t.fatti.toLowerCase().includes(q));
+        });
+      }
+
+      const tasksContainer = document.getElementById('tasksList');
+      if (filtered.length === 0) {
+        tasksContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; padding: 12px 0;">Nessun task corrispondente ai criteri di filtro.</div>';
+        return;
+      }
+
+      tasksContainer.innerHTML = filtered.map(t => {
+        const statoNorm = (t.stato || 'SCONOSCIUTO').trim().toUpperCase();
+        // Whitelist rigida stati (Fix C-01 / M-2)
+        const badgeClass = STATI_CSS[statoNorm] || 'badge-SCONOSCIUTO';
+        const mostraStoPer = statoNorm === 'IN CORSO' && t.stoPer;
+        const isActive = activeTaskLog && activeTaskLog === t.id;
+
+        return `
+          <div class="task-card ${isActive ? 'active' : ''}" data-task-id="${escapeHtml(t.id)}">
+            <div class="task-top">
+              <span class="task-id">${escapeHtml(t.id)}</span>
+              <span class="task-badge ${badgeClass}" title="${escapeHtml(t.statoEsteso || t.stato)}">${escapeHtml(statoNorm)}</span>
+            </div>
+            <div class="task-title">${escapeHtml(t.titolo)}</div>
+            <div class="task-meta">
+              <div>Proprietario: <strong>${escapeHtml(t.proprietario)}</strong></div>
+              ${mostraStoPer ? `<div>Sto per: <em>${escapeHtml(t.stoPer)}</em></div>` : ''}
+            </div>
+            ${t.fatti ? `<div class="task-fatti" title="${escapeHtml(t.fatti)}">Fatti: ${escapeHtml(t.fatti)}</div>` : ''}
+          </div>
+        `;
+      }).join('');
     }
 
     function aggiornaLogs(logsObj) {
@@ -666,19 +1080,108 @@
       }
     }
 
-    function selezionaTaskTab(taskId) {
+    function selezionaTaskTab(taskId, scrollToLog = false) {
       activeTaskLog = taskId;
       if (stateCache && stateCache.logs) {
         aggiornaLogs(stateCache.logs);
       }
+      // Evidenzia card selezionata
+      document.querySelectorAll('.task-card').forEach(c => {
+        if (c.dataset.taskId === taskId) c.classList.add('active');
+        else c.classList.remove('active');
+      });
+      if (scrollToLog) {
+        const term = document.getElementById('terminalSection');
+        if (term) term.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
 
-    // Event delegation sicuro per i click su card e tab (elimina XSS da doppio contesto HTML/JS)
-    document.addEventListener('click', (e) => {
-      const target = e.target.closest('[data-task-id]');
-      if (target && target.dataset.taskId) {
-        selezionaTaskTab(target.dataset.taskId);
+    function apriModalTask(taskId) {
+      if (!stateCache || !stateCache.tasks) return;
+      const t = stateCache.tasks.find(x => x.id === taskId);
+      if (!t) return;
+
+      selezionaTaskTab(taskId, false);
+
+      const statoNorm = (t.stato || 'SCONOSCIUTO').trim().toUpperCase();
+      const badgeClass = STATI_CSS[statoNorm] || 'badge-SCONOSCIUTO';
+
+      document.getElementById('modalTaskId').innerText = t.id;
+      const badgeEl = document.getElementById('modalTaskBadge');
+      badgeEl.className = 'task-badge ' + badgeClass;
+      badgeEl.innerText = statoNorm;
+
+      document.getElementById('modalTaskTitle').innerText = t.titolo || t.id;
+      document.getElementById('modalTaskProprietario').innerText = t.proprietario || 'Non assegnato';
+
+      const rowStoPer = document.getElementById('modalStoPerRow');
+      if (t.stoPer) {
+        document.getElementById('modalTaskStoPer').innerText = t.stoPer;
+        rowStoPer.style.display = 'block';
+      } else {
+        rowStoPer.style.display = 'none';
       }
+
+      document.getElementById('modalTaskFatti').innerText = t.fatti || 'Nessun fatto o progresso registrato.';
+
+      const fileSec = document.getElementById('modalFileSection');
+      const fileList = document.getElementById('modalTaskFiles');
+      if (t.fileRiservati && t.fileRiservati.length > 0) {
+        fileList.innerHTML = t.fileRiservati.map(f => `<li>${escapeHtml(f)}</li>`).join('');
+        fileSec.style.display = 'block';
+      } else {
+        fileSec.style.display = 'none';
+      }
+
+      document.getElementById('taskModalOverlay').style.display = 'flex';
+    }
+
+    function chiudiModal() {
+      document.getElementById('taskModalOverlay').style.display = 'none';
+    }
+
+    // Gestione click su card task e tab log
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest('.task-card');
+      if (card && card.dataset.taskId) {
+        apriModalTask(card.dataset.taskId);
+        return;
+      }
+
+      const tab = e.target.closest('.term-tab[data-task-id]');
+      if (tab && tab.dataset.taskId) {
+        selezionaTaskTab(tab.dataset.taskId, false);
+        return;
+      }
+    });
+
+    // Filtri toolbar
+    document.getElementById('filterButtons').addEventListener('click', (e) => {
+      const btn = e.target.closest('.filter-btn');
+      if (!btn) return;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      if (stateCache && stateCache.tasks) renderTasks(stateCache.tasks);
+    });
+
+    // Ricerca live
+    document.getElementById('taskSearchInput').addEventListener('input', (e) => {
+      currentSearch = (e.target.value || '').trim();
+      if (stateCache && stateCache.tasks) renderTasks(stateCache.tasks);
+    });
+
+    // Modale: chiusura e vai al log
+    document.getElementById('modalCloseBtn').addEventListener('click', chiudiModal);
+    document.getElementById('taskModalOverlay').addEventListener('click', (e) => {
+      if (e.target.id === 'taskModalOverlay') chiudiModal();
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') chiudiModal();
+    });
+    document.getElementById('modalViewLogBtn').addEventListener('click', () => {
+      chiudiModal();
+      if (activeTaskLog) selezionaTaskTab(activeTaskLog, true);
     });
 
     // Drag & Drop fallback per apertura da file://

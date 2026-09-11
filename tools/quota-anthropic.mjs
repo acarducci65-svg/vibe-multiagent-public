@@ -41,6 +41,9 @@ if (process.env.VIBE_ANTHROPIC_QUOTA !== "1" && !process.env.VIBE_MOCK_QUOTA_PAY
 if (process.env.VIBE_MOCK_QUOTA_PAYLOAD) {
   try {
     const mock = JSON.parse(process.env.VIBE_MOCK_QUOTA_PAYLOAD);
+    if (!mock || typeof mock !== "object" || Array.isArray(mock)) {
+      throw new Error("Il payload mock deve essere un oggetto JSON");
+    }
     out(mock);
     process.exit(0);
   } catch (err) {
@@ -50,7 +53,7 @@ if (process.env.VIBE_MOCK_QUOTA_PAYLOAD) {
       fiveHourPct: null,
       sevenDayPct: null,
       resetsAt: null,
-      note: `VIBE_MOCK_QUOTA_PAYLOAD non è un JSON valido: ${err.message}`,
+      note: `VIBE_MOCK_QUOTA_PAYLOAD non è valido: ${err.message}`,
     });
     process.exit(0);
   }

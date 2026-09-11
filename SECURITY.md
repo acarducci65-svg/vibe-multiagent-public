@@ -28,6 +28,16 @@ L'hook `agy-gate.mjs` funge da **guardrail operativo anti-distrazione** per il l
 
 ---
 
+## 📁 Trattamento dei Dati Locali e dei File di Log
+
+Gli artefatti generati durante il funzionamento del cantiere (`.coord/logs/*.log`, `.coord/state.json`, `.coord/state.js`):
+- Sono file **esclusivamente locali** e non vengono mai inviati o trasmessi all'esterno dal framework.
+- Possono contenere l'output di comandi shell, percorsi locali del filesystem o messaggi prodotti dagli esecutori.
+- Assicurati che `.coord/logs/`, `state.json` e `state.js` siano sempre esclusi dal controllo di versione Git tramite il file `.gitignore` del progetto (come previsto dalla procedura di setup in `setup_skill.md`), e non allegarli mai a issue pubbliche o canali aperti senza un'opportuna redazione preventiva.
+- Nel caso in cui si serva la dashboard HTML tramite server web locali (come Live Server di VS Code o `http-server`), è fortemente raccomandato configurare il binding esclusivamente sull'interfaccia di loopback (`127.0.0.1` o `localhost`), evitando il binding universale su tutte le interfacce (`0.0.0.0`) per impedire la lettura non voluta dei log da altri dispositivi connessi alla medesima rete locale (LAN).
+
+---
+
 ## 📢 Segnalazione di Vulnerabilità
 
 Se riscontri un problema di sicurezza o un potenziale leak di dati nel framework:
