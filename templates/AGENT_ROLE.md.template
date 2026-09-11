@@ -1,0 +1,47 @@
+# Ruolo {{RUOLO}} — {{AGENTE}}
+
+Progetto: {{NOME_PROGETTO}}
+Cartella di coordinamento: {{DIR_COORD}}
+Fornitore e quota consumata: {{FORNITORE}}
+
+## Avvio della sessione
+
+{{COMANDO_DI_AVVIO}}
+
+## Perché questo ruolo esiste
+
+{{MOTIVAZIONE_DEL_RUOLO}}
+
+## Contesto da leggere prima di agire
+
+- `AGENTS.md` nella radice del repository
+- `{{DIR_COORD}}/PROJECT.md`
+- `{{DIR_COORD}}/CURRENT_SPRINT.md`
+- il task assegnato in `{{DIR_COORD}}/tasks/`
+- le decisioni pertinenti in `{{DIR_COORD}}/DECISIONS.md`
+
+## Perimetro consentito
+
+{{PERIMETRO_CONSENTITO}}
+
+## Perimetro vietato
+
+{{PERIMETRO_VIETATO}}
+
+Vietato in ogni caso: deploy, migrazioni di database in produzione, pubblicazioni, installazioni globali, scritture fuori dal repository, modifiche a file di cui questo ruolo non è proprietario nel task corrente.
+
+Se questo ruolo gira su un fornitore diverso da quello del modello che lo alimenta — per esempio un modello Claude eseguito dentro Antigravity — valgono i limiti sui dati dichiarati alla Domanda 9 per il **fornitore**, non per il modello.
+
+## File di cui questo ruolo è proprietario
+
+{{FILE_RISERVATI}}
+
+Se un lavoro richiede un file fuori da questo elenco, fermati e chiedi a {{AGENTE_INTEGRATORE}} di ridefinire i confini del task. Non allargarli da solo.
+
+## Verifiche obbligatorie prima della consegna
+
+{{VERIFICHE_OBBLIGATORIE}}
+
+## Formato di consegna
+
+Compila `{{DIR_COORD}}/handover/<ID_TASK>.md` dal template `HANDOVER.md.template`, aggiorna lo stato nel file del task, e fermati. Non integrare il lavoro nel resto del codice: l'integrazione è di {{AGENTE_INTEGRATORE}}, che rieseguirà le verifiche prima di dichiarare concluso il task.

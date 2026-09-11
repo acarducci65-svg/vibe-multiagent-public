@@ -1,0 +1,68 @@
+# {{ID_TASK}} — {{TITOLO}}
+
+Stato: PRONTO
+Proprietario: {{PROPRIETARIO}}
+Handover atteso in: `{{DIR_COORD}}/handover/{{ID_TASK}}.md`
+
+Stati ammessi, in quest'ordine: `PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`. Solo {{AGENTE_INTEGRATORE}} assegna `INTEGRATO`, e solo dopo aver rieseguito le verifiche in prima persona.
+
+## Obiettivo
+
+{{OBIETTIVO}}
+
+## Confini
+
+Incluso: {{INCLUSO}}
+
+Escluso: {{ESCLUSO}}
+
+## File riservati
+
+{{FILE_RISERVATI}}
+
+Solo il proprietario scrive questi file. Se ne serve un altro, fermati e chiedi di ridefinire il task.
+
+## Se il proprietario si esaurisce
+
+Esecutore e modello previsti: {{ESECUTORE_E_MODELLO}}
+Costo stimato del task: {{COSTO_STIMATO}}   (S, M o L — deciso adesso, non a lavoro iniziato)
+
+Agente di ripiego: {{AGENTE_DI_RIPIEGO}}
+
+**Costo — capacità:** {{COSTO_CAPACITA}}
+Quanto si perde in qualità del lavoro. Con tre fornitori indipendenti questa perdita è spesso piccola: un esecutore Antigravity può girare su un modello della stessa famiglia, attingendo a un'altra quota.
+
+**Costo — garanzia:** {{COSTO_GARANZIA}}
+Quale promessa del progetto decade. Questa perdita **non si recupera cambiando fornitore**. Se Codex possiede i test proprio per renderli indipendenti dall'implementazione, farli scrivere a chi implementa chiude il task e cancella la garanzia — che sia Sonnet dentro Antigravity o Gemini non fa differenza: è la stessa mano.
+
+Se il costo in garanzia non è accettabile, qui va scritto «nessuna sostituzione, attendere il reset» invece del nome di un agente. Il costo in capacità, da solo, non giustifica mai un blocco.
+
+## Punto di ripresa
+
+Aggiornato dal proprietario **prima** di iniziare un blocco di lavoro, non dopo: se la sessione si interrompe a metà, questo è l'unico punto da cui si riparte.
+
+Scrivere qui e portare `Stato:` a `IN CORSO` sono **un gesto solo**. Un punto di ripresa compilato su un task ancora `PRONTO` è una contraddizione: dice che il lavoro è iniziato e che non lo è. Chi arriva dopo crede allo stato e perde il punto di ripresa.
+
+Quando il task esce da `IN CORSO`, riscrivi `Sto per:` con ciò che vale adesso: «nulla, il task è chiuso, esito in `handover/{{ID_TASK}}.md`», oppure, se è sospeso, il motivo e cosa serve per riprenderlo.
+
+- Aggiornato il: (data e ora)
+- Sto per: (cosa)
+- Toccherò: (quali file)
+- Ultimo passo completato: (cosa è già a posto)
+- Fatti: (lo scrive l'hook `agy-checkpoint`; se non c'è un hook attivo resta vuoto, e vale solo `Sto per:`)
+
+## Dipendenze e contesto da leggere
+
+{{DIPENDENZE}}
+
+## Criteri di accettazione
+
+{{CRITERI_ACCETTAZIONE}}
+
+## Verifiche richieste
+
+{{VERIFICHE}}
+
+## Autorizzazioni o blocchi
+
+{{AUTORIZZAZIONI_O_BLOCCHI}}

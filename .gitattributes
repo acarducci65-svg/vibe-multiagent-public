@@ -1,0 +1,10 @@
+# Normalizzazione fine riga cross-platform (LF uniforme)
+* text=auto eol=lf
+
+# File binari
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

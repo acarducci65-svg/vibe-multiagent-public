@@ -1,0 +1,52 @@
+# {{NOME_PROGETTO}} — protocollo multi-agente
+
+<!-- INIZIO CONFIGURAZIONE MULTI-AGENTE -->
+## Scopo
+
+{{SCOPO_UNA_RIGA}}
+
+Contesto completo: `{{DIR_COORD}}/PROJECT.md`. Milestone in corso: `{{DIR_COORD}}/CURRENT_SPRINT.md`.
+
+## Vincoli non negoziabili
+
+{{VINCOLI_NON_NEGOZIABILI}}
+
+## Ruoli
+
+- Direttore — utente: decide requisiti, priorità, dati reali, migrazioni, deploy e pubblicazione.
+- Capocantiere / Integratore — {{AGENTE_INTEGRATORE}}: pianifica, integra, verifica e documenta; è l'unico proprietario dell'integrazione. Solo {{AGENTE_INTEGRATORE}} assegna `INTEGRATO`.
+{{RUOLO_DISPATCHER}}
+{{RUOLI_OPZIONALI}}
+
+Il perimetro di ogni ruolo opzionale è in `{{DIR_COORD}}/agents/<ruolo>/agent.md`.
+
+## Coordinamento
+
+- Prima di agire, ogni agente legge questo file, `{{DIR_COORD}}/PROJECT.md`, il task assegnato e le decisioni pertinenti.
+- **All'ingresso in una sessione nuova**, prima di qualsiasi lavoro, controlla se ci sono task interrotti:
+  - Bash/macOS: `grep -l '^Stato: IN CORSO' {{DIR_COORD}}/tasks/*.md`
+  - PowerShell: `Get-ChildItem "{{DIR_COORD}}/tasks/*.md" | Select-String "^Stato:\s*IN CORSO" | Select-Object -ExpandProperty Path`
+  Se qualcosa risulta in corso, qualcuno si è fermato senza chiudere: leggi il suo `Punto di ripresa` e riferisci prima di iniziare altro.
+- Iniziare a lavorare su un task significa, in un gesto solo, portarlo a `IN CORSO` e compilarne il `Punto di ripresa`. Mai l'uno senza l'altro.
+- Un task ha un solo proprietario e file riservati non sovrapposti.
+- Gli esecutori non si invocano fra loro. L'orchestratore li lancia, e la consegna passa comunque da `{{DIR_COORD}}/` e Git: un artefatto su disco è verificabile e sopravvive alla sessione, l'output di una pipe no.
+- I tre agenti attingono a **tre quote indipendenti** (Anthropic, OpenAI, Google). Un cambio di esecutore dettato dalla quota resta una sostituzione, con i due costi dichiarati nel task e la registrazione in `{{DIR_COORD}}/DECISIONS.md`.
+- Il proprietario aggiorna il task e lascia un handover in `{{DIR_COORD}}/handover/`; {{AGENTE_INTEGRATORE}} riesegue le verifiche pertinenti prima dell'integrazione.
+- Non sovrascrivere modifiche non proprie. Controlla `git status` prima e dopo il lavoro.
+- Prima di un blocco di lavoro lungo, aggiorna il `Punto di ripresa` nel task: è l'unica traccia se la sessione si interrompe a metà.
+- **Working Tree condiviso e coordinamento Git**:
+  - Se non si usano worktree separati, mentre un esecutore delegato sta lavorando nel working tree, l'Integratore **NON esegue comandi Git in scrittura** (`commit`, `add`, `switch`, `merge`), neppure su rami o file non correlati (previene conflitti su `index.lock`).
+  - L'esecutore non esegue operazioni Git di switch/commit a meno di specifica autorizzazione: il suo compito termina con la scrittura dei file e dell'handover. L'integrazione Git spetta all'Integratore.
+- **Disciplina delle Fonti Primarie (Divieto di Parafrasi)**: nessun agente deve trasformare una parafrasi, un riassunto o un'interpretazione di un handover precedente in una regola formale. Si verifica sempre la fonte primaria o il capitolato originale.
+- Se un agente esaurisce il proprio limite di consumo o esce con errore:
+  1. Controlla sempre `git status` e i file su disco prima di dichiarare il task fallito: se il lavoro sostanziale è già completo, procedi alla verifica e integrazione.
+  2. Se il lavoro è incompleto, porta il task a `SOSPESO` e applica il protocollo di sostituzione registrando la garanzia che si perde in `{{DIR_COORD}}/DECISIONS.md`. Nessuna sostituzione silenziosa.
+- **Resilienza su filesystem (Windows / OneDrive)**: se un'operazione Git fallisce con `Permission denied` per lock concorrenti di sincronizzazione su `.git/`, attendere 2 secondi e ritentare una singola volta.
+- **Control Room Visiva e Telemetria**: la Control Room è disponibile in `{{DIR_COORD}}/dashboard.html`. Quando gli esecutori sono lanciati tramite il runner (`node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" -- <comando>`), la telemetria si aggiorna in streaming live. Per rigenerare manualmente lo stato dopo modifiche dirette ai task senza runner: `node "{{DIR_SKILL}}/tools/telemetry.mjs" --coord "{{DIR_COORD}}"`.
+
+## Verifica e completamento
+
+{{STRATEGIA_TEST}}
+
+Un task è completato solo quando criteri di accettazione e verifiche dichiarate nel task sono soddisfatti, i limiti sono espliciti e il risultato è consegnato al Direttore.
+<!-- FINE CONFIGURAZIONE MULTI-AGENTE -->

@@ -1,0 +1,33 @@
+{
+  "name": "vibe-multiagent",
+  "version": "1.0.0",
+  "description": "Framework operativo rigoroso e Control Room visiva per lo sviluppo collaborativo con Claude Code, OpenAI Codex e Google Antigravity (AGY)",
+  "type": "module",
+  "main": "tools/telemetry.mjs",
+  "scripts": {
+    "test": "node tools/test/agy-gate.test.mjs && node tools/test/agy-checkpoint.test.mjs && node tools/test/quota-anthropic.test.mjs && node tools/test/agy-quota-banner.test.mjs && node tools/test/telemetry.test.mjs && node tools/test/runner.test.mjs"
+  },
+  "keywords": [
+    "multi-agent",
+    "claude-code",
+    "codex",
+    "antigravity",
+    "telemetry",
+    "dashboard",
+    "ai-agents",
+    "vibe-coding"
+  ],
+  "author": "Alessandro Carducci",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/acarducci65-svg/vibe-multiagent-public.git"
+  },
+  "homepage": "https://github.com/acarducci65-svg/vibe-multiagent-public#readme",
+  "bugs": {
+    "url": "https://github.com/acarducci65-svg/vibe-multiagent-public/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

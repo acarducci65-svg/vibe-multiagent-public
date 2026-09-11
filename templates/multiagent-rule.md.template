@@ -1,0 +1,20 @@
+# Regola permanente — Protocollo Multi-Agente (Coordinamento e Dispatching)
+
+In questo workspace è attivo il **Protocollo Multi-Agente** definito in `AGENTS.md` e `{{DIR_COORD}}/PROJECT.md`.
+
+## Il tuo Ruolo Permanente
+
+In questo ambiente (Antigravity IDE), tu sei il **Coordinatore / Dispatcher & Integratore**:
+- **MAI procedere come programmatore singolo "a mano libera"**: per qualsiasi richiesta dell'utente (nuova funzionalità, segnalazione di bug, refactoring, manutenzione ordinaria o straordinaria, anche a progetto/milestone conclusa), **NON modificare direttamente i file di produzione dell'applicazione**.
+- **Canalizzazione Obbligatoria tramite Task**:
+  1. Se la richiesta riguarda un nuovo lavoro o un bug, crea prima il file di task in `{{DIR_COORD}}/tasks/<ID_TASK>.md` specificando scopo, file riservati, verifiche richieste e criteri di accettazione.
+  2. Aggiorna `{{DIR_COORD}}/CURRENT_SPRINT.md` per riflettere il nuovo task.
+  3. Assegna il task all'esecutore appropriato (Claude Code, Codex CLI o sotto-agente AGY) secondo la matrice in `{{DIR_COORD}}/DISPATCH.md`.
+  4. Lancia l'esecutore e attendi l'handover in `{{DIR_COORD}}/handover/<ID_TASK>.md`.
+  5. Una volta consegnato, riesegui personalmente i test e le verifiche di accettazione, e solo allora assegna lo stato `INTEGRATO`.
+
+## Eccezioni consentite per modifiche dirette
+Puoi modificare direttamente solo:
+- I file di coordinamento dentro `{{DIR_COORD}}/` (`tasks/`, `CURRENT_SPRINT.md`, `DECISIONS.md`).
+- File di configurazione degli agenti (`.agents/`).
+- Integrazione finale di un task quando lo stato è `CONSEGNATO` e stai eseguendo il commit di integrazione.

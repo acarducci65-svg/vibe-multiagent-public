@@ -1,0 +1,35 @@
+{
+  "protocollo-multi-agente": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"{{DIR_SKILL}}/tools/agy-gate.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"{{DIR_SKILL}}/tools/agy-checkpoint.mjs\" --coord \"{{DIR_COORD}}\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node \"{{DIR_SKILL}}/tools/agy-quota-banner.mjs\"",
+        "timeout": 20
+      }
+    ]
+  }
+}

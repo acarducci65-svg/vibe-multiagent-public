@@ -1,0 +1,26 @@
+# Cartella di coordinamento locale dei progetti generati
+.coord/
+.agents/
+
+# File di ambiente e variabili locali
+.env
+.env.*
+!.env.example
+
+# File di log e stato transitorio
+*.log
+.cache/
+tmp/
+*.tmp
+
+# File di sistema e IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Dipendenze Node opzionali
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

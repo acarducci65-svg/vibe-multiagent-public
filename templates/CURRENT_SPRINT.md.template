@@ -1,0 +1,27 @@
+# Sprint corrente
+
+Stato: PIANIFICATO
+
+## Obiettivo
+
+{{PRIMA_MILESTONE}}
+
+## Criterio di completamento
+
+{{CRITERIO_DI_COMPLETAMENTO}}
+
+Deve essere verificabile con un comando o con un'osservazione ripetibile, non con un giudizio.
+
+## Task pianificati
+
+I file dei task stanno in `{{DIR_COORD}}/tasks/`.
+
+- {{PRIMO_TASK}}
+
+## Rischi e dipendenze
+
+{{RISCHI_E_DIPENDENZE}}
+
+## Autorizzazioni necessarie
+
+{{AUTORIZZAZIONI}}

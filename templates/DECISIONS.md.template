@@ -1,0 +1,32 @@
+# Decisioni di progetto
+
+Registra qui solo decisioni che cambiano architettura, dati, confini, coordinamento, sostituzione agenti o rilascio. Non duplicare la chat.
+
+Il blocco seguente è il formato da ripetere per ogni decisione. Numera in sequenza (`D-001`, `D-002`) e aggiungi le nuove in fondo, senza riscrivere quelle passate: una decisione superata si annota come tale, non si cancella.
+
+> **Regola sui ripieghi tecnici**: se la decisione introduce un ripiego temporaneo (es. modello forzato, workaround di permessi, bypass procedurale), indica una **data o condizione esplicita di riverifica**. Un ripiego va riprovato periodicamente e rimosso quando la causa è superata, non ereditato per inerzia.
+
+## {{ID_DECISIONE}} — {{TITOLO}}
+
+Data: {{DATA}}
+Deciso da: {{DECISORE}}
+
+### Contesto
+
+{{CONTESTO}}
+
+### Decisione
+
+{{DECISIONE}}
+
+### Ragione e alternative scartate
+
+{{RAGIONE_E_ALTERNATIVE}}
+
+### Costo se fosse sbagliata
+
+{{COSTO_ERRORE}}
+
+### Conseguenze e verifiche
+
+{{CONSEGUENZE_E_VERIFICHE}}

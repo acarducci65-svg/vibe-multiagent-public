@@ -1,0 +1,35 @@
+# {{NOME_PROGETTO}} — contesto operativo
+
+Questo file è l'unica fonte del contesto di progetto. Protocollo e ruoli stanno in `AGENTS.md`; lo stato della milestone in `{{DIR_COORD}}/CURRENT_SPRINT.md`.
+
+## Prodotto
+
+{{SCOPO_E_VALORE}}
+
+## Utenti e piattaforme
+
+{{UTENTI_E_PIATTAFORME}}
+
+## Dati e confini
+
+{{DATI_E_PRIVACY}}
+
+## Stack e architettura
+
+{{STACK_E_ARCHITETTURA}}
+
+## Entità e flussi principali
+
+{{ENTITA_E_FLUSSI}}
+
+## Integrazioni incluse ed escluse
+
+{{INTEGRAZIONI}}
+
+## Agenti abilitati
+
+Elenco e perimetri: sezione `Ruoli` di `AGENTS.md` e `{{DIR_COORD}}/agents/`.
+
+## Rilascio
+
+{{STRATEGIA_RILASCIO}}

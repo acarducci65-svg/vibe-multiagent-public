@@ -1,0 +1,32 @@
+# Handover — {{ID_TASK}}
+
+Consegna di un task dentro il protocollo multi-agente. Per il passaggio di consegne fra sessioni dello stesso agente, usa la procedura standard di session handoff del tuo ambiente.
+
+Stato consegna: {{STATO}} — uno fra `COMPLETO`, `PARZIALE`, `BLOCCATO`.
+Agente uscente: {{AGENTE_USCENTE}}
+Agente destinatario: {{AGENTE_DESTINATARIO}}
+Task di riferimento: `{{DIR_COORD}}/tasks/{{ID_TASK}}.md`
+
+## Stato attuale
+
+{{STATO_ATTUALE}}
+
+## Prossimo obiettivo
+
+{{PROSSIMO_OBIETTIVO}}
+
+## Verifiche eseguite e risultato
+
+{{VERIFICHE_E_RISULTATO}}
+
+Riporta il comando e il suo esito reale. Non scrivere che una verifica passa senza averla eseguita.
+
+## File toccati
+
+{{FILE_TOCCATI}}
+
+## Decisioni, limiti e rischi
+
+{{DECISIONI_LIMITI_RISCHI}}
+
+Nessun segreto, token, password o dato personale in questo file.

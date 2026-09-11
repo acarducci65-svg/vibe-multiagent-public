@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Room Multi-Agente — {{NOME_PROGETTO}}</title>
+  <script src="state.js"></script>
+  <style>
+    :root {
+      --bg: #0f141c;
+      --card-bg: #181f2a;
+      --card-border: #263346;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --accent: #818cf8;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --term-bg: #090d13;
+      --term-border: #1e293b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 16px 24px 40px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 20px;
+    }
+
+    .title-group h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge-coord {
+      font-size: 0.75rem;
+      background: #1e293b;
+      color: var(--primary);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      font-family: monospace;
+    }
+    .heartbeat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .cors-banner {
+      display: none;
+      background: #1e293b;
+      border: 1px solid var(--warning);
+      color: #fef3c7;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    .cors-banner code { background: #0f172a; padding: 2px 6px; border-radius: 4px; color: var(--primary); }
+
+    /* Griglia principale */
+    .grid-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 900px) {
+      .grid-top { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Milestone */
+    .milestone-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .progress-bar-container {
+      background: #0f172a;
+      height: 10px;
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 12px 0 8px;
+      border: 1px solid var(--card-border);
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    /* Quota */
+    .quota-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .quota-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+    .quota-bar {
+      background: #0f172a;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .quota-fill {
+      height: 100%;
+      background: var(--success);
+    }
+
+    /* Flotta Agenti */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .agent-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+    .agent-card.running {
+      border-color: var(--primary);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+    }
+    .agent-card.coordinating {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(129, 140, 248, 0.2);
+    }
+    .agent-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .agent-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #fff;
+    }
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+    .status-idle { background: #1e293b; color: var(--text-muted); }
+    .status-running { background: rgba(56, 189, 248, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+    .status-coordinating { background: rgba(129, 140, 248, 0.2); color: var(--accent); border: 1px solid var(--accent); }
+    .agent-role {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .agent-task {
+      font-size: 0.85rem;
+      background: #0f172a;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      color: var(--primary);
+    }
+
+    /* Kanban dei Task */
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 24px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .kanban-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .task-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 14px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .task-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+    }
+    .task-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .task-id {
+      font-family: monospace;
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 0.9rem;
+    }
+    .task-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .badge-PRONTO { background: #334155; color: #cbd5e1; }
+    .badge-IN-CORSO { background: #0369a1; color: #bae6fd; }
+    .badge-CONSEGNATO { background: #854d0e; color: #fef08a; }
+    .badge-INTEGRATO { background: #166534; color: #bbf7d0; }
+    .badge-CHIUSO { background: #374151; color: #9ca3af; }
+    .badge-SOSPESO { background: #991b1b; color: #fecaca; }
+    .badge-SCONOSCIUTO { background: #4b5563; color: #f3f4f6; }
+
+    .task-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #f1f5f9;
+    }
+    .task-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .task-fatti {
+      font-size: 0.75rem;
+      color: #38bdf8;
+      background: #0b1320;
+      padding: 4px 6px;
+      border-radius: 4px;
+      margin-top: 6px;
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Live Log Terminal */
+    .terminal-section {
+      background: var(--term-bg);
+      border: 1px solid var(--term-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .terminal-header {
+      background: #111722;
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--term-border);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .terminal-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+    }
+    .term-tab {
+      background: #1e293b;
+      color: var(--text-muted);
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
+    .term-tab.active {
+      background: var(--primary);
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .term-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .terminal-body {
+      padding: 14px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      height: 280px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .terminal-body .empty-log {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title-group">
+      <h1>🎮 Control Room Multi-Agente <span>{{NOME_PROGETTO}}</span></h1>
+      <span class="badge-coord">{{DIR_COORD}}</span>
+    </div>
+    <div class="heartbeat">
+      <div class="pulse-dot" id="liveDot"></div>
+      <span id="lastUpdate">In attesa di dati...</span>
+      <input type="file" id="jsonFileInput" accept=".json,.js" style="display: none;">
+      <button id="btnSelectFile" class="term-tab" style="margin-left: 8px;">📁 Carica file</button>
+      <button id="btnManualReload" class="term-tab" style="margin-left: 4px;">🔄 Ricarica</button>
+    </div>
+  </header>
+
+  <div id="corsBanner" class="cors-banner">
+    ⚠️ <strong>Visualizzazione da file locale:</strong> Il browser blocca il caricamento asincrono di <code>state.json</code> via <code>file://</code>.<br>
+    Per attivare il refresh in tempo reale, apri questa pagina con <strong>Live Server</strong> in VS Code, usa <strong>Simple Browser</strong> nell'IDE, oppure trascina il file <code>state.json</code> direttamente in questa finestra.
+  </div>
+
+  <div class="grid-top">
+    <!-- Milestone Corrente -->
+    <div class="card">
+      <div class="card-title">
+        <span>Milestone Corrente</span>
+        <span id="milestoneStato" class="status-badge status-running">IN CORSO</span>
+      </div>
+      <div class="milestone-title" id="milestoneTitolo">Caricamento sprint...</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="milestoneProgress"></div>
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+        <span id="milestoneDettaglio">0 di 0 task integrati</span>
+        <span id="milestonePercentuale">0%</span>
+      </div>
+    </div>
+
+    <!-- Quota / Fornitori -->
+    <div class="card">
+      <div class="card-title">
+        <span>Quota & Fornitori</span>
+        <span id="quotaSource" style="font-size: 0.75rem; text-transform: lowercase;"></span>
+      </div>
+      <div class="quota-info" id="quotaContent">
+        <div>
+          <div class="quota-row">
+            <span>Anthropic 5-Hour</span>
+            <span id="quota5hVal">--%</span>
+          </div>
+          <div class="quota-bar"><div class="quota-fill" id="quota5hBar" style="width: 0%;"></div></div>
+        </div>
+        <div>
+          <div class="quota-row">
+            <span>Anthropic 7-Day</span>
+            <span id="quota7dVal">--%</span>
+          </div>
+          <div class="quota-bar"><div class="quota-fill" id="quota7dBar" style="width: 0%;"></div></div>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;" id="quotaReset">
+          Reset: --
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flotta Agenti -->
+  <div class="section-title">🤖 Flotta Agenti Collaborativi</div>
+  <div class="agents-grid" id="agentsList">
+    <!-- Generato dinamicamente -->
+  </div>
+
+  <!-- Mini Kanban / Task Tracker -->
+  <div class="section-title">📋 Task dello Sprint</div>
+  <div class="kanban-grid" id="tasksList">
+    <!-- Generato dinamicamente -->
+  </div>
+
+  <!-- Live Log Console -->
+  <div class="section-title">📺 Live Terminal Stream (.coord/logs/)</div>
+  <div class="terminal-section">
+    <div class="terminal-header">
+      <div class="terminal-tabs" id="logTabs">
+        <!-- Generato dinamicamente -->
+      </div>
+      <div class="term-controls">
+        <label><input type="checkbox" id="autoScroll" checked> Auto-scroll</label>
+        <span id="logLinesCount">0 righe</span>
+      </div>
+    </div>
+    <div class="terminal-body" id="termBody">
+      <span class="empty-log">Nessun log disponibile o nessun task avviato con runner.mjs.</span>
+    </div>
+  </div>
+
+  <script>
+    let activeTaskLog = null;
+    let stateCache = null;
+
+    // Callback per state.js (eseguito se caricato sincronicamente via <script src="state.js">)
+    window.__onVibeStateLoaded = function(data) {
+      if (data) {
+        document.getElementById('corsBanner').style.display = 'none';
+        aggiornaUI(data);
+      }
+    };
+
+    async function caricaStato() {
+      // 1. Su protocolli HTTP (Live Server, npx serve, Simple Browser) fetch è il metodo primario
+      if (window.location.protocol !== 'file:') {
+        try {
+          const res = await fetch('state.json?_t=' + Date.now());
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          document.getElementById('corsBanner').style.display = 'none';
+          aggiornaUI(data);
+          return;
+        } catch (err) {
+          document.getElementById('lastUpdate').innerText = 'Disconnesso: ' + err.message;
+          return;
+        }
+      }
+
+      // 2. Se siamo su file://: prova prima fetch (in caso il browser lo permetta)
+      try {
+        const res = await fetch('state.json');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('corsBanner').style.display = 'none';
+          aggiornaUI(data);
+          return;
+        }
+      } catch {}
+
+      // 3. Fallback su file://: ricarica tramite tag script dinamico su state.js
+      ricaricaDaScript();
+    }
+
+    function ricaricaDaScript() {
+      const vecchio = document.getElementById('stateScriptDynamic');
+      if (vecchio) vecchio.remove();
+
+      const s = document.createElement('script');
+      s.id = 'stateScriptDynamic';
+      s.src = 'state.js';
+      s.onload = () => {
+        if (window.__VIBE_STATE__) {
+          document.getElementById('corsBanner').style.display = 'none';
+          aggiornaUI(window.__VIBE_STATE__);
+        }
+      };
+      s.onerror = () => {
+        // Se non abbiamo ancora caricato nulla (né state.js né drag&drop)
+        if (!stateCache) {
+          document.getElementById('corsBanner').style.display = 'block';
+          document.getElementById('liveDot').style.backgroundColor = '#fbbf24';
+          document.getElementById('liveDot').style.boxShadow = '0 0 8px #fbbf24';
+          document.getElementById('lastUpdate').innerText = 'file:// (Usa 📁 Carica file o trascina state.json)';
+        }
+      };
+      document.head.appendChild(s);
+    }
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function aggiornaUI(data) {
+      stateCache = data;
+      const ora = new Date(data.updatedAt).toLocaleTimeString('it-IT');
+      document.getElementById('lastUpdate').innerText = 'Aggiornato: ' + ora;
+      document.getElementById('liveDot').style.backgroundColor = 'var(--success)';
+      document.getElementById('liveDot').style.boxShadow = '0 0 8px var(--success)';
+
+      // 1. Milestone
+      if (data.milestone) {
+        document.getElementById('milestoneTitolo').innerText = data.milestone.titolo || 'Milestone attiva';
+        const rawStato = data.milestone.stato || 'IN CORSO';
+        document.getElementById('milestoneStato').innerText = rawStato.replace(/\*\*/g, '').trim();
+        const tot = data.milestone.totale || 0;
+        const comp = data.milestone.completamento || 0;
+        const pct = tot > 0 ? Math.round((comp / tot) * 100) : 0;
+        document.getElementById('milestoneProgress').style.width = pct + '%';
+        document.getElementById('milestoneDettaglio').innerText = `${comp} di ${tot} task completati / chiusi`;
+        document.getElementById('milestonePercentuale').innerText = pct + '%';
+      }
+
+      // 2. Quota
+      if (data.quota) {
+        document.getElementById('quotaSource').innerText = data.quota.source ? `[${data.quota.source}]` : '';
+        const f5 = data.quota.fiveHourPct;
+        const f7 = data.quota.sevenDayPct;
+        
+        document.getElementById('quota5hVal').innerText = f5 != null ? f5 + '%' : '--%';
+        document.getElementById('quota5hBar').style.width = (f5 || 0) + '%';
+        document.getElementById('quota5hBar').style.backgroundColor = f5 > 85 ? 'var(--danger)' : f5 > 70 ? 'var(--warning)' : 'var(--success)';
+
+        document.getElementById('quota7dVal').innerText = f7 != null ? f7 + '%' : '--%';
+        document.getElementById('quota7dBar').style.width = (f7 || 0) + '%';
+        document.getElementById('quota7dBar').style.backgroundColor = f7 > 85 ? 'var(--danger)' : f7 > 70 ? 'var(--warning)' : 'var(--success)';
+
+        if (data.quota.resetsAt) {
+          const resetDate = new Date(data.quota.resetsAt * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+          document.getElementById('quotaReset').innerText = `Reset 5h: ${resetDate}`;
+        } else {
+          document.getElementById('quotaReset').innerText = data.quota.note ? data.quota.note : 'Nessun limite attivo';
+        }
+      }
+
+      // 3. Flotta Agenti
+      const agentsContainer = document.getElementById('agentsList');
+      if (data.agents && data.agents.length > 0) {
+        agentsContainer.innerHTML = data.agents.map(ag => {
+          const isRunning = ag.status === 'running';
+          const isCoordinating = ag.status === 'coordinating';
+          const cardClass = isRunning ? 'running' : (isCoordinating ? 'coordinating' : '');
+          const badgeClass = isRunning ? 'status-running' : (isCoordinating ? 'status-coordinating' : 'status-idle');
+          const badgeText = isRunning ? '● In esecuzione' : (isCoordinating ? '● In coordinamento' : 'In attesa');
+          return `
+            <div class="agent-card ${cardClass}">
+              <div class="agent-header">
+                <span class="agent-name">${escapeHtml(ag.name)}</span>
+                <span class="status-badge ${badgeClass}">
+                  ${badgeText}
+                </span>
+              </div>
+              <div class="agent-role">${escapeHtml(ag.defaultRole)}</div>
+              <div class="agent-task">
+                ${ag.currentTask ? `Attività: <strong>${escapeHtml(ag.currentTask)}</strong>` : 'Nessuna attività in corso'}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 4. Task Kanban
+      const tasksContainer = document.getElementById('tasksList');
+      if (data.tasks && data.tasks.length > 0) {
+        tasksContainer.innerHTML = data.tasks.map(t => {
+          const statoNorm = t.stato || 'SCONOSCIUTO';
+          const badgeClass = 'badge-' + statoNorm.replace(/\s+/g, '-');
+          const mostraStoPer = statoNorm === 'IN CORSO' && t.stoPer;
+          return `
+            <div class="task-card" data-task-id="${escapeHtml(t.id)}">
+              <div class="task-top">
+                <span class="task-id">${escapeHtml(t.id)}</span>
+                <span class="task-badge ${badgeClass}" title="${escapeHtml(t.statoEsteso || t.stato)}">${escapeHtml(statoNorm)}</span>
+              </div>
+              <div class="task-title">${escapeHtml(t.titolo)}</div>
+              <div class="task-meta">
+                <div>Proprietario: <strong>${escapeHtml(t.proprietario)}</strong></div>
+                ${mostraStoPer ? `<div>Sto per: <em>${escapeHtml(t.stoPer)}</em></div>` : ''}
+              </div>
+              ${t.fatti ? `<div class="task-fatti" title="${escapeHtml(t.fatti)}">Fatti: ${escapeHtml(t.fatti)}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+      } else {
+        tasksContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem;">Nessun task in cartella.</div>';
+      }
+
+      // 5. Terminal Logs
+      aggiornaLogs(data.logs);
+    }
+
+    function aggiornaLogs(logsObj) {
+      const tabsContainer = document.getElementById('logTabs');
+      const termBody = document.getElementById('termBody');
+      const linesCount = document.getElementById('logLinesCount');
+
+      if (!logsObj || Object.keys(logsObj).length === 0) {
+        tabsContainer.innerHTML = '<button class="term-tab active">Nessun log</button>';
+        termBody.innerHTML = '<span class="empty-log">Nessun file di log trovato in logs/. Esegui i task con tools/runner.mjs.</span>';
+        linesCount.innerText = '0 righe';
+        return;
+      }
+
+      const taskKeys = Object.keys(logsObj);
+      if (!activeTaskLog || !logsObj[activeTaskLog]) {
+        activeTaskLog = taskKeys[0];
+      }
+
+      tabsContainer.innerHTML = taskKeys.map(k => {
+        const safeK = escapeHtml(k);
+        return `<button class="term-tab ${k === activeTaskLog ? 'active' : ''}" data-task-id="${safeK}">${safeK}</button>`;
+      }).join('');
+
+      const righe = logsObj[activeTaskLog] || [];
+      linesCount.innerText = `${righe.length} righe`;
+
+      if (righe.length === 0) {
+        termBody.innerHTML = '<span class="empty-log">Log vuoto per ' + escapeHtml(activeTaskLog) + '</span>';
+      } else {
+        termBody.innerText = righe.join('\n');
+        if (document.getElementById('autoScroll').checked) {
+          termBody.scrollTop = termBody.scrollHeight;
+        }
+      }
+    }
+
+    function selezionaTaskTab(taskId) {
+      activeTaskLog = taskId;
+      if (stateCache && stateCache.logs) {
+        aggiornaLogs(stateCache.logs);
+      }
+    }
+
+    // Event delegation sicuro per i click su card e tab (elimina XSS da doppio contesto HTML/JS)
+    document.addEventListener('click', (e) => {
+      const target = e.target.closest('[data-task-id]');
+      if (target && target.dataset.taskId) {
+        selezionaTaskTab(target.dataset.taskId);
+      }
+    });
+
+    // Drag & Drop fallback per apertura da file://
+    window.addEventListener('dragover', e => e.preventDefault());
+    window.addEventListener('drop', e => {
+      e.preventDefault();
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        const file = e.dataTransfer.files[0];
+        const reader = new FileReader();
+        reader.onload = evt => {
+          try {
+            const data = JSON.parse(evt.target.result);
+            aggiornaUI(data);
+            document.getElementById('corsBanner').style.display = 'none';
+          } catch (err) {
+            alert('File JSON non valido: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    document.getElementById('btnManualReload').addEventListener('click', caricaStato);
+
+    const btnSelect = document.getElementById('btnSelectFile');
+    const inputSelect = document.getElementById('jsonFileInput');
+    if (btnSelect && inputSelect) {
+      btnSelect.addEventListener('click', () => inputSelect.click());
+      inputSelect.addEventListener('change', e => {
+        if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          const reader = new FileReader();
+          reader.onload = evt => {
+            try {
+              let content = evt.target.result;
+              if (content.startsWith('window.__VIBE_STATE__')) {
+                content = content.replace(/^window\.__VIBE_STATE__\s*=\s*/, '').replace(/;\s*if\s*\(.*$/s, '');
+              }
+              const data = JSON.parse(content);
+              aggiornaUI(data);
+              document.getElementById('corsBanner').style.display = 'none';
+            } catch (err) {
+              alert('Errore lettura file: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+
+    // Se state.js era già stato caricato sincronicamente nel tag <head>
+    if (window.__VIBE_STATE__) {
+      document.getElementById('corsBanner').style.display = 'none';
+      aggiornaUI(window.__VIBE_STATE__);
+    }
+
+    // Avvio e Polling ogni 1.5s
+    caricaStato();
+    setInterval(caricaStato, 1500);
+  </script>
+</body>
+</html>
