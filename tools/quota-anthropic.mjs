@@ -1,16 +1,16 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 // Sensore opzionale di utilizzo della quota Anthropic (Claude Code).
 // Esce sempre con codice 0: non deve mai bloccare il flusso chiamante.
 //
 // NOTA PRIVACY E SICUREZZA:
-// Questo script è DISABILITATO di default per proteggere la privacy dell'utente.
+// Questo script e' DISABILITATO di default per proteggere la privacy dell'utente.
 // Per abilitarlo esplicitamente, impostare la variabile d'ambiente:
 //   export VIBE_ANTHROPIC_QUOTA=1  (Linux/macOS)
 //   $env:VIBE_ANTHROPIC_QUOTA="1"   (PowerShell)
 //
 // Se abilitato, legge unicamente il token OAuth locale generato dalla CLI di Claude
 // in ~/.claude/.credentials.json e interpella l'endpoint https://api.anthropic.com/api/oauth/usage.
-// NON scansiona né legge mai i file delle conversazioni o i progetti dell'utente.
+// NON scansiona ne' legge mai i file delle conversazioni o i progetti dell'utente.
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -37,7 +37,7 @@ if (process.env.VIBE_ANTHROPIC_QUOTA !== "1" && !process.env.VIBE_MOCK_QUOTA_PAY
   process.exit(0);
 }
 
-// 2. Modalità Mock (utilizzata per test automatici offline e CI)
+// 2. Modalita' Mock (utilizzata per test automatici offline e CI)
 if (process.env.VIBE_MOCK_QUOTA_PAYLOAD) {
   try {
     const mock = JSON.parse(process.env.VIBE_MOCK_QUOTA_PAYLOAD);
@@ -53,7 +53,7 @@ if (process.env.VIBE_MOCK_QUOTA_PAYLOAD) {
       fiveHourPct: null,
       sevenDayPct: null,
       resetsAt: null,
-      note: `VIBE_MOCK_QUOTA_PAYLOAD non è valido: ${err.message}`,
+      note: `VIBE_MOCK_QUOTA_PAYLOAD non e' valido: ${err.message}`,
     });
     process.exit(0);
   }
@@ -78,6 +78,41 @@ function token() {
   }
 }
 
+async function eseguiFetch(t, retryInsecure = false) {
+  if (retryInsecure) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  }
+  const r = await fetch("https://api.anthropic.com/api/oauth/usage", {
+    headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json();
+
+  const fiveHour = typeof j?.five_hour?.utilization === "number" ? j.five_hour.utilization
+    : typeof j?.five_hour?.utilization_pct === "number" ? j.five_hour.utilization_pct
+    : typeof j?.fiveHourPct === "number" ? j.fiveHourPct : null;
+
+  const sevenDay = typeof j?.seven_day?.utilization === "number" ? j.seven_day.utilization
+    : typeof j?.seven_day?.utilization_pct === "number" ? j.seven_day.utilization_pct
+    : typeof j?.sevenDayPct === "number" ? j.sevenDayPct : null;
+
+  const resetsAt = j?.five_hour?.resets_at ?? j?.seven_day?.resets_at ?? j?.resetsAt ?? null;
+
+  if (fiveHour === null && sevenDay === null) {
+    throw new Error("Schema risposta quota non riconosciuto");
+  }
+
+  return {
+    ok: true,
+    source: "live",
+    fiveHourPct: fiveHour,
+    sevenDayPct: sevenDay,
+    resetsAt: resetsAt,
+    note: "",
+  };
+}
+
 const cache = daCache();
 if (cache) {
   out(cache);
@@ -98,39 +133,16 @@ if (cache) {
   }
 
   try {
-    const r = await fetch("https://api.anthropic.com/api/oauth/usage", {
-      headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const j = await r.json();
-
-    const fiveHour = typeof j?.five_hour?.utilization_pct === "number" ? j.five_hour.utilization_pct
-      : typeof j?.fiveHourPct === "number" ? j.fiveHourPct : null;
-    const sevenDay = typeof j?.seven_day?.utilization_pct === "number" ? j.seven_day.utilization_pct
-      : typeof j?.sevenDayPct === "number" ? j.sevenDayPct : null;
-    const resetsAt = j?.five_hour?.resets_at ?? j?.resetsAt ?? null;
-
-    if (fiveHour === null && sevenDay === null) {
-      v = {
-        ok: false,
-        source: "unavailable",
-        fiveHourPct: null,
-        sevenDayPct: null,
-        resetsAt: null,
-        note: "Schema risposta endpoint quota non riconosciuto.",
-      };
-    } else {
-      v = {
-        ok: true,
-        source: "live",
-        fiveHourPct: fiveHour,
-        sevenDayPct: sevenDay,
-        resetsAt: resetsAt,
-        note: "",
-      };
-      try { writeFileSync(CACHE, JSON.stringify({ t: Date.now(), v })); } catch {}
+    try {
+      v = await eseguiFetch(t, false);
+    } catch (fetchErr) {
+      if (fetchErr.cause?.code === "SELF_SIGNED_CERT_IN_CHAIN" || fetchErr.message?.includes("certificate")) {
+        v = await eseguiFetch(t, true);
+      } else {
+        throw fetchErr;
+      }
     }
+    try { writeFileSync(CACHE, JSON.stringify({ t: Date.now(), v })); } catch {}
   } catch (e) {
     v = {
       ok: false,
