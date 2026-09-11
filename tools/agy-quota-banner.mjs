@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // PreInvocation: inietta ad ogni turno il promemoria del protocollo multi-agente e il semaforo di quota se pertinente.
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
 let grezzo = ""; for await (const c of process.stdin) grezzo += c;
 const esci = (o) => { process.stdout.write(JSON.stringify(o)); process.exit(0); };
@@ -11,7 +14,7 @@ try { p = JSON.parse(grezzo); } catch { p = {}; }
 
 let q = { ok: false, source: "unknown" };
 try {
-  q = JSON.parse(execFileSync(process.execPath, [join(import.meta.dirname, "quota-anthropic.mjs")], { encoding: "utf8", timeout: 8000 }));
+  q = JSON.parse(execFileSync(process.execPath, [join(__dirname, "quota-anthropic.mjs")], { encoding: "utf8", timeout: 8000 }));
 } catch {}
 
 const five = q?.fiveHourPct ?? 0;
@@ -42,7 +45,8 @@ if (q.ok && q.source !== "unknown") {
   messaggioQuota = ` [QUOTA ANTHROPIC] Stato quota non determinabile (fonte: ${q.source}). Procedi con cautela.`;
 }
 
-const promemoriaRuolo = `[PROTOCOLLO MULTI-AGENTE ATTIVO] Sei il Coordinatore/Dispatcher & Integratore. Per QUALSIASI nuova richiesta dell'utente (bugfix, nuove feature, refactor, manutenzione): NON implementare direttamente i file applicativi! Crea/aggiorna prima il task in .coord/tasks/, aggiorna CURRENT_SPRINT.md e instrada all'esecutore appropriato secondo AGENTS.md e DISPATCH.md.`;
+const dirCoord = process.env.DIR_COORD || ".coord";
+const promemoriaRuolo = `[PROTOCOLLO MULTI-AGENTE ATTIVO] Sei il Coordinatore/Dispatcher & Integratore. Per QUALSIASI nuova richiesta dell'utente (bugfix, nuove feature, refactor, manutenzione): NON implementare direttamente i file applicativi! Crea/aggiorna prima il task in ${dirCoord}/tasks/, aggiorna ${dirCoord}/CURRENT_SPRINT.md e instrada all'esecutore appropriato secondo AGENTS.md e ${dirCoord}/DISPATCH.md.`;
 
 esci({
   injectSteps: [

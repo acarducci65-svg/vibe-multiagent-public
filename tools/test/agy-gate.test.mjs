@@ -1,9 +1,13 @@
 import { execFileSync } from "node:child_process";
 import { strict as assert } from "node:assert";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+
+const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
 const gate = (toolCall, workspacePaths = ["C:/dev/progetto"]) =>
   JSON.parse(execFileSync("node", ["../agy-gate.mjs"], {
-    cwd: import.meta.dirname, encoding: "utf8",
+    cwd: __dirname, encoding: "utf8",
     input: JSON.stringify({ toolCall, workspacePaths, stepIdx: 1, conversationId: "t" }),
   }));
 
@@ -23,6 +27,6 @@ for (const [tc, atteso] of casi) {
   assert.equal(r.decision, atteso, `${tc.args?.CommandLine ?? tc.name} → atteso ${atteso}, ottenuto ${r.decision} (${r.reason})`);
 }
 // stdin malformato non deve mai bloccare l'agente
-assert.equal(JSON.parse(execFileSync("node", ["../agy-gate.mjs"], { cwd: import.meta.dirname, encoding: "utf8", input: "non-json" })).decision, "allow");
+assert.equal(JSON.parse(execFileSync("node", ["../agy-gate.mjs"], { cwd: __dirname, encoding: "utf8", input: "non-json" })).decision, "allow");
 
 console.log(`agy-gate: ${casi.length + 1} collaudi superati`);

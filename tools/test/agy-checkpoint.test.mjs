@@ -1,16 +1,19 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { strict as assert } from "node:assert";
+
+const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
 const radice = join(tmpdir(), "chk-" + Date.now());
 mkdirSync(join(radice, ".coord", "tasks"), { recursive: true });
 const task = join(radice, ".coord", "tasks", "T-999.md");
-writeFileSync(task, readFileSync(join(import.meta.dirname, "fixtures", "T-999.md"), "utf8"));
+writeFileSync(task, readFileSync(join(__dirname, "fixtures", "T-999.md"), "utf8"));
 
 const esegui = () => execFileSync("node", ["../agy-checkpoint.mjs"], {
-  cwd: import.meta.dirname, encoding: "utf8",
+  cwd: __dirname, encoding: "utf8",
   input: JSON.stringify({ stepIdx: 3, workspacePaths: [radice] }),
 });
 

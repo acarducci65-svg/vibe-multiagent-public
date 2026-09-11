@@ -2,7 +2,10 @@
 // Motore di telemetria: scansiona .coord/ e genera .coord/state.json per la Control Room Dashboard.
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync, mkdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join, resolve, isAbsolute } from "node:path";
+import { join, resolve, isAbsolute, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
 export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
   const coordNome = customCoord ?? process.env.DIR_COORD ?? ".coord";
@@ -179,7 +182,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
   // 5. Quota Anthropic se disponibile
   let quota = { ok: false, source: "unknown", fiveHourPct: null, sevenDayPct: null, resetsAt: null };
   try {
-    const scriptQuota = join(import.meta.dirname, "quota-anthropic.mjs");
+    const scriptQuota = join(__dirname, "quota-anthropic.mjs");
     if (existsSync(scriptQuota)) {
       quota = JSON.parse(execFileSync(process.execPath, [scriptQuota], { encoding: "utf8", timeout: 4000 }));
     }
@@ -208,7 +211,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 }
 
 // Se invocato direttamente da CLI
-if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   const customIdx = process.argv.indexOf("--coord");
   const customCoord = customIdx !== -1 && process.argv[customIdx + 1] ? process.argv[customIdx + 1] : null;
   const res = raccogliTelemetria(process.cwd(), customCoord);

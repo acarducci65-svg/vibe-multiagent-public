@@ -1,8 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { strict as assert } from "node:assert";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+
+const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
 const r = JSON.parse(execFileSync("node", ["../agy-quota-banner.mjs"], {
-  cwd: import.meta.dirname, encoding: "utf8",
+  cwd: __dirname, encoding: "utf8",
   input: JSON.stringify({ invocationNum: 1, initialNumSteps: 5, workspacePaths: ["C:/dev/x"] }),
 }));
 

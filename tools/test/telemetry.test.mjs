@@ -83,7 +83,7 @@ assert.equal(saved.milestone.titolo, "Sprint 1 — Setup e Core");
 rmSync(testDir, { recursive: true, force: true });
 
 // =========================================================================
-// TEST REALI (da 730Cardu e riscontri campo)
+// TEST SU CASI REALI DI PRODUZIONE (casi complessi e formattazione mista)
 // =========================================================================
 const testDir2 = join(tmpdir(), "telemetry-real-test-" + Date.now());
 const coordDir2 = join(testDir2, ".coord");
@@ -137,7 +137,7 @@ const agClaude4 = res4.agents.find(a => a.name === "Claude Code");
 assert.equal(agClaude4.status, "running", "Claude Code deve essere running");
 assert.equal(agClaude4.currentTask, "T-037");
 
-// Verifica formattazione Markdown (es. waichat con **Stato**: INTEGRATO e **Proprietario**: ...)
+// Verifica formattazione Markdown (con **Stato**: INTEGRATO e - **Proprietario**:)
 writeFileSync(join(tasksDir2, "T-038.md"), `# T-038\n**Stato**: INTEGRATO\n**Proprietario**: Antigravity (AGY)\n`);
 writeFileSync(join(tasksDir2, "T-039.md"), `# T-039\n- **Stato**: INTEGRATO\n- **Proprietario**: Codex CLI\n`);
 const res5 = raccogliTelemetria(testDir2);
@@ -148,4 +148,4 @@ const t39 = res5.tasks.find(t => t.id === "T-039");
 assert.equal(t39.stato, "INTEGRATO", "Deve gestire - **Stato**: INTEGRATO");
 
 rmSync(testDir2, { recursive: true, force: true });
-console.log("telemetry: collaudi superati con successo (inclusi casi reali 730Cardu e waichat)");
+console.log("telemetry: collaudi superati con successo (inclusi casi reali complessi e formattazione mista)");

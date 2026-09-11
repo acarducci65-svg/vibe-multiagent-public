@@ -17,7 +17,10 @@ function analizzaArgomenti(argv) {
   let opzioni = args;
   if (doppioTrattino !== -1) {
     opzioni = args.slice(0, doppioTrattino);
-    cmd = args.slice(doppioTrattino + 1).join(" ");
+    const cmdTokens = args.slice(doppioTrattino + 1);
+    cmd = cmdTokens
+      .map((tok) => (/[\s"']/.test(tok) ? `"${tok.replace(/"/g, '\\"')}"` : tok))
+      .join(" ");
   }
 
   for (let i = 0; i < opzioni.length; i++) {

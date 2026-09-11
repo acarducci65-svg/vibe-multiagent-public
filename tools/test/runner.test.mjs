@@ -1,15 +1,18 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { writeFileSync, mkdirSync, rmSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { strict as assert } from "node:assert";
+
+const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
 const testDir = join(tmpdir(), "runner-test-" + Date.now());
 const coordDir = join(testDir, ".coord");
 mkdirSync(coordDir, { recursive: true });
 
 // 1. Esecuzione normale di successo
-const runnerScript = join(import.meta.dirname, "..", "runner.mjs");
+const runnerScript = join(__dirname, "..", "runner.mjs");
 const cmdSuccess = process.platform === "win32"
   ? 'node -e "console.log(\'output stdout\'); console.error(\'errore stderr\');"'
   : "node -e 'console.log(\"output stdout\"); console.error(\"errore stderr\");'";
