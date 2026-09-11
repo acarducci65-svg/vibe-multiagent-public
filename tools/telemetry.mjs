@@ -20,7 +20,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
       const txt = readFileSync(pathSprint, "utf8");
       const mTitolo = txt.match(/^#\s+(.+)$/m);
       if (mTitolo) milestone.titolo = mTitolo[1].trim();
-      const mStato = txt.match(/Stato:\s*(.+)$/m);
+      const mStato = txt.match(/^[\s*-]*\**Stato[\*:]*\s*:?\s*([^\r\n]+)/im);
       if (mStato) milestone.stato = mStato[1].replace(/\*\*/g, "").trim();
     } catch {}
   }
@@ -40,13 +40,13 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           const raw = readFileSync(fullPath, "utf8");
           const id = f.replace(/\.md$/, "");
           const mTitolo = raw.match(/^#\s+([^\r\n]+)/m);
-          const mStato = raw.match(/^Stato:\s*([^\r\n]+)/m);
-          const mProprietario = raw.match(/^Proprietario:\s*([^\r\n]+)/m);
+          const mStato = raw.match(/^[\s*-]*\**Stato[\*:]*\s*:?\s*([^\r\n]+)/im);
+          const mProprietario = raw.match(/^[\s*-]*\**Proprietario[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mFile = raw.match(/## File riservati\s+([\s\S]*?)(?=##|$)/m);
-          const mStoPer = raw.match(/^- Sto per:\s*([^\r\n]+)/m);
-          const mFatti = raw.match(/^- Fatti:\s*([^\r\n]+)/m);
+          const mStoPer = raw.match(/^[\s*-]*\**Sto per[\*:]*\s*:?\s*([^\r\n]+)/im);
+          const mFatti = raw.match(/^[\s*-]*\**Fatti[\*:]*\s*:?\s*([^\r\n]+)/im);
 
-          const statoRaw = mStato ? mStato[1].trim() : "PRONTO";
+          const statoRaw = (mStato ? mStato[1].trim() : "PRONTO").replace(/\*\*/g, "").trim();
           const mMatchStato = statoRaw.match(/^(PRONTO|IN CORSO|CONSEGNATO|INTEGRATO|SOSPESO|CHIUSO)\b/i);
           const stato = mMatchStato ? mMatchStato[1].toUpperCase() : (statoRaw ? "SCONOSCIUTO" : "PRONTO");
           const statoEsteso = statoRaw;
@@ -54,15 +54,17 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           if (stato === "INTEGRATO" || stato === "CHIUSO") completatiCount++;
           if (stato === "IN CORSO") inCorsoCount++;
 
+          const proprietario = (mProprietario ? mProprietario[1].trim() : "Non assegnato").replace(/\*\*/g, "").trim();
+
           tasks.push({
             id,
             titolo: mTitolo ? mTitolo[1].trim() : id,
             stato,
             statoEsteso,
-            proprietario: mProprietario ? mProprietario[1].trim() : "Non assegnato",
+            proprietario,
             fileRiservati: mFile ? mFile[1].trim().split("\n").map((l) => l.replace(/^[-*]\s*/, "").trim()).filter(Boolean) : [],
-            stoPer: mStoPer ? mStoPer[1].trim() : "",
-            fatti: mFatti ? mFatti[1].trim() : "",
+            stoPer: mStoPer ? mStoPer[1].trim().replace(/\*\*/g, "") : "",
+            fatti: mFatti ? mFatti[1].trim().replace(/\*\*/g, "") : "",
           });
         } catch {}
       }

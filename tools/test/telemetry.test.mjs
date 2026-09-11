@@ -137,5 +137,15 @@ const agClaude4 = res4.agents.find(a => a.name === "Claude Code");
 assert.equal(agClaude4.status, "running", "Claude Code deve essere running");
 assert.equal(agClaude4.currentTask, "T-037");
 
+// Verifica formattazione Markdown (es. waichat con **Stato**: INTEGRATO e **Proprietario**: ...)
+writeFileSync(join(tasksDir2, "T-038.md"), `# T-038\n**Stato**: INTEGRATO\n**Proprietario**: Antigravity (AGY)\n`);
+writeFileSync(join(tasksDir2, "T-039.md"), `# T-039\n- **Stato**: INTEGRATO\n- **Proprietario**: Codex CLI\n`);
+const res5 = raccogliTelemetria(testDir2);
+const t38 = res5.tasks.find(t => t.id === "T-038");
+assert.equal(t38.stato, "INTEGRATO", "Deve gestire **Stato**: INTEGRATO");
+assert.equal(t38.proprietario, "Antigravity (AGY)", "Deve pulire gli asterischi dal proprietario");
+const t39 = res5.tasks.find(t => t.id === "T-039");
+assert.equal(t39.stato, "INTEGRATO", "Deve gestire - **Stato**: INTEGRATO");
+
 rmSync(testDir2, { recursive: true, force: true });
-console.log("telemetry: collaudi superati con successo (inclusi casi reali 730Cardu)");
+console.log("telemetry: collaudi superati con successo (inclusi casi reali 730Cardu e waichat)");
