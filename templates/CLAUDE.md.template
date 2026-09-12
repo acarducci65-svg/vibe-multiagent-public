@@ -1,0 +1,17 @@
+﻿# Istruzioni Operative per Claude Code CLI
+
+Questo repository e' coordinato dal framework multi-agente (`{{DIR_COORD}}/`).
+
+## Regole di Esecuzione Task
+1. Prima di iniziare a lavorare su un task, leggi il file assegnato in `{{DIR_COORD}}/tasks/<ID_TASK>.md` e `AGENTS.md`.
+2. Quando modifichi lo stato del task (portandolo a `IN CORSO` o a `CONSEGNATO`):
+   - Compila sempre `## Punto di ripresa` con le azioni pianificate ed eseguite.
+   - **Esegui subito il comando di telemetria per sincronizzare la Control Room / Dashboard**:
+     ```bash
+     node {{DIR_COORD}}/tools/telemetry.mjs
+     ```
+3. Rispetta rigorosamente i `File riservati` dichiarati nel task e non modificare file assegnati ad altri esecutori.
+4. Quando completi il lavoro e i test passano:
+   - Compila l'handover in `{{DIR_COORD}}/handover/<ID_TASK>.md`.
+   - Imposta lo `Stato: CONSEGNATO` in `{{DIR_COORD}}/tasks/<ID_TASK>.md`.
+   - Esegui di nuovo `node {{DIR_COORD}}/tools/telemetry.mjs` per notificare all'Integratore che il task e' pronto per la revisione.

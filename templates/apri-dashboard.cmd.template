@@ -1,0 +1,8 @@
+﻿@echo off
+chcp 65001 > nul
+echo Avvio del watcher telemetrico per la Control Room...
+start "Vibe Telemetry Watcher" /B node "%~dp0tools\telemetry.mjs" --watch
+timeout /t 1 /nobreak > nul
+echo Apertura Dashboard nel browser...
+start "" "%~dp0dashboard.html"
+echo Dashboard aperta con successo. Il watcher e' attivo in background.

@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { raccogliTelemetria } from "./telemetry.mjs";
 
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
@@ -11,6 +12,11 @@ const esci = (o) => { process.stdout.write(JSON.stringify(o)); process.exit(0); 
 
 let p;
 try { p = JSON.parse(grezzo); } catch { p = {}; }
+
+const radice = (p.workspacePaths ?? [])[0] ?? process.cwd();
+try {
+  raccogliTelemetria(radice, process.env.DIR_COORD || ".coord");
+} catch {}
 
 let q = { ok: false, source: "unknown" };
 try {

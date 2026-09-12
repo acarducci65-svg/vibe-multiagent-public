@@ -332,6 +332,8 @@ Ogni template ha una sola destinazione. `{{DIR_COORD}}` è il valore deciso in D
 | `TASK.md.template` | `{{DIR_COORD}}/tasks/<ID_TASK>.md` | Un file per task, alla creazione del task. |
 | `HANDOVER.md.template` | `{{DIR_COORD}}/handover/<ID_TASK>.md` | Alla consegna di un task da parte del suo proprietario. |
 | `dashboard.html.template` | `{{DIR_COORD}}/dashboard.html` | Sempre. Control Room visiva interattiva per monitoraggio flotta, quote e log streaming. |
+| `CLAUDE.md.template` | `CLAUDE.md` nella radice del repository | Quando tra gli agenti è presente Claude Code CLI: istruzioni operative e sincronizzazione telemetria. |
+| `apri-dashboard.cmd.template` | `{{DIR_COORD}}/apri-dashboard.cmd` | Su ambienti Windows: avviatore one-click che avvia il watcher in background e apre la Control Room. |
 | `DISPATCH.md.template` | `{{DIR_COORD}}/DISPATCH.md` | **Solo Ambiente B.** |
 | `hooks.json.template` | `.agents/hooks.json` nella radice del repository | **Solo Ambiente B.** Se il file esiste già, aggiungi la chiave `protocollo-multi-agente` senza toccare le altre: gli hook con nomi diversi si fondono. |
 | `multiagent-rule.md.template` | `.agents/rules/multiagent-coordinator.md` nella radice del repository | **Solo Ambiente B.** Regola permanente di workspace che mantiene il modello nel ruolo di Coordinatore/Integratore ad ogni interazione. |
