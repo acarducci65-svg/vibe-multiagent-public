@@ -241,7 +241,17 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     try {
       const scriptQuota = join(__dirname, "quota-anthropic.mjs");
       if (existsSync(scriptQuota)) {
-        quota = JSON.parse(execFileSync(process.execPath, [scriptQuota], { encoding: "utf8", timeout: 4000 }));
+        const major = parseInt(process.versions.node.split(".")[0], 10);
+        const minor = parseInt(process.versions.node.split(".")[1], 10);
+        const usaSystemCa = major > 22 || (major === 22 && minor >= 15);
+        const execArgs = usaSystemCa ? ["--use-system-ca", scriptQuota] : [scriptQuota];
+        quota = JSON.parse(
+          execFileSync(process.execPath, execArgs, {
+            encoding: "utf8",
+            timeout: 8000,
+            env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "1" },
+          })
+        );
       }
     } catch {}
   }

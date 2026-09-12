@@ -10,7 +10,7 @@ const esegui = (env = {}) =>
     execFileSync("node", ["../quota-anthropic.mjs"], {
       cwd: __dirname,
       encoding: "utf8",
-      env: { ...process.env, ...env },
+      env: { ...process.env, VIBE_NO_CACHE: "1", ...env },
     })
   );
 
@@ -59,4 +59,24 @@ const arrayRun = esegui({ VIBE_MOCK_QUOTA_PAYLOAD: JSON.stringify([1, 2, 3]) });
 assert.equal(arrayRun.ok, false);
 assert.equal(arrayRun.source, "error");
 
-console.log("quota-anthropic: 6 collaudi superati (100% deterministici e offline)");
+// 5. Verifica degradazione sicura in caso di assenza credenziali
+assert.equal(noCredsRun.ok, false);
+assert.equal(noCredsRun.source, "unavailable");
+assert.match(noCredsRun.note, /token|credentials/i);
+
+// 6. Verifica statica di sicurezza: divieto assoluto di disattivazione TLS
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+const scriptContent = readFileSync(join(__dirname, "../quota-anthropic.mjs"), "utf8");
+assert.equal(
+  scriptContent.includes("NODE_TLS_REJECT_UNAUTHORIZED"),
+  false,
+  "quota-anthropic.mjs non deve contenere NODE_TLS_REJECT_UNAUTHORIZED"
+);
+assert.equal(
+  scriptContent.includes("retryInsecure"),
+  false,
+  "quota-anthropic.mjs non deve contenere retryInsecure"
+);
+
+console.log("quota-anthropic: 9 collaudi superati (100% deterministici, offline e verificati per sicurezza TLS)");

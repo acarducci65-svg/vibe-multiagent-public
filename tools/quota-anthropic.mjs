@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 // Sensore opzionale di utilizzo della quota Anthropic (Claude Code).
 // Esce sempre con codice 0: non deve mai bloccare il flusso chiamante.
 //
@@ -11,6 +11,8 @@
 // Se abilitato, legge unicamente il token OAuth locale generato dalla CLI di Claude
 // in ~/.claude/.credentials.json e interpella l'endpoint https://api.anthropic.com/api/oauth/usage.
 // NON scansiona ne' legge mai i file delle conversazioni o i progetti dell'utente.
+// La connessione HTTPS viene sempre rigorosamente verificata; nessun token viene mai
+// inviato su canali con certificato non verificabile o insicuro.
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -60,6 +62,7 @@ if (process.env.VIBE_MOCK_QUOTA_PAYLOAD) {
 }
 
 function daCache() {
+  if (process.env.VIBE_NO_CACHE) return null;
   try {
     const c = JSON.parse(readFileSync(CACHE, "utf8"));
     if (Date.now() - c.t < TTL_MS) return { ...c.v, source: "cache" };
@@ -78,10 +81,27 @@ function token() {
   }
 }
 
-async function eseguiFetch(t, retryInsecure = false) {
-  if (retryInsecure) {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+const TLS_CERT_ERROR_CODES = new Set([
+  "SELF_SIGNED_CERT_IN_CHAIN",
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "CERT_HAS_EXPIRED",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "ERR_TLS_CERT_ALTNAME_INVALID",
+]);
+
+function estraiCodiceCertificato(err) {
+  let curr = err;
+  while (curr) {
+    if (curr.code && TLS_CERT_ERROR_CODES.has(curr.code)) {
+      return curr.code;
+    }
+    curr = curr.cause;
   }
+  return null;
+}
+
+async function eseguiFetch(t) {
   const r = await fetch("https://api.anthropic.com/api/oauth/usage", {
     headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" },
     signal: AbortSignal.timeout(5000),
@@ -133,25 +153,31 @@ if (cache) {
   }
 
   try {
-    try {
-      v = await eseguiFetch(t, false);
-    } catch (fetchErr) {
-      if (fetchErr.cause?.code === "SELF_SIGNED_CERT_IN_CHAIN" || fetchErr.message?.includes("certificate")) {
-        v = await eseguiFetch(t, true);
-      } else {
-        throw fetchErr;
-      }
+    v = await eseguiFetch(t);
+    if (v.ok) {
+      try { writeFileSync(CACHE, JSON.stringify({ t: Date.now(), v })); } catch {}
     }
-    try { writeFileSync(CACHE, JSON.stringify({ t: Date.now(), v })); } catch {}
   } catch (e) {
-    v = {
-      ok: false,
-      source: "unavailable",
-      fiveHourPct: null,
-      sevenDayPct: null,
-      resetsAt: null,
-      note: "Endpoint quota non raggiungibile (" + String(e.message) + ").",
-    };
+    const certCode = estraiCodiceCertificato(e);
+    if (certCode) {
+      v = {
+        ok: false,
+        source: "unavailable",
+        fiveHourPct: null,
+        sevenDayPct: null,
+        resetsAt: null,
+        note: `Certificato TLS non verificabile (${certCode}). Per autorizzare la CA di rete imposta NODE_EXTRA_CA_CERTS=/path/ca.pem oppure usa il flag --use-system-ca di Node.`,
+      };
+    } else {
+      v = {
+        ok: false,
+        source: "unavailable",
+        fiveHourPct: null,
+        sevenDayPct: null,
+        resetsAt: null,
+        note: "Endpoint quota non raggiungibile (" + String(e.message) + ").",
+      };
+    }
   }
   out(v);
 }

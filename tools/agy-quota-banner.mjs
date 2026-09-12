@@ -20,7 +20,17 @@ try {
 
 let q = { ok: false, source: "unknown" };
 try {
-  q = JSON.parse(execFileSync(process.execPath, [join(__dirname, "quota-anthropic.mjs")], { encoding: "utf8", timeout: 8000 }));
+  const major = parseInt(process.versions.node.split(".")[0], 10);
+  const minor = parseInt(process.versions.node.split(".")[1], 10);
+  const usaSystemCa = major > 22 || (major === 22 && minor >= 15);
+  const execArgs = usaSystemCa ? ["--use-system-ca", join(__dirname, "quota-anthropic.mjs")] : [join(__dirname, "quota-anthropic.mjs")];
+  q = JSON.parse(
+    execFileSync(process.execPath, execArgs, {
+      encoding: "utf8",
+      timeout: 8000,
+      env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "1" },
+    })
+  );
 } catch {}
 
 const five = q?.fiveHourPct ?? 0;
