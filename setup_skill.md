@@ -177,8 +177,9 @@ Le estensioni VS Code di Claude Code e Codex **non sono su OpenVSX**, che è il 
 
 **Claude Code (come esecutore):**
 ```bash
-claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json
+claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md. Scrivi tassativamente i deliverable sui file assegnati e l'handover in {{DIR_COORD}}/handover/<ID>.md come ultima tool call prima di terminare." --output-format json
 ```
+*Nota*: Non chiedere mai a Claude headless di "rispondere in markdown a video" (su stdout). Claude emette l'output su stdout solo alla fine dell'intera sessione: un task di audit o codice richiede 15-30 tool call (3-8 minuti); se la sessione viene interrotta prematuramente a 90s, l'output va perso e la quota Anthropic è sprecata. Imponi sempre la scrittura diretta su file e applica la **Regola Anti-Thrashing** (mai rilanciare in loop compulsivo o accorciare il prompt).
 
 **AGY CLI (come esecutore):**
 ```bash
@@ -223,7 +224,7 @@ Nell'Ambiente B, AGY è sia il dispatcher che l'integratore: assegna, lancia, so
 
 | Esecutore | Comando (via `run_command`) | Monitoraggio | Quota consumata |
 |---|---|---|---|
-| Claude CLI | `claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md." --output-format json` | `manage_task` con `status` e `kill` | Anthropic |
+| Claude CLI | `claude -p "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md. Scrivi tassativamente i deliverable sui file assegnati e l'handover in {{DIR_COORD}}/handover/<ID>.md prima di terminare." --output-format json` | `manage_task` con `status` e `kill` | Anthropic |
 | Codex CLI | `codex exec -m <MODELLO> --sandbox workspace-write "Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md. Sei in headless: procedi senza chiedere conferme."` | `manage_task` con `status` e `kill` | OpenAI |
 | Esecutore AGY | `invoke_subagent` con `TypeName: self` | `manage_subagents` e `send_message` | Google (la propria) |
 

@@ -33,7 +33,7 @@ Per consentire al Direttore e a te di vedere l'output in tempo reale nella **Con
 
 | Esecutore | Comando standard (tramite runner) | Quota consumata | Note operative essenziali |
 |---|---|---|---|
-| Claude Code | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "claude -p 'Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md.' --output-format json"` | Anthropic | Output strutturato JSON e log in `{{DIR_COORD}}/logs/<ID>.log` |
+| Claude Code | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "claude -p 'Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md. Scrivi tassativamente i deliverable sui file assegnati e l\'handover in {{DIR_COORD}}/handover/<ID>.md come ultima tool call prima di terminare.' --output-format json"` | Anthropic | Output strutturato JSON, deliverable su file e log in `{{DIR_COORD}}/logs/<ID>.log` |
 | Codex CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "codex exec -m <MODELLO> --sandbox workspace-write 'Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Sei in modalità headless non-interattiva: procedi con implementazione e test senza chiedere conferme.'"` | OpenAI | Forza `-m` esplicito e autorizzazione headless |
 | AGY CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "agy -p 'Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui SOLO le verifiche richieste; non eseguire comandi shell o test non dichiarati. La scrittura dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call prima di terminare.' --add-dir <percorso>"` | Google | Pre-approvare i comandi esatti in `settings.json` (modello verificabile con `agy models`) |
 | Sotto-agente AGY | `invoke_subagent` con `TypeName: self` | Google | Gestito internamente |
@@ -122,3 +122,16 @@ Non fidarti del solo codice di uscita (lezione da casi reali sul campo):
 - **Diagnosi comandi negati (confermata sul campo)**: se AGY esce con codice 0 ma con errore `"jetski: no output produced"` senza indicare il comando negato, ispeziona il transcript locale in:
   `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`
   nel blocco `PLANNER_RESPONSE` prima del rifiuto per risalire al comando o file esatto in 1 minuto.
+
+### Specifiche per Claude Code CLI
+- **Deliverable tassativamente su disco (File-First)**: non chiedere mai a Claude Code headless di "rispondere in markdown a video" o di emettere il report finale solo su stdout. `claude -p` emette il payload su stdout solo al termine dell'intera sequenza di tool call. Se la sessione viene interrotta o scade, l'intero lavoro di esplorazione va perso e i token sono bruciati a vuoto. Imponi sempre nel prompt di scrivere i risultati direttamente nei file riservati o in `{{DIR_COORD}}/handover/<ID>.md`.
+- **Timeout e tempi di esecuzione realistici**: un task di analisi complessa, RAG o refactoring richiede fisiologicamente 15-30 tool call (Bash, lettura, editing) e necessita di 3-8 minuti. È vietato interrompere prematuramente la sessione (`kill` a 90-120 secondi) se il processo è attivo e sta lavorando.
+- **Incanalamento nel Runner e ispezione live**: lancia sempre Claude tramite `runner.mjs`. Questo genera `{{DIR_COORD}}/logs/<ID>.log` in tempo reale: prima di qualsiasi decisione di `kill`, ispeziona le ultime righe del file di log per verificare se Claude sta procedendo.
+
+### Regola Anti-Thrashing (Divieto di Retry a Raffica)
+- **Nessun loop compulsivo ("Prompt Shrinking")**: se una sessione headless si interrompe o non produce il file atteso, il Dispatcher **non deve MAI** rilanciare lo stesso task a raffica, né tantomeno accorciare progressivamente il prompt tentando di forzare una risposta rapida.
+- **Protocollo obbligatorio di recupero**:
+  1. Controlla prima il log (`{{DIR_COORD}}/logs/<ID>.log`) e lo stato dei file su disco: un agente può aver già completato il 90% dell'attività.
+  2. Se la sessione si è interrotta per timeout mentre stava eseguendo tool call, rilancia concedendo una finestra temporale adeguata (almeno 5-10 minuti), ribadendo la scrittura immediata dei deliverable su file.
+  3. Se il fallimento persiste per 2 volte consecutive, **fermati**: porta il task a `SOSPESO`, trascrivi l'errore per intero nel task e riferisci al Direttore prima di consumare ulteriore quota.
+
