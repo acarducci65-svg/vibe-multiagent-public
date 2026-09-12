@@ -288,8 +288,10 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import
   const aggiorna = () => {
     const res = raccogliTelemetria(process.cwd(), customCoord);
     if (res) {
-      const runningAgent = res.agents?.find((a) => a.status === "running");
-      const runningInfo = runningAgent ? ` (${runningAgent.name}: ${runningAgent.currentTask})` : "";
+      const runningAgents = res.agents?.filter((a) => a.status === "running") || [];
+      const runningInfo = runningAgents.length > 0
+        ? ` (${runningAgents.map((a) => `${a.name}: ${a.currentTask}`).join(", ")})`
+        : "";
       return { ok: true, updatedAt: res.updatedAt, tasksCount: res.tasks.length, runningInfo };
     }
     return { ok: false, error: "Cartella coordinamento non trovata" };
