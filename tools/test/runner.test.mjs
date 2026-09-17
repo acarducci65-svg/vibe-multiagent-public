@@ -7,11 +7,62 @@ import { strict as assert } from "node:assert";
 
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
+// 1. Test unitari di formattaRigaNdjson
+const { formattaRigaNdjson, creaGestoreStream } = await import("../runner.mjs");
+
+// Linea testo normale non JSON
+assert.equal(formattaRigaNdjson("testo normale\r"), "testo normale\n");
+
+// Evento tool_use
+const evTool = JSON.stringify({
+  type: "assistant",
+  message: {
+    content: [{ type: "tool_use", name: "Bash", input: { command: "npm test" } }]
+  }
+});
+assert.match(formattaRigaNdjson(evTool), /\[Claude\] 🔧 Tool: Bash -> npm test/);
+
+// Evento text
+const evText = JSON.stringify({
+  type: "assistant",
+  message: {
+    content: [{ type: "text", text: "Sto completando il task" }]
+  }
+});
+assert.match(formattaRigaNdjson(evText), /\[Claude\] 💬 Sto completando il task/);
+
+// Evento tool_result
+const evRes = JSON.stringify({
+  type: "user",
+  message: {
+    content: [{ type: "tool_result", content: "Test passati con successo\nSeconda riga", is_error: false }]
+  }
+});
+assert.match(formattaRigaNdjson(evRes), /\[Claude\] 📄 Esito: Test passati con successo \(\+ 1 righe\)/);
+
+// Evento result
+const evDone = JSON.stringify({
+  type: "result",
+  result: "Task completato",
+  duration_ms: 5400,
+  total_cost_usd: 0.042
+});
+assert.match(formattaRigaNdjson(evDone), /\[Claude\] ✅ Completato \(durata: 5.4s, costo: \$0.0420\): Task completato/);
+
+// Gestore stream con chunk parziali
+let catturato = "";
+const gestore = creaGestoreStream((chunk) => { catturato += chunk; });
+gestore.scrivi(evTool.slice(0, 20));
+assert.equal(catturato, "", "Non deve emettere prima del termine riga");
+gestore.scrivi(evTool.slice(20) + "\n");
+assert.match(catturato, /\[Claude\] 🔧 Tool: Bash -> npm test/);
+gestore.chiudi();
+
+// 2. Collaudo end-to-end con runnerScript
 const testDir = join(tmpdir(), "runner-test-" + Date.now());
 const coordDir = join(testDir, ".coord");
 mkdirSync(coordDir, { recursive: true });
 
-// 1. Esecuzione normale di successo
 const runnerScript = join(__dirname, "..", "runner.mjs");
 const cmdSuccess = process.platform === "win32"
   ? 'node -e "console.log(\'output stdout\'); console.error(\'errore stderr\');"'
@@ -36,13 +87,34 @@ assert.match(logContent, /output stdout/);
 assert.match(logContent, /errore stderr/);
 assert.match(logContent, /Fine esecuzione task T-042 \(exit code: 0\)/);
 
+// 3. Collaudo end-to-end con emissione Claude stream-json simulata
+const cmdStreamJson = 'node -e "' +
+  'console.log(JSON.stringify({type:\\"assistant\\",message:{content:[{type:\\"tool_use\\",name:\\"Bash\\",input:{command:\\"npm run build\\"}}]} })); ' +
+  'console.log(JSON.stringify({type:\\"result\\",result:\\"Build OK\\",duration_ms:2000,total_cost_usd:0.01}));' +
+  '"';
+
+const rStream = spawnSync(process.execPath, [
+  runnerScript,
+  "--task", "T-STREAM",
+  "--coord", coordDir,
+  "--cmd", cmdStreamJson
+], { cwd: testDir, encoding: "utf8" });
+
+assert.equal(rStream.status, 0, "Runner stream deve uscire con codice 0");
+const logStreamFile = join(coordDir, "logs", "T-STREAM.log");
+assert.ok(existsSync(logStreamFile), "Il file T-STREAM.log deve esistere");
+const logStreamContent = readFileSync(logStreamFile, "utf8");
+assert.match(logStreamContent, /\[Claude\] 🔧 Tool: Bash -> npm run build/);
+assert.match(logStreamContent, /\[Claude\] ✅ Completato/);
+
 // Verifica che state.json sia aggiornato con i log
 const stateJson = join(coordDir, "state.json");
 assert.ok(existsSync(stateJson), "state.json deve essere stato generato");
 const stateData = JSON.parse(readFileSync(stateJson, "utf8"));
 assert.ok(stateData.logs["T-042"], "I log per T-042 devono essere in state.json");
+assert.ok(stateData.logs["T-STREAM"], "I log per T-STREAM devono essere in state.json");
 
-// 2. Propagazione codice di uscita non zero
+// 4. Propagazione codice di uscita non zero
 const cmdFail = 'node -e "process.exit(7)"';
 const r2 = spawnSync(process.execPath, [
   runnerScript,
