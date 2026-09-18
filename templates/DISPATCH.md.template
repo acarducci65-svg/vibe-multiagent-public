@@ -38,6 +38,13 @@ Per consentire al Direttore e a te di vedere l'output in tempo reale nella **Con
 | AGY CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "agy -p 'Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui SOLO le verifiche richieste; non eseguire comandi shell o test non dichiarati. La scrittura dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call prima di terminare.' --add-dir <percorso>"` | Google | Pre-approvare i comandi esatti in `settings.json` (modello verificabile con `agy models`) |
 | Sotto-agente AGY | `invoke_subagent` con `TypeName: self` | Google | Gestito internamente |
 
+### Lancio di prompt lunghi o articolati da file (senza problemi di quoting)
+Se il prompt per Claude Code è lungo o salvato in un file (es. `{{DIR_COORD}}/prompts/<ID>.txt`), **non bypassare il runner** e non fare pipe manuali in PowerShell. Usa il flag nativo `--prompt-file`:
+```bash
+node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt"
+```
+Il runner inoltra il file direttamente su stdin a `claude -p - --output-format stream-json --verbose`, evitando errori di virgolette su Windows e garantendo lo streaming continuo in `{{DIR_COORD}}/logs/<ID>.log` e sulla Dashboard.
+
 Il sistema ti notifica automaticamente al completamento di ogni task in background. Per verificare lo stato intermedio, usa `manage_task` con `status`. Per interrompere un esecutore bloccato, usa `manage_task` con `kill`.
 
 Non usare mai `--dangerously-skip-permissions` o `--dangerously-bypass-approvals-and-sandbox` per conto del Direttore: il gate lo nega comunque, ma il tentativo è già un errore.
