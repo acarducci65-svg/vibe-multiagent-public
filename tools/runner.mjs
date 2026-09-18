@@ -3,7 +3,7 @@
 // aggiornando la telemetria in tempo reale per la Dashboard.
 // Include parser intelligente per formattare gli eventi NDJSON di Claude Code (--output-format stream-json).
 import { spawn } from "node:child_process";
-import { createWriteStream, mkdirSync, existsSync } from "node:fs";
+import { createWriteStream, createReadStream, mkdirSync, existsSync } from "node:fs";
 import { join, resolve, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { constants } from "node:os";
@@ -133,6 +133,7 @@ export function analizzaArgomenti(argv) {
   let taskId = "generale";
   let dirCoord = process.env.DIR_COORD || ".coord";
   let cmd = "";
+  let promptFile = null;
 
   const args = argv.slice(2);
   const doppioTrattino = args.indexOf("--");
@@ -164,21 +165,28 @@ export function analizzaArgomenti(argv) {
       dirCoord = opzioni[++i] || dirCoord;
     } else if (a === "--cmd") {
       cmd = opzioni[++i] || cmd;
+    } else if (a === "--prompt-file" || a === "-f") {
+      promptFile = opzioni[++i] || promptFile;
     }
   }
 
-  return { taskId, dirCoord, cmd };
+  if (!cmd && promptFile) {
+    cmd = "claude -p - --output-format stream-json --verbose";
+  }
+
+  return { taskId, dirCoord, cmd, promptFile };
 }
 
 export function eseguiRunner(argv = process.argv) {
-  const { taskId: rawTaskId, dirCoord: rawCoord, cmd } = analizzaArgomenti(argv);
+  const { taskId: rawTaskId, dirCoord: rawCoord, cmd, promptFile } = analizzaArgomenti(argv);
 
   // Sanitizza taskId contro path traversal ed escape da .coord/logs/
   let safeTaskId = (rawTaskId || "generale").replace(/[^a-zA-Z0-9_-]/g, "");
   if (!safeTaskId) safeTaskId = "generale";
 
   if (!cmd || cmd.trim().length === 0) {
-    process.stderr.write("Uso: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] --cmd \"<COMANDO>\"\n");
+    process.stderr.write("Uso: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] [--prompt-file <FILE>] --cmd \"<COMANDO>\"\n");
+    process.stderr.write("     oppure: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] --prompt-file <FILE>\n");
     process.stderr.write("     oppure: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] -- <COMANDO>\n");
     process.exit(1);
   }
@@ -198,7 +206,7 @@ export function eseguiRunner(argv = process.argv) {
 
   const oraInizio = new Date().toISOString();
   streamLog.write(`\n=== [${oraInizio}] Inizio esecuzione task ${safeTaskId} ===\n`);
-  streamLog.write(`Comando: ${cmd}\n\n`);
+  streamLog.write(`Comando: ${cmd}${promptFile ? ` (da file prompt: ${promptFile})` : ""}\n\n`);
 
   // Telemetria iniziale
   try {
@@ -212,12 +220,19 @@ export function eseguiRunner(argv = process.argv) {
     } catch {}
   }, 2000);
 
+  const absPromptFile = promptFile ? (isAbsolute(promptFile) ? promptFile : join(radice, promptFile)) : null;
+
   const child = spawn(cmd, {
     shell: true,
-    stdio: ["inherit", "pipe", "pipe"],
+    stdio: [absPromptFile ? "pipe" : (process.stdin.isTTY ? "inherit" : "ignore"), "pipe", "pipe"],
     cwd: radice,
     env: { ...process.env, TASK_ATTIVO: safeTaskId },
   });
+
+  if (absPromptFile && existsSync(absPromptFile)) {
+    const rs = createReadStream(absPromptFile);
+    rs.pipe(child.stdin);
+  }
 
   const gestoreStdout = creaGestoreStream((testoFormattato) => {
     process.stdout.write(testoFormattato);

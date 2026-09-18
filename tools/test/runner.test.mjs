@@ -114,7 +114,26 @@ const stateData = JSON.parse(readFileSync(stateJson, "utf8"));
 assert.ok(stateData.logs["T-042"], "I log per T-042 devono essere in state.json");
 assert.ok(stateData.logs["T-STREAM"], "I log per T-STREAM devono essere in state.json");
 
-// 4. Propagazione codice di uscita non zero
+// 4. Collaudo end-to-end con --prompt-file
+const promptTestFile = join(testDir, "prompt.txt");
+writeFileSync(promptTestFile, "testo prompt da file", "utf8");
+const cmdReadStdin = 'node -e "let s = \'\'; process.stdin.on(\'data\', c => s += c); process.stdin.on(\'end\', () => console.log(\'ricevuto: \' + s));"';
+
+const rPrompt = spawnSync(process.execPath, [
+  runnerScript,
+  "--task", "T-PROMPT",
+  "--coord", coordDir,
+  "--prompt-file", promptTestFile,
+  "--cmd", cmdReadStdin
+], { cwd: testDir, encoding: "utf8" });
+
+assert.equal(rPrompt.status, 0, "Runner con prompt-file deve uscire con 0");
+const logPromptFile = join(coordDir, "logs", "T-PROMPT.log");
+assert.ok(existsSync(logPromptFile), "Il file T-PROMPT.log deve esistere");
+const logPromptContent = readFileSync(logPromptFile, "utf8");
+assert.match(logPromptContent, /ricevuto: testo prompt da file/);
+
+// 5. Propagazione codice di uscita non zero
 const cmdFail = 'node -e "process.exit(7)"';
 const r2 = spawnSync(process.execPath, [
   runnerScript,
