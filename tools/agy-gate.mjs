@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Hook PreToolUse di Antigravity: guardrail meccanico per agenti cooperativi.
-// Previene disattenzioni del modello (push, deploy, migrazioni non autorizzate).
+// Previene disattenzioni del modello (push, deploy, migrazioni non autorizzate, o self-coding non autorizzato).
 // NOTA DI SICUREZZA: è un presidio per mantenere il protocollo di cantiere ordinato,
 // non un perimetro impenetrabile di sandbox contro codice malevolo intenzionale.
-import { resolve, normalize } from "node:path";
+import { resolve, normalize, relative } from "node:path";
+import { existsSync } from "node:fs";
 
 let grezzo = "";
 for await (const c of process.stdin) grezzo += c;
@@ -11,9 +12,62 @@ const esci = (decision, reason) => { process.stdout.write(JSON.stringify({ decis
 
 let p; try { p = JSON.parse(grezzo); } catch { esci("allow", ""); }
 const nome = p?.toolCall?.name ?? "";
-const cmd = String(p?.toolCall?.args?.CommandLine ?? "");
+
+// 1. Intercettazione modifiche file sorgente (No Self-Coding senza autorizzazione del Direttore)
+const STRUMENTI_SCRITTURA = new Set([
+  "write_to_file",
+  "replace_file_content",
+  "multi_replace_file_content",
+]);
+
+if (STRUMENTI_SCRITTURA.has(nome)) {
+  const targetFile = p?.toolCall?.args?.TargetFile ?? p?.toolCall?.args?.targetFile ?? "";
+  if (targetFile) {
+    const normTarget = normalize(resolve(targetFile));
+    const normLower = normTarget.toLowerCase();
+
+    // Permesso libero per file di coordinamento, regole agenti e documentazione di root
+    const isCoord = /[\\/]\.coord([\\/]|$)/i.test(normTarget);
+    const isAgents = /[\\/]\.agents?([\\/]|$)/i.test(normTarget);
+    const isGemini = /[\\/]\.gemini([\\/]|$)/i.test(normTarget);
+    const isRootDoc = /[\\/][^\\/]+\.(md|markdown|txt|json|ya?ml|env.*)$/i.test(normTarget) &&
+      !/[\\/](src|lib|components|app|test|pages|server|routes)[\\/]/i.test(normTarget);
+
+    if (isCoord || isAgents || isGemini || isRootDoc) {
+      esci("allow", "");
+    }
+
+    // Se è un file sorgente applicativo, controlla se è attivo un marker di emergenza autorizzato dal Direttore
+    const radici = (p.workspacePaths ?? []).map((x) => normalize(resolve(x)));
+    let overridePresente = false;
+    for (const r of radici) {
+      if (existsSync(resolve(r, ".coord", "AGY_DIRECT_EDIT")) ||
+          existsSync(resolve(r, ".coord", "EMERGENCY_OVERRIDE"))) {
+        overridePresente = true;
+        break;
+      }
+    }
+
+    if (overridePresente) {
+      esci("allow", "");
+    }
+
+    let pathMostrato = normTarget;
+    for (const r of radici) {
+      if (normLower.startsWith(r.toLowerCase())) {
+        pathMostrato = relative(r, normTarget) || normTarget;
+        break;
+      }
+    }
+
+    esci("force_ask", `ATTENZIONE PROTOCOLLO MULTI-AGENTE: Antigravity sta modificando direttamente il file sorgente (${pathMostrato}) invece di delegare il task a Claude Code o Codex CLI. Conferma SOLO se hai esplicitamente autorizzato l'intervento diretto di AGY per blocchi temporanei o quote esaurite di Claude o Codex.`);
+  }
+  esci("allow", "");
+}
 
 if (nome !== "run_command") esci("allow", "");
+
+const cmd = String(p?.toolCall?.args?.CommandLine ?? "");
 
 // Vietato sempre: pubblicazione, distribuzione, migrazione, installazione globale, script piping, permessi saltati.
 const VIETATI = [

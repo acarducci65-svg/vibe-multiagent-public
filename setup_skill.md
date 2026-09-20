@@ -340,6 +340,7 @@ Ogni template ha una sola destinazione. `{{DIR_COORD}}` è il valore deciso in D
 | `DISPATCH.md.template` | `{{DIR_COORD}}/DISPATCH.md` | **Solo Ambiente B.** |
 | `hooks.json.template` | `.agents/hooks.json` nella radice del repository | **Solo Ambiente B.** Se il file esiste già, aggiungi la chiave `protocollo-multi-agente` senza toccare le altre: gli hook con nomi diversi si fondono. |
 | `multiagent-rule.md.template` | `.agents/rules/multiagent-coordinator.md` nella radice del repository | **Solo Ambiente B.** Regola permanente di workspace che mantiene il modello nel ruolo di Coordinatore/Integratore ad ogni interazione. |
+| `GEMINI.md.template` | `GEMINI.md` nella radice del repository | **Solo Ambiente B.** Istruzione permanente nativa di Antigravity per divieto di self-coding e deroga su ordine del Direttore. |
 
 Per il passaggio di consegne fra sessioni diverse dello stesso modello (invece che fra agenti distinti su un task specifico), usa una procedura di handoff dedicata. `HANDOVER.md.template` copre la consegna e verifica di un task formale dentro questo protocollo.
 
