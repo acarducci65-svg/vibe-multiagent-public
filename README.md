@@ -1,18 +1,39 @@
 # Vibe Multiagent 🤖⚡
 
+[![CI](https://github.com/acarducci65-svg/vibe-multiagent-public/actions/workflows/ci.yml/badge.svg)](https://github.com/acarducci65-svg/vibe-multiagent-public/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code Skill](https://img.shields.io/badge/Claude_Code-skill-d97757?logo=anthropic)](https://docs.anthropic.com/en/docs/claude-code)
 [![Antigravity Skill](https://img.shields.io/badge/Antigravity-skill-4285F4?logo=google)](https://github.com/google)
-[![Claude CLI](https://img.shields.io/badge/Claude_CLI-%E2%89%A5_2.0-d97757)](https://docs.anthropic.com/en/docs/claude-code)
-[![Codex CLI](https://img.shields.io/badge/Codex_CLI-%E2%89%A5_0.130-10a37f?logo=openai)](https://github.com/openai/codex)
-[![Antigravity CLI](https://img.shields.io/badge/Antigravity_CLI-%E2%89%A5_1.1-4285F4?logo=google)](https://github.com/google)
-[![VS Code IDE](https://img.shields.io/badge/VS_Code-IDE-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
-[![Antigravity IDE](https://img.shields.io/badge/Antigravity-IDE-4285F4?logo=google)](https://github.com/google)
-[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5_20.11-339933?logo=nodedotjs)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5_18.0-339933?logo=nodedotjs)](https://nodejs.org)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 > **Framework e Skill per l'avvio, coordinamento e orchestrazione di progetti di sviluppo multi-agente con Claude Code, Antigravity (AGY) e Codex CLI.**
 
-`vibe_multiagent` è una skill universale per lo sviluppo software assistito da AI, progettata per orchestrare team di agenti di codifica locali in abbonamento (senza costi API a consumo per token). Fornisce una rigida separazione dei ruoli, presidi meccanici di sicurezza (hook) e una completa tracciabilità su disco tramite filesystem e Git.
+`vibe_multiagent` è una skill universale per lo sviluppo software assistito da AI, progettata per orchestrare team di agenti di codifica locali in abbonamento (senza costi API a consumo per token). Fornisce una rigida separazione dei ruoli, presidi meccanici di sicurezza (hook), Control Room visiva (`dashboard.html`) e una completa tracciabilità su disco tramite filesystem e Git.
+
+[English Documentation (Documentazione in Inglese)](README.en.md)
+
+---
+
+## 📦 Installazione Rapida della Skill
+
+Clona o copia la cartella della skill nel percorso delle skill del tuo ambiente:
+
+### Per Claude Code
+```bash
+# Linux/macOS
+git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git ~/.claude/skills/vibe_multiagent
+
+# Windows (PowerShell)
+git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git "$HOME\.claude\skills\vibe_multiagent"
+```
+
+### Per Antigravity IDE
+```bash
+# Copia nella cartella delle skill globali di Antigravity:
+# Windows (PowerShell)
+git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git "$HOME\.gemini\config\skills\vibe_multiagent"
+```
 
 ---
 
@@ -211,7 +232,7 @@ Nei file task (`TASK.md`), il costo di sostituzione è suddiviso in due dimensio
 
 ## 🛡️ Lezioni Operative e Robustezza da Progetti Reali
 
-Il protocollo recepisce direttamente le evidenze empiriche maturate sul campo (progetti *730Cardu* e *munderdifflin*):
+Il protocollo recepisce direttamente le evidenze empiriche maturate sul campo (in progetti complessi e applicazioni reali in produzione):
 
 1. **Verifica su Disco vs Codice di Uscita**:
    - Un agente (es. Codex) può terminare con codice di uscita 1 solo per limite di quota scattato all'ultimo secondo, avendo già completato codice, test e handover al 100%. L'orchestratore **deve sempre verificare `git status` e i file modificati** prima di considerare interrotto un task.
@@ -259,7 +280,7 @@ Nelle sessioni con molteplici agenti esecutori (Codex, AGY CLI, Claude Code), l'
 ## 🔒 Privacy, Sicurezza e Note Legali
 
 ### 1. Modello di Sicurezza e Privacy dei Dati
-- **Nessuna Telemetria Nascosta & Elaborazione Locale**: `vibe_multiagent` non raccoglie dati, non invia log o codice a server terzi proprietari. L'intero framework vive ed è eseguito **sul filesystem locale**. L'unica comunicazione di rete esterna è la richiesta GET HTTPS effettuata dallo script facoltativo `tools/quota-anthropic.mjs` verso l'endpoint ufficiale `api.anthropic.com` per verificare la percentuale residua di token dell'abbonamento Claude (inviando il token OAuth già memorizzato localmente dall'utente). Nessun codice, diff o file di progetto viene mai trasmesso.
+- **Nessuna Telemetria Nascosta & Elaborazione Locale**: `vibe_multiagent` non raccoglie dati, non invia log o codice a server terzi proprietari. L'intero framework vive ed è eseguito **sul filesystem locale**. Lo script opzionale `tools/quota-anthropic.mjs` è **disabilitato di default**; solo se attivato esplicitamente con `VIBE_ANTHROPIC_QUOTA=1`, interroga l'endpoint `api.anthropic.com` con il token locale per verificare la quota token residua. Nessun codice, conversazione o dato di progetto viene mai trasmesso. Per maggiori dettagli, consulta [SECURITY.md](SECURITY.md).
 - **Nessun Segreto nel Repository**: Il codice e i template non contengono credenziali, password o chiavi API.
 - **Confini Dati Fornitore**: La Domanda 9 dell'intervista distingue esplicitamente tra *modello* e *fornitore*, assicurando che dati aziendali riservati non vengano instradati su canali cloud non approvati.
 
@@ -278,16 +299,19 @@ Il software viene fornito "così com'è" (*AS IS*), senza garanzie di alcun tipo
 
 ## 🧪 Esecuzione dei Test Unitari dei Tool
 
-Per verificare l'intera suite di strumenti meccanici e telemetrici:
+Per verificare l'intera suite di strumenti meccanici e telemetrici multipiattaforma in un solo comando:
 ```bash
-# Dalla cartella principale della skill (o da tools/):
-cd tools
-node test/agy-gate.test.mjs
-node test/agy-checkpoint.test.mjs
-node test/quota-anthropic.test.mjs
-node test/agy-quota-banner.test.mjs
-node test/telemetry.test.mjs
-node test/runner.test.mjs
+npm test
+```
+
+Oppure per eseguire i singoli moduli di test:
+```bash
+node tools/test/agy-gate.test.mjs
+node tools/test/agy-checkpoint.test.mjs
+node tools/test/quota-anthropic.test.mjs
+node tools/test/agy-quota-banner.test.mjs
+node tools/test/telemetry.test.mjs
+node tools/test/runner.test.mjs
 ```
 
 ---
@@ -295,10 +319,19 @@ node test/runner.test.mjs
 ## 📂 Struttura del Repository
 
 ```text
-vibe_multiagent/
-├── .gitignore
+vibe-multiagent/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                # CI multipiattaforma (Ubuntu, Windows, macOS)
+├── .gitattributes                # Normalizzazione LF cross-platform
+├── .gitignore                    # Esclusioni per file volatili e telemetria
+├── package.json                  # Definizione pacchetto e script npm test
 ├── LICENSE                       # Licenza MIT (Alessandro Carducci)
-├── README.md                     # Presentazione, guida completa e note legali
+├── SECURITY.md                   # Policy di sicurezza e trasparenza quote
+├── CONTRIBUTING.md               # Guida per contributori esterni
+├── CODE_OF_CONDUCT.md            # Codice di condotta Contributor Covenant
+├── README.md                     # Documentazione principale in italiano
+├── README.en.md                  # Documentazione internazionale in inglese
 ├── SKILL.md                      # Entry point principale per Claude Code
 ├── setup_skill.md                # Protocollo completo di intervista e setup
 ├── templates/                    # Template per i file di progetto
@@ -314,11 +347,11 @@ vibe_multiagent/
 │   ├── PROJECT.md.template
 │   └── TASK.md.template
 └── tools/                        # Script per hook Antigravity, runner & telemetria
-    ├── agy-gate.mjs
-    ├── agy-checkpoint.mjs
-    ├── agy-quota-banner.mjs
-    ├── quota-anthropic.mjs
-    ├── runner.mjs                # Runner universale cross-platform con streaming log
+    ├── agy-gate.mjs              # Guardrail PreToolUse anti-distrazione
+    ├── agy-checkpoint.mjs        # Checkpoint PostToolUse dei fatti su disco
+    ├── agy-quota-banner.mjs      # Banner PreInvocation e semaforo quote
+    ├── quota-anthropic.mjs       # Sensore quota Claude (opt-in VIBE_ANTHROPIC_QUOTA=1)
+    ├── runner.mjs                # Runner universale con multiplexing streaming log
     ├── telemetry.mjs             # Motore di telemetria e generazione state.json
     └── test/                     # Suite di test automatizzati per i tool
         ├── agy-gate.test.mjs
@@ -328,6 +361,15 @@ vibe_multiagent/
         ├── runner.test.mjs
         └── telemetry.test.mjs
 ```
+
+---
+
+## 🤝 Community, Contributi e Codice di Condotta
+
+Accogliamo con favore contributi, issue e idee da parte della community:
+- Consulta la [Guida per i Contributori](CONTRIBUTING.md) per comprendere il flusso di lavoro e le regole di sviluppo (standard zero-dipendenze, test deterministici e igiene privacy).
+- Per garantire un ambiente aperto, inclusivo e privo di molestie, la partecipazione al progetto è regolata dal nostro [Codice di Condotta](CODE_OF_CONDUCT.md) (adattato dal Contributor Covenant v2.1).
+- Per approfondire il modello di sicurezza o segnalare vulnerabilità, fai riferimento alla nostra [Policy di Sicurezza](SECURITY.md).
 
 ---
 

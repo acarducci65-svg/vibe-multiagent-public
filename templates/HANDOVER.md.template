@@ -1,6 +1,6 @@
 # Handover — {{ID_TASK}}
 
-Consegna di un task dentro il protocollo multi-agente. Per il passaggio di consegne fra sessioni Claude, usa invece la skill `handoff-hardened`, se disponibile, che redige i segreti.
+Consegna di un task dentro il protocollo multi-agente. Per il passaggio di consegne fra sessioni dello stesso agente, usa la procedura standard di session handoff del tuo ambiente.
 
 Stato consegna: {{STATO}} — uno fra `COMPLETO`, `PARZIALE`, `BLOCCATO`.
 Agente uscente: {{AGENTE_USCENTE}}

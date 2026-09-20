@@ -9,6 +9,10 @@ const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url))
 
 const radice = join(tmpdir(), "chk-" + Date.now());
 mkdirSync(join(radice, ".coord", "tasks"), { recursive: true });
+try {
+  execFileSync("git", ["init"], { cwd: radice, stdio: "ignore" });
+  execFileSync("git", ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-m", "init"], { cwd: radice, stdio: "ignore" });
+} catch {}
 const task = join(radice, ".coord", "tasks", "T-999.md");
 writeFileSync(task, readFileSync(join(__dirname, "fixtures", "T-999.md"), "utf8"));
 

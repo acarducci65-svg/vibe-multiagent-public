@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { raccogliTelemetria } from "./telemetry.mjs";
 
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
@@ -12,9 +13,24 @@ const esci = (o) => { process.stdout.write(JSON.stringify(o)); process.exit(0); 
 let p;
 try { p = JSON.parse(grezzo); } catch { p = {}; }
 
+const radice = (p.workspacePaths ?? [])[0] ?? process.cwd();
+try {
+  raccogliTelemetria(radice, process.env.DIR_COORD || ".coord");
+} catch {}
+
 let q = { ok: false, source: "unknown" };
 try {
-  q = JSON.parse(execFileSync(process.execPath, [join(__dirname, "quota-anthropic.mjs")], { encoding: "utf8", timeout: 8000 }));
+  const major = parseInt(process.versions.node.split(".")[0], 10);
+  const minor = parseInt(process.versions.node.split(".")[1], 10);
+  const usaSystemCa = major > 22 || (major === 22 && minor >= 15);
+  const execArgs = usaSystemCa ? ["--use-system-ca", join(__dirname, "quota-anthropic.mjs")] : [join(__dirname, "quota-anthropic.mjs")];
+  q = JSON.parse(
+    execFileSync(process.execPath, execArgs, {
+      encoding: "utf8",
+      timeout: 8000,
+      env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "1" },
+    })
+  );
 } catch {}
 
 const five = q?.fiveHourPct ?? 0;
