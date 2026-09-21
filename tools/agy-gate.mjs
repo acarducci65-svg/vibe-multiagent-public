@@ -3,7 +3,7 @@
 // Previene disattenzioni del modello (push, deploy, migrazioni non autorizzate, o self-coding non autorizzato).
 // NOTA DI SICUREZZA: è un presidio per mantenere il protocollo di cantiere ordinato,
 // non un perimetro impenetrabile di sandbox contro codice malevolo intenzionale.
-import { resolve, normalize, relative } from "node:path";
+import { resolve, normalize } from "node:path";
 import { existsSync } from "node:fs";
 
 let grezzo = "";
@@ -23,24 +23,52 @@ const STRUMENTI_SCRITTURA = new Set([
 if (STRUMENTI_SCRITTURA.has(nome)) {
   const targetFile = p?.toolCall?.args?.TargetFile ?? p?.toolCall?.args?.targetFile ?? "";
   if (targetFile) {
-    const normTarget = normalize(resolve(targetFile));
-    const normLower = normTarget.toLowerCase();
+    const normTarget = String(targetFile).replace(/\\/g, "/");
 
-    // Permesso libero per file di coordinamento, regole agenti e documentazione di root
-    const isCoord = /[\\/]\.coord([\\/]|$)/i.test(normTarget);
-    const isAgents = /[\\/]\.agents?([\\/]|$)/i.test(normTarget);
-    const isGemini = /[\\/]\.gemini([\\/]|$)/i.test(normTarget);
-    const isRootDoc = /[\\/][^\\/]+\.(md|markdown|txt|json|ya?ml|env.*)$/i.test(normTarget) &&
-      !/[\\/](src|lib|components|app|test|pages|server|routes)[\\/]/i.test(normTarget);
-
-    if (isCoord || isAgents || isGemini || isRootDoc) {
+    // Permesso libero per coordinamento, regole agenti ed editor config
+    if (/(?:^|\/)\.coord(?:\/|$)/i.test(normTarget) ||
+        /(?:^|\/)\.agents?(?:\/|$)/i.test(normTarget) ||
+        /(?:^|\/)\.gemini(?:\/|$)/i.test(normTarget) ||
+        /(?:^|\/)\.vscode(?:\/|$)/i.test(normTarget) ||
+        /(?:^|\/)\.github(?:\/|$)/i.test(normTarget)) {
       esci("allow", "");
     }
 
-    // Se è un file sorgente applicativo, controlla se è attivo un marker di emergenza autorizzato dal Direttore
-    const radici = (p.workspacePaths ?? []).map((x) => normalize(resolve(x)));
+    // Risoluzione del percorso relativo rispetto al workspace root
+    const wsRoots = (p.workspacePaths ?? []).map((x) => String(x).replace(/\\/g, "/").replace(/\/+$/, ""));
+    let relPath = "";
+    let foundWs = "";
+
+    for (const r of wsRoots) {
+      if (normTarget.toLowerCase() === r.toLowerCase()) {
+        relPath = "";
+        foundWs = r;
+        break;
+      }
+      if (normTarget.toLowerCase().startsWith(r.toLowerCase() + "/")) {
+        relPath = normTarget.slice(r.length + 1);
+        foundWs = r;
+        break;
+      }
+    }
+
+    if (!relPath && !foundWs) {
+      // Se non corrisponde a un workspace noto, isola la parte relativa
+      relPath = normTarget.replace(/^[a-zA-Z]:\//, "").replace(/^\/+/, "");
+    }
+
+    // File di documentazione o configurazione nella root del progetto: consentiti liberamente
+    const isRootFile = !relPath.includes("/");
+    const isDocOrConfig = /\.(md|markdown|txt|json|ya?ml|env.*|toml|ini)$/i.test(relPath) &&
+      !/^(src|lib|components|app|test|pages|server|routes|models|controllers)[\\/]/i.test(relPath);
+
+    if (isRootFile || isDocOrConfig) {
+      esci("allow", "");
+    }
+
+    // Se è un file sorgente applicativo, controlla se è presente un marker di override del Direttore
     let overridePresente = false;
-    for (const r of radici) {
+    for (const r of wsRoots) {
       if (existsSync(resolve(r, ".coord", "AGY_DIRECT_EDIT")) ||
           existsSync(resolve(r, ".coord", "EMERGENCY_OVERRIDE"))) {
         overridePresente = true;
@@ -52,14 +80,7 @@ if (STRUMENTI_SCRITTURA.has(nome)) {
       esci("allow", "");
     }
 
-    let pathMostrato = normTarget;
-    for (const r of radici) {
-      if (normLower.startsWith(r.toLowerCase())) {
-        pathMostrato = relative(r, normTarget) || normTarget;
-        break;
-      }
-    }
-
+    const pathMostrato = relPath || normTarget;
     esci("force_ask", `ATTENZIONE PROTOCOLLO MULTI-AGENTE: Antigravity sta modificando direttamente il file sorgente (${pathMostrato}) invece di delegare il task a Claude Code o Codex CLI. Conferma SOLO se hai esplicitamente autorizzato l'intervento diretto di AGY per blocchi temporanei o quote esaurite di Claude o Codex.`);
   }
   esci("allow", "");

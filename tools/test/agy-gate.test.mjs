@@ -23,16 +23,20 @@ const casi = [
   [{ name: "run_command", args: { CommandLine: "rm -rf C:/Windows/System32" } }, "ask"],
   [{ name: "run_command", args: { CommandLine: "rm -rf /opt/progetto-esterno" } }, "ask"],
   [{ name: "view_file", args: {} }, "allow"],
-  // Casi di scrittura file
+  // Casi di scrittura file su Windows
   [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/.coord/tasks/T-001.md" } }, "allow"],
   [{ name: "replace_file_content", args: { TargetFile: "C:/dev/progetto/GEMINI.md" } }, "allow"],
   [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/README.md" } }, "allow"],
   [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/.agents/rules/test.md" } }, "allow"],
   [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/src/app/page.tsx" } }, "force_ask"],
   [{ name: "replace_file_content", args: { TargetFile: "C:/dev/progetto/src/components/Header.tsx" } }, "force_ask"],
+  // Casi di scrittura file su POSIX (Linux/macOS)
+  [{ name: "write_to_file", args: { TargetFile: "/home/runner/work/project/.coord/tasks/T-001.md" } }, "allow", ["/home/runner/work/project"]],
+  [{ name: "replace_file_content", args: { TargetFile: "/home/runner/work/project/GEMINI.md" } }, "allow", ["/home/runner/work/project"]],
+  [{ name: "write_to_file", args: { TargetFile: "/home/runner/work/project/src/index.ts" } }, "force_ask", ["/home/runner/work/project"]],
 ];
-for (const [tc, atteso] of casi) {
-  const r = gate(tc);
+for (const [tc, atteso, ws] of casi) {
+  const r = ws ? gate(tc, ws) : gate(tc);
   assert.equal(r.decision, atteso, `${tc.args?.CommandLine ?? tc.args?.TargetFile ?? tc.name} → atteso ${atteso}, ottenuto ${r.decision} (${r.reason})`);
 }
 
