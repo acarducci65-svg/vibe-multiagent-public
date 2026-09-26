@@ -8,25 +8,12 @@ window.__VIBE_STATE__ = {
     "completamento": 3,
     "totale": 5
   },
-  "quotas": {
-    "anthropic": {
-      "tier": "Scale Tier",
-      "fiveHour": 42,
-      "sevenDay": 24,
-      "fiveHourReset": "fra 1h 48m",
-      "sevenDayReset": "fra 3g 12h",
-      "status": "healthy"
-    },
-    "openai": {
-      "tier": "Tier 4",
-      "usagePercent": 31,
-      "status": "healthy"
-    },
-    "google": {
-      "model": "Antigravity 2.0 (Gemini 2.5 Pro)",
-      "usagePercent": 18,
-      "status": "healthy"
-    }
+  "quota": {
+    "ok": true,
+    "source": "live",
+    "fiveHourPct": 42,
+    "sevenDayPct": 24,
+    "resetsAt": new Date(Date.now() + 6480000).toISOString()
   },
   "agents": [
     {
