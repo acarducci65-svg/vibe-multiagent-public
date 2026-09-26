@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control Room Multi-Agente â€” Nexus Cloud Platform</title>
+  <title>Control Room Multi-Agente — Nexus Cloud Platform</title>
   <script src="state.js"></script>
   <style>
     :root {
@@ -607,7 +607,7 @@
 
   <header>
     <div class="title-group">
-      <h1>ðŸŽ® Control Room Multi-Agente <span id="headerProjectName">Nexus Cloud Platform</span></h1>
+      <h1>🎮 Control Room Multi-Agente <span id="headerProjectName">Nexus Cloud Platform</span></h1>
       <span class="badge-coord" id="headerCoordDir">{{DIR_COORD}}</span>
     </div>
     <div class="header-actions">
@@ -616,16 +616,16 @@
         <span id="lastUpdate">In attesa di dati...</span>
         <div class="header-btns">
           <input type="file" id="jsonFileInput" accept=".json,.js" style="display: none;">
-          <button id="btnSelectFile" class="term-tab" title="Carica snapshot JSON locale">ðŸ“ Carica file</button>
-          <button id="btnManualReload" class="term-tab" title="Aggiorna telemetria">ðŸ”„ Ricarica</button>
+          <button id="btnSelectFile" class="term-tab" title="Carica snapshot JSON locale">📁 Carica file</button>
+          <button id="btnManualReload" class="term-tab" title="Aggiorna telemetria">🔄 Ricarica</button>
         </div>
       </div>
-      <span class="privacy-hint">ðŸ”’ Dati e log 100% locali. Non esporre pubblicamente.</span>
+      <span class="privacy-hint">🔒 Dati e log 100% locali. Non esporre pubblicamente.</span>
     </div>
   </header>
 
   <div id="corsBanner" class="cors-banner">
-    âš ï¸ <strong>Visualizzazione da file locale:</strong> Il browser blocca il caricamento asincrono di <code>state.json</code> via <code>file://</code>.<br>
+    ⚠️ <strong>Visualizzazione da file locale:</strong> Il browser blocca il caricamento asincrono di <code>state.json</code> via <code>file://</code>.<br>
     Per attivare il refresh in tempo reale, apri questa pagina con <strong>Live Server</strong> in VS Code, usa <strong>Simple Browser</strong> nell'IDE, oppure trascina il file <code>state.json</code> direttamente in questa finestra.
   </div>
 
@@ -675,13 +675,13 @@
   </div>
 
   <!-- Flotta Agenti -->
-  <div class="section-title">ðŸ¤– Flotta Agenti Collaborativi</div>
+  <div class="section-title">🤖 Flotta Agenti Collaborativi</div>
   <div class="agents-grid" id="agentsList">
     <!-- Generato dinamicamente -->
   </div>
 
   <!-- Mini Kanban / Task Tracker con Toolbar -->
-  <div class="section-title">ðŸ“‹ Task dello Sprint</div>
+  <div class="section-title">📋 Task dello Sprint</div>
   <div class="tasks-toolbar">
     <div class="filter-group" id="filterButtons">
       <button class="filter-btn active" data-filter="ALL">Tutti <span class="filter-count" id="countAll">0</span></button>
@@ -692,7 +692,7 @@
       <button class="filter-btn" data-filter="CHIUSO">Chiusi <span class="filter-count" id="countChiuso">0</span></button>
     </div>
     <div class="search-box">
-      <input type="text" id="taskSearchInput" placeholder="ðŸ” Cerca task per ID o titolo..." autocomplete="off">
+      <input type="text" id="taskSearchInput" placeholder="🔍 Cerca task per ID o titolo..." autocomplete="off">
     </div>
   </div>
   <div class="kanban-grid" id="tasksList">
@@ -700,7 +700,7 @@
   </div>
 
   <!-- Live Log Console -->
-  <div class="section-title" id="terminalAnchor">ðŸ“º Live Terminal Stream (.coord/logs/)</div>
+  <div class="section-title" id="terminalAnchor">📺 Live Terminal Stream (.coord/logs/)</div>
   <div class="terminal-section" id="terminalSection">
     <div class="terminal-header">
       <div class="terminal-tabs" id="logTabs">
@@ -753,7 +753,7 @@
     let currentFilter = 'ALL';
     let currentSearch = '';
 
-    // Whitelist rigida stati ammessi (previene XSS da file manipolati â€” C-01 Codex / M-2 Claude)
+    // Whitelist rigida stati ammessi (previene XSS da file manipolati — C-01 Codex / M-2 Claude)
     const STATI_CSS = {
       'PRONTO': 'badge-PRONTO',
       'IN CORSO': 'badge-IN-CORSO',
@@ -772,7 +772,7 @@
     };
 
     async function caricaStato() {
-      // 1. Su protocolli HTTP (Live Server, npx serve, Simple Browser) fetch Ã¨ il metodo primario
+      // 1. Su protocolli HTTP (Live Server, npx serve, Simple Browser) fetch è il metodo primario
       if (window.location.protocol !== 'file:') {
         try {
           const res = await fetch('state.json?_t=' + Date.now());
@@ -820,7 +820,7 @@
           document.getElementById('corsBanner').style.display = 'block';
           document.getElementById('liveDot').style.backgroundColor = '#fbbf24';
           document.getElementById('liveDot').style.boxShadow = '0 0 8px #fbbf24';
-          document.getElementById('lastUpdate').innerText = 'file:// (Usa ðŸ“ Carica file o trascina state.json)';
+          document.getElementById('lastUpdate').innerText = 'file:// (Usa 📁 Carica file o trascina state.json)';
         }
       };
       document.head.appendChild(s);
@@ -855,7 +855,7 @@
       }
       if (nomeProgetto && nomeProgetto !== 'Nexus Cloud Platform') {
         if (elHeaderName) elHeaderName.textContent = nomeProgetto;
-        document.title = 'Control Room Multi-Agente â€” ' + nomeProgetto;
+        document.title = 'Control Room Multi-Agente — ' + nomeProgetto;
       } else if (elHeaderName && elHeaderName.textContent.includes('Nexus Cloud Platform')) {
         elHeaderName.textContent = '';
       }
@@ -895,7 +895,7 @@
           const isCoordinating = ag.status === 'coordinating';
           const cardClass = isRunning ? 'running' : (isCoordinating ? 'coordinating' : '');
           const badgeClass = isRunning ? 'status-running' : (isCoordinating ? 'status-coordinating' : 'status-idle');
-          const badgeText = isRunning ? 'â— In esecuzione' : (isCoordinating ? 'â— In coordinamento' : 'In attesa');
+          const badgeText = isRunning ? '● In esecuzione' : (isCoordinating ? '● In coordinamento' : 'In attesa');
           return `
             <div class="agent-card ${cardClass}">
               <div class="agent-header">
@@ -906,7 +906,7 @@
               </div>
               <div class="agent-role">${escapeHtml(ag.defaultRole)}</div>
               <div class="agent-task">
-                ${ag.currentTask ? `AttivitÃ : <strong>${escapeHtml(ag.currentTask)}</strong>` : 'Nessuna attivitÃ  in corso'}
+                ${ag.currentTask ? `Attività: <strong>${escapeHtml(ag.currentTask)}</strong>` : 'Nessuna attività in corso'}
               </div>
             </div>
           `;
@@ -1232,7 +1232,7 @@
       });
     }
 
-    // Se state.js era giÃ  stato caricato sincronicamente nel tag <head>
+    // Se state.js era già stato caricato sincronicamente nel tag <head>
     if (window.__VIBE_STATE__) {
       document.getElementById('corsBanner').style.display = 'none';
       aggiornaUI(window.__VIBE_STATE__);
@@ -1241,8 +1241,36 @@
     // Avvio e Polling ogni 1.5s
     caricaStato();
     setInterval(caricaStato, 1500);
-  </script>
+  
+  // Modalita Demo Live: simula streaming live su T-003 per clip/video
+  (function initDemoStream() {
+    const fakeStreamLines = [
+      "[Claude] 🔧 Tool: Bash -> npx vitest run test/checkout-ui.test.tsx --coverage",
+      "[Claude] 📄 Esito: Coverage statements: 94.2%, branch: 88.5%",
+      "[Claude] 💬 Verifica accessibilità WCAG AA su form di checkout...",
+      "[Claude] 🔧 Tool: ReadFile -> src/components/checkout/CheckoutForm.tsx",
+      "[Claude] 📄 Esito: Letto con successo (65 righe)",
+      "[Claude] 🔧 Tool: EditFile -> src/components/checkout/CheckoutForm.tsx",
+      "[Claude] 📄 Esito: Aggiunti attributi aria-live e feedback di caricamento ad alto contrasto",
+      "[Claude] ⏱️ Quota: 5h 43%, 7d 24%",
+      "[Claude] 🔧 Tool: Bash -> npm run build",
+      "[Claude] 📄 Esito: Compiled in 780ms (Production build success)",
+      "[Claude] ✅ Criteri di accettazione task T-003 completati con successo.",
+      "[Claude] 📝 Compilazione handover in .coord/handover/T-003.md...",
+      "[Claude] 🚀 Stato task aggiornato a: CONSEGNATO"
+    ];
+    let streamIdx = 0;
+    setInterval(() => {
+      if (activeTaskLog === "T-003" && streamIdx < fakeStreamLines.length) {
+        if (stateCache && stateCache.logs && stateCache.logs["T-003"]) {
+          stateCache.logs["T-003"].push(fakeStreamLines[streamIdx]);
+          aggiornaLogs(stateCache.logs);
+          streamIdx++;
+        }
+      }
+    }, 2400);
+  })();
+
+</script>
 </body>
 </html>
-
-
