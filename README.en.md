@@ -19,6 +19,8 @@
 
 [Documentazione in Italiano (Italian Documentation)](README.md)
 
+> ⭐ **Find this framework useful?** Please consider giving it a star on GitHub — it helps more developers and teams discover the project!
+
 ---
 
 ## 🎯 Key Objectives
