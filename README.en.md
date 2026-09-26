@@ -15,6 +15,8 @@
 
 `vibe_multiagent` is a universal skill for AI-assisted software development, specifically designed to orchestrate teams of autonomous local coding agents on flat-rate CLI subscriptions (zero pay-per-token API consumption). It provides strict role separation, mechanical safety guardrails (hooks), a real-time visual Control Room (`dashboard.html`), and complete auditability via the local filesystem and Git.
 
+> 💡 **Dogfooding & Transparency**: This entire framework, test suite, and mechanical guardrail system were conceived, engineered, and battle-tested autonomously in a multi-agent workflow by the AI agents themselves (**Google Antigravity AGY**, **Claude Code**, and **OpenAI Codex CLI**) under the continuous human architectural direction and supervision of **Alessandro Carducci** (strictly adhering to the *Human-in-the-Loop* / Director principle).
+
 [Documentazione in Italiano (Italian Documentation)](README.md)
 
 ---
