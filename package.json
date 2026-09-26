@@ -5,7 +5,8 @@
   "type": "module",
   "main": "tools/telemetry.mjs",
   "scripts": {
-    "test": "node tools/test/agy-gate.test.mjs && node tools/test/agy-checkpoint.test.mjs && node tools/test/quota-anthropic.test.mjs && node tools/test/agy-quota-banner.test.mjs && node tools/test/telemetry.test.mjs && node tools/test/runner.test.mjs && node tools/test/dashboard.test.mjs"
+    "test": "node tools/test/agy-gate.test.mjs && node tools/test/agy-checkpoint.test.mjs && node tools/test/quota-anthropic.test.mjs && node tools/test/agy-quota-banner.test.mjs && node tools/test/telemetry.test.mjs && node tools/test/runner.test.mjs && node tools/test/dashboard.test.mjs",
+    "demo": "node -e \"import('node:child_process').then(m => m.exec(process.platform === 'win32' ? 'start demo/dashboard.html' : 'open demo/dashboard.html'))\""
   },
   "keywords": [
     "multi-agent",
