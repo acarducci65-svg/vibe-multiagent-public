@@ -24,3 +24,9 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Media pesanti (usare GitHub Assets CDN)
+*.mp4
+*.mov
+
+
