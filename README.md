@@ -1,5 +1,9 @@
 # Vibe Multiagent 🤖⚡
 
+<p align="center">
+  <img src="demo/control-room-demo.gif" alt="Vibe Multiagent Live Control Room" width="100%">
+</p>
+
 [![CI](https://github.com/acarducci65-svg/vibe-multiagent-public/actions/workflows/ci.yml/badge.svg)](https://github.com/acarducci65-svg/vibe-multiagent-public/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code Skill](https://img.shields.io/badge/Claude_Code-skill-d97757?logo=anthropic)](https://docs.anthropic.com/en/docs/claude-code)
