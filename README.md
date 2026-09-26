@@ -19,6 +19,8 @@
 
 [English Documentation (Documentazione in Inglese)](README.en.md)
 
+> ⭐ **Ti piace questo framework?** Lascia una stella (*star*) in alto a destra su GitHub: aiuta altri sviluppatori e team a scoprire il progetto!
+
 ---
 
 ## 📦 Installazione Rapida della Skill
