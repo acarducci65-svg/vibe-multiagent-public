@@ -335,7 +335,7 @@
 
     .kanban-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -349,6 +349,8 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+      min-width: 0;
+      overflow: hidden;
     }
     .task-card:hover {
       transform: translateY(-2px);
@@ -365,15 +367,21 @@
       gap: 8px;
       min-height: 24px;
       line-height: 1.4;
+      min-width: 0;
+      width: 100%;
     }
     .task-id {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-weight: 700;
       color: var(--primary);
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       line-height: 1.4;
       letter-spacing: 0.02em;
-      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 1 1 auto;
     }
     .task-badge {
       font-size: 0.72rem;
@@ -387,6 +395,7 @@
       justify-content: center;
       white-space: nowrap;
       text-transform: uppercase;
+      flex-shrink: 0;
     }
     .badge-PRONTO { background: #334155; color: #cbd5e1; }
     .badge-IN-CORSO { background: #0369a1; color: #bae6fd; border: 1px solid #38bdf8; }
@@ -1031,7 +1040,7 @@
         return `
           <div class="task-card ${isActive ? 'active' : ''}" data-task-id="${escapeHtml(t.id)}">
             <div class="task-top">
-              <span class="task-id">${escapeHtml(t.id)}</span>
+              <span class="task-id" title="${escapeHtml(t.id)}">${escapeHtml(t.id)}</span>
               <span class="task-badge ${badgeClass}" title="${escapeHtml(t.statoEsteso || t.stato)}">${escapeHtml(statoNorm)}</span>
             </div>
             <div class="task-title">${escapeHtml(t.titolo)}</div>
