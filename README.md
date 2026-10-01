@@ -36,12 +36,19 @@ git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git ~/.claud
 git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git "$HOME\.claude\skills\vibe_multiagent"
 ```
 
-### Per Antigravity IDE
-```bash
-# Copia nella cartella delle skill globali di Antigravity:
-# Windows (PowerShell)
-git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git "$HOME\.gemini\config\skills\vibe_multiagent"
+### Per Antigravity IDE (Supporto Nativo Slash Command `/vibe-multiagent`)
+In Antigravity la skill può essere installata come **Plugin globale** (per averla sempre disponibile in tutti i progetti con il comando slash `/vibe-multiagent`) o direttamente nel **singolo workspace**:
+
+```powershell
+# Opzione 1 (Consigliata) - Plugin Globale di Antigravity:
+New-Item -ItemType Directory -Path "$HOME\.gemini\config\plugins\vibe-multiagent\skills" -Force
+git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git "$HOME\.gemini\config\plugins\vibe-multiagent\skills\vibe-multiagent"
+Copy-Item "$HOME\.gemini\config\plugins\vibe-multiagent\skills\vibe-multiagent\plugin.json" "$HOME\.gemini\config\plugins\vibe-multiagent\plugin.json"
+
+# Opzione 2 - Nel singolo Workspace di progetto:
+git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git .agents/skills/vibe-multiagent
 ```
+*(Dopo l'installazione globale, riavvia Antigravity o ricarica la finestra per indicizzare il comando)*
 
 ---
 
@@ -80,12 +87,13 @@ avvia progetto con vibe_multiagent
 *(o trigger equivalenti: "nuovo progetto multi-agente", "setup multiagente", "configura repo multi-agente")*
 
 ### Su Antigravity IDE (AGY)
-Nella chat agentica di Antigravity, digita:
+Nella chat agentica di Antigravity, usa il comando slash nativo:
 ```text
-avvia setup progetto con vibe_multiagent
+/vibe-multiagent
 ```
+*(oppure in linguaggio naturale: `avvia setup progetto con vibe-multiagent`)*
 
-L'agente leggerà il protocollo `setup_skill.md` e avvierà immediatamente l'intervista guidata.
+L'agente caricherà il protocollo `setup_skill.md` e avvierà immediatamente l'intervista guidata.
 
 ---
 

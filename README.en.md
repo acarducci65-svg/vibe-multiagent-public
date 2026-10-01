@@ -57,11 +57,19 @@ git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git ~/.claud
 git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git "$HOME\.claude\skills\vibe_multiagent"
 ```
 
-### For Antigravity IDE
-```bash
-# Windows (PowerShell)
-git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git "$HOME\.gemini\config\skills\vibe_multiagent"
+### For Antigravity IDE (Native Slash Command `/vibe-multiagent`)
+In Antigravity, install as a **Global Plugin** (recommended for IDE-wide slash command support) or directly in a single **workspace**:
+
+```powershell
+# Option 1 (Recommended) - Global Antigravity Plugin:
+New-Item -ItemType Directory -Path "$HOME\.gemini\config\plugins\vibe-multiagent\skills" -Force
+git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git "$HOME\.gemini\config\plugins\vibe-multiagent\skills\vibe-multiagent"
+Copy-Item "$HOME\.gemini\config\plugins\vibe-multiagent\skills\vibe-multiagent\plugin.json" "$HOME\.gemini\config\plugins\vibe-multiagent\plugin.json"
+
+# Option 2 - Project-Specific Workspace:
+git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git .agents/skills/vibe-multiagent
 ```
+*(After installing globally, restart Antigravity or reload window to index the slash command)*
 
 ---
 
@@ -75,9 +83,11 @@ start project with vibe_multiagent
 ```
 
 ### In Antigravity IDE (AGY):
+Use the native slash command:
 ```text
-start project setup with vibe_multiagent
+/vibe-multiagent
 ```
+*(or via natural language: `start project setup with vibe-multiagent`)*
 
 The orchestrator reads `setup_skill.md` and begins the interactive 12-question interview to establish project scope, boundaries, agent roles, and verification strategies:
 

@@ -1,5 +1,5 @@
 ---
-name: vibe_multiagent
+name: vibe-multiagent
 description: Usa questa skill per avviare, configurare o gestire ed eseguire sessioni di sviluppo in un progetto multi-agente (con Claude Code, Codex e Antigravity). Guida l'orchestratore nel dispatching dei task, impedisce il self-coding non autorizzato di Antigravity, coordina ruoli, log in streaming (.coord/logs/), Control Room visiva (.coord/dashboard.html), handover e verifiche di integrazione. Trigger tipici: "multi-agente", "vibe-multiagent", "coordina", "dispaccia", "task", "handover", "nuovo progetto", "setup multi-agente", "sviluppo con claude e codex".
 ---
 
