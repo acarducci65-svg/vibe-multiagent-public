@@ -1,6 +1,6 @@
 {
   "name": "vibe-multiagent",
   "displayName": "Vibe Multiagent",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Framework operativo rigoroso e Control Room visiva per lo sviluppo collaborativo con Claude Code, OpenAI Codex e Google Antigravity (AGY)."
 }

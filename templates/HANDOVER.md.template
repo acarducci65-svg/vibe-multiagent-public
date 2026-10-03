@@ -2,7 +2,7 @@
 
 Consegna di un task dentro il protocollo multi-agente. Per il passaggio di consegne fra sessioni dello stesso agente, usa la procedura standard di session handoff del tuo ambiente.
 
-Stato consegna: {{STATO}} — uno fra `COMPLETO`, `PARZIALE`, `BLOCCATO`.
+Stato consegna: {{STATO}} — uno fra `COMPLETO`, `PARZIALE`, `BLOCCATO`. (Nota: se interrotto da quota/limite 5-ore con Wrap-Up Allowance attiva, contrassegna `PARZIALE` e descrivi i file già modificati nel punto di ripresa).
 Agente uscente: {{AGENTE_USCENTE}}
 Agente destinatario: {{AGENTE_DESTINATARIO}}
 Task di riferimento: `{{DIR_COORD}}/tasks/{{ID_TASK}}.md`

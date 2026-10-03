@@ -1,0 +1,10 @@
+{
+  "name": "vibe-multiagent-mod",
+  "displayName": "Vibe Multiagent Mod",
+  "version": "1.4.0",
+  "description": "In-process mechanical guardrails, auto-checkpoint and terminal status band for Claude Code in multi-agent workflows",
+  "author": {
+    "name": "Alessandro Carducci"
+  },
+  "repository": "https://github.com/acarducci65-svg/vibe-multiagent-public"
+}

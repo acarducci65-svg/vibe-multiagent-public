@@ -159,14 +159,28 @@ my-project/
 
 ---
 
-## 🛡️ Mechanical Guardrails (Environment B — Antigravity Hooks)
+## 🛡️ Mechanical Guardrails and Safety Hooks
 
-In Antigravity IDE, critical safety rules are never left to stochastic model memory; they are enforced mechanically by deterministic Node.js scripts hooked into IDE events:
+Critical rules and prohibitions are never left to stochastic model memory; they are strictly enforced by deterministic Node.js scripts hooked into agent lifecycles:
 
+### 1. For Antigravity IDE (`.agents/hooks.json`)
 - **`agy-gate.mjs` (`PreToolUse`)**: Intercepts and immediately denies unauthorized destructive actions: `git push`, `npm publish`, cloud deployments (Vercel, AWS, GCP), database migrations, and permission-bypass flags (`--dangerously-skip-permissions`). Prompts for human confirmation (`ask`) for deletions outside the workspace.
 - **`agy-checkpoint.mjs` (`PostToolUse`)**: On every file modification, automatically appends `- Facts: <date> — modified: <file> — last commit: <hash>` into the `Resume Checkpoint` of the active `IN CORSO` task.
 - **`agy-quota-banner.mjs` (`PreInvocation`)**: Injects an unyielding role reminder into **every single turn** (Dispatcher & Integrator) to prevent the agent from acting as a rogue solo coder on ad-hoc requests, alongside an Anthropic quota status gauge when relevant.
 - **`.agents/rules/multiagent-coordinator.md` (Workspace Rule)**: Permanent hierarchical rule loaded into the Antigravity system prompt forbidding direct application code modifications without an approved task specification.
+
+### 2. For Claude Code (`tools/claude-mod/` — Claude Code v2.1.287+)
+With the introduction of in-process **Claude Mods** and native `AGENTS.md` support (v2.1.277+), Claude Code gains the exact same mechanical guardrail parity as Antigravity:
+- **`tool.call` Gate Interceptor**: Directly intercepts and blocks dangerous Bash commands in-process (`git push`, package publish, cloud deploys, unapproved deletions, or permission skips), allowing only approved commands or human overrides.
+- **Automatic Checkpointing on `Edit` & `Write`**: Upon editing or writing any source file, updates the active `IN CORSO` task's `## Punto di ripresa` section with timestamp and file path.
+- **`ui.render` Status Banner**: Injects an informative terminal status bar displaying the active Sprint and Task.
+- **Wrap-Up Allowance Support**: Seamlessly accommodates Claude Code's 5-hour limit wrap-up grace period by marking tasks as `PARZIALE` with full checkpoints instead of ungraceful interruptions.
+
+To enable the Claude Mod in your Claude Code workspace:
+```bash
+claude mod add ./tools/claude-mod
+```
+
 
 ---
 
@@ -327,7 +341,12 @@ vibe-multiagent/
 │   ├── multiagent-rule.md.template # Antigravity permanent workspace rule (Environment B)
 │   ├── PROJECT.md.template
 │   └── TASK.md.template
-└── tools/                        # Antigravity hooks, process runner & telemetry engine
+└── tools/                        # Antigravity hooks, Claude Mod, process runner & telemetry engine
+    ├── claude-mod/               # In-process Claude Mod (Claude Code v2.1.287+)
+    │   ├── .claude-plugin/plugin.json
+    │   └── hooks/
+    │       ├── hooks.json
+    │       └── register.js       # tool.call interceptor, checkpointing & status bar
     ├── agy-gate.mjs              # PreToolUse anti-distraction guardrail
     ├── agy-checkpoint.mjs        # PostToolUse on-disk fact checkpointing
     ├── agy-quota-banner.mjs      # PreInvocation banner & quota traffic light
@@ -335,6 +354,7 @@ vibe-multiagent/
     ├── runner.mjs                # Process runner with multiplexed log streaming
     ├── telemetry.mjs             # Telemetry engine and state.json generator
     └── test/                     # Automated unit test suite
+        ├── claude-mod.test.mjs
         ├── agy-gate.test.mjs
         ├── agy-checkpoint.test.mjs
         ├── agy-quota-banner.test.mjs

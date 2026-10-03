@@ -201,14 +201,29 @@ mio-progetto/
 
 ---
 
-## 🛡️ Presidi Meccanici (Ambiente B — Antigravity Hooks)
+## 🛡️ Presidi Meccanici e Hook di Sicurezza
 
-Quando si sviluppa in Antigravity IDE, i divieti e le regole non sono affidati alla "memoria" del modello, ma presidiati da script Node.js eseguiti negli eventi del ciclo di vita:
+I divieti e le regole non sono mai affidati alla semplice "memoria" del modello, ma presidiati da script Node.js eseguiti nel ciclo di vita degli agenti:
 
+### 1. Per Antigravity IDE (`.agents/hooks.json`)
 - **`agy-gate.mjs` (`PreToolUse`)**: Intercetta ed esegue un `deny` immediato per comandi di pubblicazione (`git push`, `npm publish`), deploy cloud (Vercel, AWS, GCP), migrazioni database e flag che bypassano i permessi (`--dangerously-skip-permissions`). Chiede conferma (`ask`) per cancellazioni fuori dal workspace.
 - **`agy-checkpoint.mjs` (`PostToolUse`)**: Ad ogni scrittura o modifica di file, scrive automaticamente la riga `- Fatti: <data> — modificati: <file> — ultimo commit: <hash>` nel `Punto di ripresa` del task `IN CORSO`.
 - **`agy-quota-banner.mjs` (`PreInvocation`)**: Inietta ad **ogni singolo turno** il promemoria di ruolo perentorio (Coordinatore/Dispatcher & Integratore) per impedire all'agente di agire da programmatore singolo "a mano libera" su nuove richieste/bug, oltre al semaforo di quota Anthropic quando rilevante.
 - **`.agents/rules/multiagent-coordinator.md` (Workspace Rule)**: Regola gerarchica permanente caricata nel system prompt di Antigravity che vieta la modifica diretta del codice applicativo e impone la canalizzazione via task.
+
+### 2. Per Claude Code (`tools/claude-mod/` — Claude Code v2.1.287+)
+Con l'introduzione dei **Claude Mods** in-process e del supporto nativo per `AGENTS.md` (v2.1.277+), Claude Code ottiene la medesima parità meccanica di Antigravity:
+- **`tool.call` Gate Interceptor**: Blocca direttamente in-process l'esecuzione di comandi rischiosi su shell Bash (`git push`, publish, cloud deploy, cancellazioni distruttive o bypass dei permessi), permettendo solo comandi autorizzati o esplicitamente approvati dal Direttore.
+- **Automatic Checkpoint su `Edit` e `Write`**: All'atto della modifica di qualsiasi file applicativo o sorgente, aggiorna in tempo reale la sezione `## Punto di ripresa` nel task `IN CORSO` con timestamp e percorso del file.
+- **`ui.render` Status Banner**: Inietta un banner visuale nel terminale con lo Sprint corrente e il task attivo, ricordando a Claude il suo ruolo operativo.
+- **Supporto Wrap-Up Allowance**: Gestisce armoniosamente la riserva finale di quota (5-hour limit wrap-up) portando il task allo stato `PARZIALE` con salvataggio dello stato anziché interrompere bruscamente il codice.
+
+Per abilitare il Claude Mod nel tuo workspace Claude Code:
+```bash
+# Aggiungi il mod locale al repository
+claude mod add ./tools/claude-mod
+```
+
 
 ---
 
@@ -362,7 +377,12 @@ vibe-multiagent/
 │   ├── multiagent-rule.md.template # Regola permanente di workspace Antigravity (Ambiente B)
 │   ├── PROJECT.md.template
 │   └── TASK.md.template
-└── tools/                        # Script per hook Antigravity, runner & telemetria
+└── tools/                        # Script per hook Antigravity, Claude Mod, runner & telemetria
+    ├── claude-mod/               # In-process Claude Mod (Claude Code v2.1.287+)
+    │   ├── .claude-plugin/plugin.json
+    │   └── hooks/
+    │       ├── hooks.json
+    │       └── register.js       # tool.call interceptor, checkpointing & status bar
     ├── agy-gate.mjs              # Guardrail PreToolUse anti-distrazione
     ├── agy-checkpoint.mjs        # Checkpoint PostToolUse dei fatti su disco
     ├── agy-quota-banner.mjs      # Banner PreInvocation e semaforo quote
@@ -370,6 +390,7 @@ vibe-multiagent/
     ├── runner.mjs                # Runner universale con multiplexing streaming log
     ├── telemetry.mjs             # Motore di telemetria e generazione state.json
     └── test/                     # Suite di test automatizzati per i tool
+        ├── claude-mod.test.mjs
         ├── agy-gate.test.mjs
         ├── agy-checkpoint.test.mjs
         ├── agy-quota-banner.test.mjs

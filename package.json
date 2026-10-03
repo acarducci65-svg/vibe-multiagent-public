@@ -1,11 +1,11 @@
 {
   "name": "vibe-multiagent",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Framework operativo rigoroso e Control Room visiva per lo sviluppo collaborativo con Claude Code, OpenAI Codex e Google Antigravity (AGY)",
   "type": "module",
   "main": "tools/telemetry.mjs",
   "scripts": {
-    "test": "node tools/test/agy-gate.test.mjs && node tools/test/agy-checkpoint.test.mjs && node tools/test/quota-anthropic.test.mjs && node tools/test/agy-quota-banner.test.mjs && node tools/test/telemetry.test.mjs && node tools/test/runner.test.mjs && node tools/test/dashboard.test.mjs",
+    "test": "node tools/test/agy-gate.test.mjs && node tools/test/agy-checkpoint.test.mjs && node tools/test/quota-anthropic.test.mjs && node tools/test/agy-quota-banner.test.mjs && node tools/test/telemetry.test.mjs && node tools/test/runner.test.mjs && node tools/test/dashboard.test.mjs && node tools/test/claude-mod.test.mjs",
     "demo": "node -e \"import('node:child_process').then(m => m.exec(process.platform === 'win32' ? 'start demo/dashboard.html' : 'open demo/dashboard.html'))\""
   },
   "keywords": [
