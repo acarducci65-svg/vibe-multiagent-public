@@ -1,11 +1,12 @@
-﻿# Istruzioni Operative per Claude Code CLI
+# Istruzioni Operative per Claude Code CLI
 
 Questo repository e' coordinato dal framework multi-agente (`{{DIR_COORD}}/`).
+Nelle versioni di Claude Code v2.1.277+, `AGENTS.md` e' ingerito nativamente alla radice. Se e' installato il Claude Mod del framework (`tools/claude-mod/`), le guardie di sicurezza Bash e i checkpoint automatici sono gestiti direttamente in-process.
 
 ## Regole di Esecuzione Task
 1. Prima di iniziare a lavorare su un task, leggi il file assegnato in `{{DIR_COORD}}/tasks/<ID_TASK>.md` e `AGENTS.md`.
 2. Quando modifichi lo stato del task (portandolo a `IN CORSO` o a `CONSEGNATO`):
-   - Compila sempre `## Punto di ripresa` con le azioni pianificate ed eseguite.
+   - Compila sempre `## Punto di ripresa` con le azioni pianificate ed eseguite (se il Claude Mod e' attivo, ogni modifica file traccia un checkpoint incrementale automatico).
    - **Esegui subito il comando di telemetria per sincronizzare la Control Room / Dashboard**:
      ```bash
      node {{DIR_COORD}}/tools/telemetry.mjs
@@ -15,3 +16,6 @@ Questo repository e' coordinato dal framework multi-agente (`{{DIR_COORD}}/`).
    - Compila l'handover in `{{DIR_COORD}}/handover/<ID_TASK>.md`.
    - Imposta lo `Stato: CONSEGNATO` in `{{DIR_COORD}}/tasks/<ID_TASK>.md`.
    - Esegui di nuovo `node {{DIR_COORD}}/tools/telemetry.mjs` per notificare all'Integratore che il task e' pronto per la revisione.
+5. In caso di avviso di limite di quota/sessione (5-hour limit o Wrap-Up Allowance in Claude Code v2.1.287+):
+   - Non avviare nuovi file o refactoring estesi.
+   - Usa l'indennità residua per completare i test in corso, aggiornare il `## Punto di ripresa` nel task ed emettere l'handover con `Stato consegna: PARZIALE`.

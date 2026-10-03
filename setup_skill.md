@@ -79,9 +79,9 @@ Ordine delle domande:
 0. Quale cartella ospita il progetto, qual è il suo nome, ed è già un repository Git? Se non sei già nella cartella giusta, fattela indicare per percorso assoluto prima di continuare.
 
 0-bis. Da quale ambiente lavorerai?
-   - **VS Code con Claude Extension** (Ambiente A): Claude Code è il capocantiere e integratore. AGY CLI e Codex CLI sono agenti collaborativi lanciati dal terminale.
-   - **Antigravity IDE** (Ambiente B): l'agente Antigravity (AGY) è il dispatcher e integratore. Claude CLI e Codex CLI sono agenti collaborativi lanciati dal terminale integrato.
-   - **Terminali separati** (Ambiente C): Claude Code è il capocantiere e integratore, come nell'Ambiente A, ma ciascun agente gira nel proprio terminale. Il coordinamento passa esclusivamente da Git e dalla cartella di coordinamento.
+   - **VS Code con Claude Extension** (Ambiente A): Claude Code è il capocantiere e integratore. AGY CLI e Codex CLI sono agenti collaborativi lanciati dal terminale. Con Claude Code v2.1.287+, supporta nativamente i Claude Mods in-process per presidi meccanici di sicurezza (blocco `git push`, deploy e auto-checkpoint) e legge nativamente `AGENTS.md`.
+   - **Antigravity IDE** (Ambiente B): l'agente Antigravity (AGY) è il dispatcher e integratore. Claude CLI e Codex CLI sono agenti collaborativi lanciati dal terminale integrato. Presidiato dagli hook nativi di Antigravity (`agy-gate`, `agy-checkpoint`, `agy-quota-banner`).
+   - **Terminali separati** (Ambiente C): Claude Code è il capocantiere e integratore, come nell'Ambiente A, ma ciascun agente gira nel proprio terminale. Il coordinamento passa da Git e dalla cartella di coordinamento. Con Claude Code v2.1.287+, supporta i Claude Mods per status bar e guardrail in-process.
 
 1. Qual è il problema da risolvere, per chi, e quale risultato osservabile definisce il successo della prima versione?
 
@@ -99,7 +99,7 @@ Ordine delle domande:
 
 8. Come si sviluppa e si pubblica: ambiente locale, repository, branch, CI/CD, hosting, backup e autorizzazioni di deploy?
 
-9. Quali agenti e abbonamenti sono disponibili in questo progetto: Claude Code, Antigravity IDE/CLI, Codex CLI? Se uno esaurisce il proprio limite, chi subentra e quale lavoro invece **non** va sostituito, ma aspetta il reset? E infine: ci sono dati che non devono passare per un certo **fornitore**? Attenzione, sono due domande distinte: un modello Claude eseguito dentro Antigravity passa dal percorso dati Google e dal modello di permessi di Antigravity, non da quelli di Anthropic. La risposta non dipende solo da quale agente, ma da quale agente attraverso quale fornitore.
+9. Quali agenti e abbonamenti sono disponibili in questo progetto: Claude Code (Opus 5.5 default, Sonnet 5.5 per compiti mirati), Antigravity IDE/CLI, Codex CLI? Se uno esaurisce il proprio limite, chi subentra e quale lavoro invece **non** va sostituito, ma aspetta il reset? (Nota: con Claude Code v2.1.287+, il limite delle 5 ore attiva il Wrap-Up Allowance, consentendo di chiudere il task in corso prima dell'eventuale handover). E infine: ci sono dati che non devono passare per un certo **fornitore**? Attenzione, sono due domande distinte: un modello Claude eseguito dentro Antigravity passa dal percorso dati Google e dal modello di permessi di Antigravity, non da quelli di Anthropic. La risposta non dipende solo da quale agente, ma da quale agente attraverso quale fornitore.
 
 10. Qual è la prima milestone, quali file o componenti la compongono, e quali decisioni devono restare sempre all'utente?
 
