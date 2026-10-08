@@ -1,32 +1,109 @@
 # Handover — {{ID_TASK}}
+Contratto: HANDOVER v2
+Esito consegna: {{STATO}} (uno fra: COMPLETO | PARZIALE | BLOCCATO)
+Autore: {{AGENTE_USCENTE}} (Modello/CLI: {{ESECUTORE_E_MODELLO}})
+Destinatari: {{AGENTE_DESTINATARIO}} (Integratore) e Direttore
+Task di riferimento: `{{DIR_COORD}}/tasks/{{ID_TASK}}.md`
+Data: {{DATA}}
 
 Consegna di un task dentro il protocollo multi-agente. Per il passaggio di consegne fra sessioni dello stesso agente, usa la procedura standard di session handoff del tuo ambiente.
 
-Stato consegna: {{STATO}} — uno fra `COMPLETO`, `PARZIALE`, `BLOCCATO`. (Nota: se interrotto da quota/limite 5-ore con Wrap-Up Allowance attiva, contrassegna `PARZIALE` e descrivi i file già modificati nel punto di ripresa).
-Agente uscente: {{AGENTE_USCENTE}}
-Agente destinatario: {{AGENTE_DESTINATARIO}}
-Task di riferimento: `{{DIR_COORD}}/tasks/{{ID_TASK}}.md`
+---
 
-## Stato attuale
+## 1. Esito per criterio di accettazione
 
-{{STATO_ATTUALE}}
+| Criterio | Descrizione | Livello dichiarato | Esito | Evidenza documentata |
+|---|---|---|---|---|
+| AC-1 | (es. Parser aggiornato con gestione errori) | VERIFICATO | ✅ PASS | `npm test` exit 0 (vedi §3) |
+| AC-2 | (es. Test di ripristino o deploy live) | COLLAUDATO | ⚪ NON ESEGUITO | Vietato da policy (vedi §4) |
 
-## Prossimo obiettivo
+*Legenda Esiti*:
+- `✅ PASS`: Verificato empiricamente con comando ed evidenza allegata.
+- `⚪ NON ESEGUITO`: Non provato; motivo obbligatorio nella sezione §4.
+- `⚠️ CAVEAT`: Rilievo, regressione parziale o limite riscontrato (censito in §7).
 
-{{PROSSIMO_OBIETTIVO}}
+---
 
-## Verifiche eseguite e risultato
+## 2. Riferimenti Git & Stato Working Tree
+- **Commit Base**: `(SHA commit iniziale)`
+- **HEAD finale**: `(SHA commit finale)` (fetch upstream eseguito: no|sì)
+- **Branch / Worktree**: `(nome ramo o percorso worktree)`
+- **Stato Working Tree (`git status --short`)**: `(pulito / file non tracciati residui)`
 
-{{VERIFICHE_E_RISULTATO}}
+---
 
-Riporta il comando e il suo esito reale. Non scrivere che una verifica passa senza averla eseguita.
+## 3. Verifiche eseguite
 
-## File toccati
+| # | Comando eseguito | Cartella (cwd) | Exit code | Evidenza / Log di riferimento |
+|---|---|---|---|---|
+| 1 | `npm run test` | root | exit 0 | Tutti i 12 test verdi |
+| 2 | `node tools/runner.mjs ...` | root | exit 0 | Log in `{{DIR_COORD}}/logs/{{ID_TASK}}.log` |
 
-{{FILE_TOCCATI}}
+Riporta il comando esatto e il suo esito reale. Non scrivere che una verifica passa senza averla eseguita con riscontro oggettivo.
 
-## Decisioni, limiti e rischi
+---
 
-{{DECISIONI_LIMITI_RISCHI}}
+## 4. Non eseguito, e perché (SEZIONE OBBLIGATORIA)
 
-Nessun segreto, token, password o dato personale in questo file.
+Dichiara esplicitamente cosa **non** hai verificato o toccato in questo task, anche se l'elenco è breve:
+- (es. Database live non interrogato: eseguito solo mock offline come da vincolo di isolamento).
+- (es. Nessun riavvio o stop del servizio/daemon in produzione: binario lasciato in staging).
+- (es. Browser testing non eseguito per assenza di display server nell'ambiente headless).
+
+---
+
+## 5. Invarianti preservate e misurate
+
+| Invariante di Progetto | Valore / Stato Prima | Valore / Stato Dopo | Esito |
+|---|---|---|---|
+| Zero costi API (provider flat) | Conforme | Conforme | ✅ Invariato |
+| Processo daemon installato | PID: xxxxx, SHA: abc... | PID: xxxxx, SHA: abc... | ✅ Intatto |
+| Variabili ambiente (`DO_NOT_TRACK`) | `true` | `true` | ✅ Preservato |
+
+---
+
+## 6. File toccati, creati e artefatti di staging
+
+### Modifiche sorgenti (`git diff --stat`)
+```text
+(incolla output di git diff --stat)
+```
+
+### Artefatti generati e Hash SHA-256
+Se il task ha prodotto eseguibili, archivi o script in staging (es. in `.coord/bin/` o `.coord/evidence/`):
+- File: `.coord/bin/...`
+- Dimensione: x.xxx byte
+- SHA-256: `(hash calcolato)`
+
+---
+
+## 7. Rilievi e debiti tecnici (da trascrivere in FINDINGS.md)
+
+Se durante l'attività hai scoperto bug, rischi latenti, dipendenze deboli o anomalie fuori perimetro:
+
+| ID Provvisorio | Severità (P0–P3) | Titolo / Descrizione sintetica | File / Componente coinvolto | Proposta di rimedio |
+|---|---|---|---|---|
+| F-new-1 | P2 | Mancanza di rate-limit su endpoint | `server/handler/...` | Aprire task dedicato |
+
+---
+
+## 8. Decisioni richieste al Direttore
+(Eventuali scelte architetturali, approvazioni formali al deploy o deroghe da registrare in DECISIONS.md prima dell'integrazione).
+
+---
+
+## 9. Come riverificare (≤ 5 comandi per l'Integratore)
+Sequenza rapida di comandi riproducibili che l'Integratore può lanciare per confermare la consegna:
+```bash
+# 1. Test
+npm test
+# 2. Typecheck
+npm run typecheck
+```
+
+---
+
+## 10. Dichiarazioni di conformità
+- [x] Nessun segreto, token, password o dato personale inserito in questo file o committato.
+- [x] Nessuna modifica eseguita fuori dai file riservati autorizzati.
+- [x] **Ultima azione eseguita**: aggiornato lo stato in `{{DIR_COORD}}/tasks/{{ID_TASK}}.md` a `CONSEGNATO`.

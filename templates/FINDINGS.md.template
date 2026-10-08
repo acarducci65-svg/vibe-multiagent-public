@@ -1,0 +1,35 @@
+# Registro dei Rilievi e Debiti Tecnici — {{NOME_PROGETTO}}
+
+Questo registro traccia in modo immutabile tutti i rilievi tecnici, vulnerabilità, deviazioni architetturali e debiti scoperti durante gli audit e gli handover degli agenti.
+
+## Regola di Chiusura Milestone
+Nessuna milestone può essere chiusa (stato `COMPLETATO`) se sono presenti rilievi con severità **P0 (Bloccante)** o **P1 (Alto)** in stato `APERTO`.
+I rilievi P0/P1 devono essere `RISOLTO` (con evidenza di verifica) oppure `ACCETTATO` esplicitamente dal Direttore tramite registrazione in `{{DIR_COORD}}/DECISIONS.md`.
+
+---
+
+## Scala di Severità
+- **P0 — Bloccante**: Rischio immediato di sicurezza, perdita dati, loop infinito di quote o crash critico di sistema.
+- **P1 — Alto**: Difetto funzionale grave, bypass di permessi/lockdown, test mancanti su percorsi critici.
+- **P2 — Medio**: Debito tecnico, inconsistenze di configurazione, ottimizzazioni necessarie, documentazione disallineata.
+- **P3 — Basso**: Suggerimento di miglioramento, refactoring cosmetico, nota di futura evoluzione.
+
+---
+
+## Tabella dei Rilievi
+
+| ID | Data | Origine (Task) | Severità | Titolo & Descrizione sintetica | Stato | Risoluzione / Decisione |
+|---|---|---|---|---|---|---|
+| F-001 | AAAA-MM-GG | TASK-000 | P1 | Esempio: Rate limiting disattivato in assenza di Redis | APERTO | Assegnato a TASK-00X o DEC-00X |
+
+---
+
+## Dettaglio dei Rilievi Aperti
+
+### F-001 — Titolo del Rilievo
+- **Origine**: `{{DIR_COORD}}/tasks/TASK-000.md` (segnalato da: Agente)
+- **Severità**: P1
+- **Descrizione**: Spiegazione tecnica dettagliata del problema rilevato.
+- **Rischio**: Quale garanzia o funzionalità viene compromessa.
+- **Azione proposta**: Come sanare il rilievo.
+- **Stato**: `APERTO` | `MITIGATO` | `RISOLTO in TASK-xxx` | `ACCETTATO con DEC-xxx`

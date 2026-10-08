@@ -1,0 +1,71 @@
+"""Audit lessicale statico riproducibile dei file di migrazione / schema SQL.
+Zero dipendenze esterne. Non si connette al database.
+Genera un inventario Markdown con hash SHA-256 e verifica conformita'.
+"""
+import hashlib
+import io
+import os
+import re
+import subprocess
+import sys
+import tarfile
+from pathlib import Path
+
+# Parametri configurabili o ereditati
+TARGET_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("migrations")
+OUTPUT_REPORT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("handover/migration-audit.md")
+
+def check_sql_file(content: str):
+    """Analisi lessicale delle istruzioni SQL per controlli di sicurezza."""
+    # Rimuove commenti su riga singola
+    code = re.sub(r'--[^\n]*', '', content)
+    # Rimuove letterali stringa per evitare falsi positivi
+    code = re.sub(r"'(?:''|[^'])*'", "''", code)
+    
+    flags = []
+    if re.search(r'\b(REFERENCES|FOREIGN\s+KEY)\b', code, re.I):
+        flags.append('FK: foreign key rilevata')
+    if re.search(r'\bCASCADE\b', code, re.I):
+        flags.append('CASCADE: eliminazione a cascata')
+    if re.search(r'CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?!CONCURRENTLY\b)', code, re.I):
+        flags.append('LOCK: indice non concorrente (blocco tabella)')
+    if re.search(r'DROP\s+TABLE|DROP\s+COLUMN|DELETE\s+FROM', code, re.I):
+        flags.append('DISTRUTTIVO: eliminazione tabella/colonna/dati')
+    if re.search(r'ALTER\s+TABLE', code, re.I):
+        flags.append('ALTER: verifica lock_timeout')
+    return flags
+
+def run_audit():
+    if not TARGET_DIR.exists():
+        print(f"Directory {TARGET_DIR} non trovata.")
+        return 0
+
+    sql_files = sorted(list(TARGET_DIR.glob("**/*.sql")))
+    rows = []
+    
+    for f in sql_files:
+        raw = f.read_bytes()
+        sha = hashlib.sha256(raw).hexdigest()
+        flags = check_sql_file(raw.decode('utf-8', errors='replace'))
+        rows.append((f.name, sha, flags))
+        
+    lines = [
+        "# Inventario di Sicurezza e Audit Statico Migrazioni",
+        "",
+        f"File analizzati: {len(rows)}.",
+        "Analisi lessicale per la verifica di assenza lock bloccanti e operazioni distruttive.",
+        "",
+        "| File | SHA-256 | Indicatori & Rilievi |",
+        "|---|---|---|",
+    ]
+    for name, sha, flags in rows:
+        indicatori = ", ".join(flags) if flags else "Conforme (Nessun rilievo critico)"
+        lines.append(f"| `{name}` | `{sha}` | {indicatori} |")
+        
+    OUTPUT_REPORT.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Audit completato con successo: {len(rows)} file censiti in {OUTPUT_REPORT}.")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(run_audit())

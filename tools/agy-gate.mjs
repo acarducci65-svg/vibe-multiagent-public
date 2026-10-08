@@ -25,12 +25,11 @@ if (STRUMENTI_SCRITTURA.has(nome)) {
   if (targetFile) {
     const normTarget = String(targetFile).replace(/\\/g, "/");
 
-    // Permesso libero per coordinamento, regole agenti ed editor config
+    // Permesso libero per coordinamento, regole agenti ed editor config (esclusi file di workflow CI/CD come .github)
     if (/(?:^|\/)\.coord(?:\/|$)/i.test(normTarget) ||
         /(?:^|\/)\.agents?(?:\/|$)/i.test(normTarget) ||
         /(?:^|\/)\.gemini(?:\/|$)/i.test(normTarget) ||
-        /(?:^|\/)\.vscode(?:\/|$)/i.test(normTarget) ||
-        /(?:^|\/)\.github(?:\/|$)/i.test(normTarget)) {
+        /(?:^|\/)\.vscode(?:\/|$)/i.test(normTarget)) {
       esci("allow", "");
     }
 
@@ -57,9 +56,15 @@ if (STRUMENTI_SCRITTURA.has(nome)) {
       relPath = normTarget.replace(/^[a-zA-Z]:\//, "").replace(/^\/+/, "");
     }
 
-    // File di documentazione o configurazione nella root del progetto: consentiti liberamente
+    // File sensibili di ambiente, deploy, CI/CD: richiedono SEMPRE conferma
+    const isSensitive = /(?:^|\/)(\.env.*|docker-compose.*\.ya?ml|deploy\/.*|\.github\/.*)$/i.test(relPath);
+    if (isSensitive) {
+      esci("force_ask", `ATTENZIONE PROTOCOLLO MULTI-AGENTE: Antigravity sta modificando un file sensibile di configurazione/ambiente/CI (${relPath}). Conferma solo se autorizzato esplicitamente dal Direttore.`);
+    }
+
+    // File di documentazione o configurazione ordinaria nella root del progetto: consentiti liberamente
     const isRootFile = !relPath.includes("/");
-    const isDocOrConfig = /\.(md|markdown|txt|json|ya?ml|env.*|toml|ini)$/i.test(relPath) &&
+    const isDocOrConfig = /\.(md|markdown|txt|json|ya?ml|toml|ini)$/i.test(relPath) &&
       !/^(src|lib|components|app|test|pages|server|routes|models|controllers)[\\/]/i.test(relPath);
 
     if (isRootFile || isDocOrConfig) {
@@ -98,7 +103,9 @@ const VIETATI = [
   [/\b(prisma|knex|alembic|rails)(\.cmd|\.exe|\.ps1|\.bat)?\b.*\bmigrat/i, "migrazione di schema"],
   [/\b(npm|pnpm|yarn|bun)(\.cmd|\.exe|\.ps1|\.bat)?\b.*(-g\b|--global\b|\bglobal\s+add\b)/i, "installazione globale, fuori dal repository"],
   [/\b(curl|iwr|irm|wget)(\.exe)?\b[^|;]*\|\s*(ba)?sh\b/i,               "scaricare ed eseguire uno script in un colpo solo"],
-  [/\b(curl|iwr|irm|wget)(\.exe)?\b[^|;]*\|\s*(powershell|pwsh|iex)\b/i, "scaricare ed eseguire uno script in un colpo solo"],
+  [/\b(ssh|scp)(\.exe)?\b/i,                                             "accesso shell remoto non autorizzato"],
+  [/\bdocker(-compose|\.exe)?\s+(compose\s+)?(down|rm)\b/i,              "arresto o rimozione container di produzione"],
+  [/\brclone(\.exe)?\s+delete\b/i,                                       "cancellazione remota di backup su cloud"],
   [/--dangerously-skip-permissions/i,                                    "disattiva i permessi per conto del Direttore"],
   [/--dangerously-bypass-approvals/i,                                    "disattiva le approvazioni per conto del Direttore"],
 ];

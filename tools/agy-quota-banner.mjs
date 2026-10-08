@@ -18,20 +18,23 @@ try {
   raccogliTelemetria(radice, process.env.DIR_COORD || ".coord");
 } catch {}
 
-let q = { ok: false, source: "unknown" };
-try {
-  const major = parseInt(process.versions.node.split(".")[0], 10);
-  const minor = parseInt(process.versions.node.split(".")[1], 10);
-  const usaSystemCa = major > 22 || (major === 22 && minor >= 15);
-  const execArgs = usaSystemCa ? ["--use-system-ca", join(__dirname, "quota-anthropic.mjs")] : [join(__dirname, "quota-anthropic.mjs")];
-  q = JSON.parse(
-    execFileSync(process.execPath, execArgs, {
-      encoding: "utf8",
-      timeout: 8000,
-      env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "1" },
-    })
-  );
-} catch {}
+let q = { ok: false, source: "disabled" };
+const quotaOptIn = process.env.VIBE_ANTHROPIC_QUOTA === "1" || Boolean(process.env.VIBE_MOCK_QUOTA_PAYLOAD);
+if (quotaOptIn) {
+  try {
+    const major = parseInt(process.versions.node.split(".")[0], 10);
+    const minor = parseInt(process.versions.node.split(".")[1], 10);
+    const usaSystemCa = major > 22 || (major === 22 && minor >= 15);
+    const execArgs = usaSystemCa ? ["--use-system-ca", join(__dirname, "quota-anthropic.mjs")] : [join(__dirname, "quota-anthropic.mjs")];
+    q = JSON.parse(
+      execFileSync(process.execPath, execArgs, {
+        encoding: "utf8",
+        timeout: 8000,
+        env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "0" },
+      })
+    );
+  } catch {}
+}
 
 const five = q?.fiveHourPct ?? 0;
 const seven = q?.sevenDayPct ?? 0;

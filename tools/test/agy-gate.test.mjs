@@ -30,6 +30,13 @@ const casi = [
   [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/.agents/rules/test.md" } }, "allow"],
   [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/src/app/page.tsx" } }, "force_ask"],
   [{ name: "replace_file_content", args: { TargetFile: "C:/dev/progetto/src/components/Header.tsx" } }, "force_ask"],
+  // Nuovi controlli di sicurezza: CI/CD, configurazioni sensibili e comandi infrastruttura
+  [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/.github/workflows/deploy.yml" } }, "force_ask"],
+  [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/.env.production" } }, "force_ask"],
+  [{ name: "write_to_file", args: { TargetFile: "C:/dev/progetto/docker-compose.yml" } }, "force_ask"],
+  [{ name: "run_command", args: { CommandLine: "ssh user@remote-server.example.com" } }, "deny"],
+  [{ name: "run_command", args: { CommandLine: "docker compose down" } }, "deny"],
+  [{ name: "run_command", args: { CommandLine: "rclone delete remote:backup" } }, "deny"],
   // Casi di scrittura file su POSIX (Linux/macOS)
   [{ name: "write_to_file", args: { TargetFile: "/home/runner/work/project/.coord/tasks/T-001.md" } }, "allow", ["/home/runner/work/project"]],
   [{ name: "replace_file_content", args: { TargetFile: "/home/runner/work/project/GEMINI.md" } }, "allow", ["/home/runner/work/project"]],
