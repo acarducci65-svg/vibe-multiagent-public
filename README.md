@@ -60,6 +60,7 @@ git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git .agents/
 4. **Presidi Meccanici su Antigravity**: Hook automatici per bloccare comandi distruttivi (`git push`, deploy, migrazioni), checkpoint automatici su disco ad ogni modifica e semaforo di quota preventivo.
 5. **Lezioni di Produzione Integrate**: Risoluzione automatica di problemi tipici su Windows (PATH stantio delle CLI, normalizzazione CRLF/LF, conflitti di working tree condivisi).
 6. **Control Room Visiva & Streaming in Tempo Reale**: Dashboard HTML5 dark-mode standalone (`dashboard.html`), telemetria di stato (`state.json`) e runner universale (`runner.mjs`) per eliminare l'effetto "scatola nera", monitorando la flotta, i log e l'avanzamento dei task in tempo reale.
+7. **Contratti Formali di Governance & Runaway Protection (v2.0)**: Protocolli TASK v2 e HANDOVER v2 con 4 livelli di verifica formale, budget esecuzioni rigido anti-loop, registro immutabile del debito tecnico (`FINDINGS.md`), gap analysis a tre mani e security gates rafforzati.
 
 ---
 
@@ -188,15 +189,17 @@ mio-progetto/
 │       └── multiagent-coordinator.md # Regola permanente di workspace per il Dispatcher/Integratore
 └── .coord/                   # Cartella di coordinamento del progetto
     ├── PROJECT.md            # Fonte unica del contesto di business e architettura
-    ├── CURRENT_SPRINT.md     # Milestone attiva, criteri di completamento e rischi
+    ├── CURRENT_SPRINT.md     # Milestone attiva, checklist closing gate e rischi
+    ├── FINDINGS.md           # Registro immutabile debito tecnico e blocker (P0-P3)
     ├── DECISIONS.md          # Registro decisionale progressivo (D-001, D-002, ...)
-    ├── DISPATCH.md           # (Solo Ambiente B) Manuale per il dispatcher AGY
+    ├── DISPATCH.md           # (Ambiente B) Manuale operativo AGY con Runaway Protection
     ├── agents/
     │   ├── verifica-tecnica/agent.md   # Ruolo Codex (se abilitato)
     │   └── verifica-ui/agent.md        # Ruolo AGY (se abilitato)
     ├── tasks/
-    │   └── T-001.md          # Specifica del primo task con proprietario e punto di ripresa
-    └── handover/             # Cartella di consegna report di fine task
+    │   └── T-001.md          # Specifica del task (TASK v2 con metadati e 4 livelli di verifica)
+    ├── handover/             # Report di consegna completati (HANDOVER v2 con matrice invarianti)
+    └── scripts/              # Script operativi locali (preflight-audit, smoketest, controller)
 ```
 
 ---
@@ -206,14 +209,16 @@ mio-progetto/
 I divieti e le regole non sono mai affidati alla semplice "memoria" del modello, ma presidiati da script Node.js eseguiti nel ciclo di vita degli agenti:
 
 ### 1. Per Antigravity IDE (`.agents/hooks.json`)
-- **`agy-gate.mjs` (`PreToolUse`)**: Intercetta ed esegue un `deny` immediato per comandi di pubblicazione (`git push`, `npm publish`), deploy cloud (Vercel, AWS, GCP), migrazioni database e flag che bypassano i permessi (`--dangerously-skip-permissions`). Chiede conferma (`ask`) per cancellazioni fuori dal workspace.
+- **`agy-gate.mjs` (`PreToolUse`)**:
+  - **Deny immediato** per comandi di pubblicazione (`git push`, `npm publish`), comandi remoti non autorizzati (`ssh`, `scp`), comandi distruttivi (`docker compose down`, `rclone delete`), migrazioni database arbitrarie e bypass permessi (`--dangerously-skip-permissions`).
+  - **Force Ask** (conferma umana obbligatoria) per modifiche a file infrastrutturali e sensibili (`.env*`, `deploy/**`, `docker-compose*.yml`, configurazioni CI/CD in `.github/`) e cancellazioni fuori perimetro.
 - **`agy-checkpoint.mjs` (`PostToolUse`)**: Ad ogni scrittura o modifica di file, scrive automaticamente la riga `- Fatti: <data> — modificati: <file> — ultimo commit: <hash>` nel `Punto di ripresa` del task `IN CORSO`.
 - **`agy-quota-banner.mjs` (`PreInvocation`)**: Inietta ad **ogni singolo turno** il promemoria di ruolo perentorio (Coordinatore/Dispatcher & Integratore) per impedire all'agente di agire da programmatore singolo "a mano libera" su nuove richieste/bug, oltre al semaforo di quota Anthropic quando rilevante.
 - **`.agents/rules/multiagent-coordinator.md` (Workspace Rule)**: Regola gerarchica permanente caricata nel system prompt di Antigravity che vieta la modifica diretta del codice applicativo e impone la canalizzazione via task.
 
 ### 2. Per Claude Code (`tools/claude-mod/` — Claude Code v2.1.287+)
 Con l'introduzione dei **Claude Mods** in-process e del supporto nativo per `AGENTS.md` (v2.1.277+), Claude Code ottiene la medesima parità meccanica di Antigravity:
-- **`tool.call` Gate Interceptor**: Blocca direttamente in-process l'esecuzione di comandi rischiosi su shell Bash (`git push`, publish, cloud deploy, cancellazioni distruttive o bypass dei permessi), permettendo solo comandi autorizzati o esplicitamente approvati dal Direttore.
+- **`tool.call` Gate Interceptor**: Blocca direttamente in-process l'esecuzione di comandi rischiosi su shell Bash (`git push`, publish, cloud deploy, comandi remoti o bypass permessi), permettendo solo comandi autorizzati o esplicitamente approvati dal Direttore.
 - **Automatic Checkpoint su `Edit` e `Write`**: All'atto della modifica di qualsiasi file applicativo o sorgente, aggiorna in tempo reale la sezione `## Punto di ripresa` nel task `IN CORSO` con timestamp e percorso del file.
 - **`ui.render` Status Banner**: Inietta un banner visuale nel terminale con lo Sprint corrente e il task attivo, ricordando a Claude il suo ruolo operativo.
 - **Supporto Wrap-Up Allowance**: Gestisce armoniosamente la riserva finale di quota (5-hour limit wrap-up) portando il task allo stato `PARZIALE` con salvataggio dello stato anziché interrompere bruscamente il codice.
@@ -224,6 +229,35 @@ Per abilitare il Claude Mod nel tuo workspace Claude Code:
 claude mod add ./tools/claude-mod
 ```
 
+---
+
+## 📋 Contratti Formali di Governance v2.0
+
+La versione 2.0 introduce contratti formali rigorosi che impediscono dichiarazioni superficiali di completamento:
+
+### 1. Contratto TASK v2
+- **Metadati di Governance**: Ogni task dichiara esplicitamente `Revisore:`, `Integratore:`, `Sensibile: (Sì/No)`, `Decisione:` e un `Budget esecuzioni: 3`.
+- **4 Livelli di Verifica dei Criteri di Accettazione**:
+  - `CONFIGURATO`: Ambiente, variabili e dipendenze impostate.
+  - `ESEGUITO`: Il codice o comando è stato eseguito.
+  - `VERIFICATO`: I test e controlli restituiscono exit code 0 ed evidenze conformi.
+  - `COLLAUDATO`: Integrazione end-to-end comprovata e validata.
+- **Registro di Integrazione**: Tabella riservata compilata esclusivamente dall'Integratore con comandi rieseguiti, commit git e timbro formale.
+
+### 2. Contratto HANDOVER v2
+- **Matrice dei Criteri**: Ogni criterio di accettazione viene esplicitamente referenziato con esito (`✅ Superato`, `⚪ Non applicabile`, `⚠️ Parziale`).
+- **Tracciamento Commit Git**: Obbligo di registrare hash commit e branch di lavoro.
+- **Sezione Vincolante *"Non eseguito, e perché"***: Vietato omettere deliverable incompleti; ogni deviazione deve recare motivazione e costo.
+- **Tabella Invarianti con Hash SHA256**: Verifica crittografica o strutturale sui file core per escludere regressioni silenti.
+
+### 3. Registro Debito & Blocker (`FINDINGS.md`)
+- Registro immutabile classificato per severità (`P0 - Bloccante`, `P1 - Alto`, `P2 - Medio`, `P3 - Basso`).
+- **Closing Gate della Milestone**: Nessuna milestone può essere chiusa se vi sono P0 aperti o P1 privi di piano di mitigazione approvato dal Direttore.
+
+### 4. Runaway Protection & Anti-Loop
+- **Budget Rigido**: Massimo 3 invocazioni per singolo task. Al superamento scatta il blocco a freddo e richiesta di intervento del Direttore.
+- **Rilevamento Cicli**: Rileva rimbalzi non convergenti o disaccordi di implementazione.
+- **Gap Analysis & Sintesi Triangolare a Tre Mani**: Protocollo strutturato in 3 fasi (Diagnosi indipendente AGY/Claude/Codex -> Sintesi incrociata -> Piano esecutivo unitario) per dirimere problemi complessi o divergenze.
 
 ---
 
@@ -239,13 +273,18 @@ claude mod add ./tools/claude-mod
        │ IN CORSO ├────────────────────────────────────►│ SOSPESO  │
        └────┬─────┘                                     └────┬─────┘
             │                                                │ (Sostituzione o reset)
-            │ (Lavoro ultimato + Handover scritto)           │
+            │ (Lavoro ultimato + Handover v2 scritto)        │
             ▼                                                │
-        ┌────────────┐                                        │
+       ┌────────────┐                                        │
        │ CONSEGNATO │◄───────────────────────────────────────┘
        └────┬───────┘
-            │  (SOLO l'Orchestratore dell'ambiente riesegue verifiche e test)
+            │
             ▼
+       ┌─────────────┐
+       │ IN VERIFICA │ ◄── Review Gate (L'Integratore riesegue test e controlla invarianti)
+       └─────┬───────┘
+             │  (Verifiche superate + commit registrato)
+             ▼
        ┌───────────┐
        │ INTEGRATO │
        └───────────┘
@@ -335,7 +374,7 @@ Per verificare l'intera suite di strumenti meccanici e telemetrici multipiattafo
 npm test
 ```
 
-Oppure per eseguire i singoli moduli di test:
+Oppure per eseguire i singoli moduli di test (tutti deterministici e 100% offline):
 ```bash
 node tools/test/agy-gate.test.mjs
 node tools/test/agy-checkpoint.test.mjs
@@ -343,6 +382,8 @@ node tools/test/quota-anthropic.test.mjs
 node tools/test/agy-quota-banner.test.mjs
 node tools/test/telemetry.test.mjs
 node tools/test/runner.test.mjs
+node tools/test/dashboard.test.mjs
+node tools/test/claude-mod.test.mjs
 ```
 
 ---
@@ -356,47 +397,54 @@ vibe-multiagent/
 │       └── ci.yml                # CI multipiattaforma (Ubuntu, Windows, macOS)
 ├── .gitattributes                # Normalizzazione LF cross-platform
 ├── .gitignore                    # Esclusioni per file volatili e telemetria
-├── package.json                  # Definizione pacchetto e script npm test
+├── package.json                  # Definizione pacchetto (v2.0.0) e script npm test
+├── plugin.json                   # Manifest plugin per Antigravity IDE (v2.0.0)
 ├── LICENSE                       # Licenza MIT (Alessandro Carducci)
 ├── SECURITY.md                   # Policy di sicurezza e trasparenza quote
 ├── CONTRIBUTING.md               # Guida per contributori esterni
 ├── CODE_OF_CONDUCT.md            # Codice di condotta Contributor Covenant
-├── README.md                     # Documentazione principale in italiano
-├── README.en.md                  # Documentazione internazionale in inglese
+├── README.md                     # Documentazione principale in italiano (v2.0.0)
+├── README.en.md                  # Documentazione internazionale in inglese (v2.0.0)
 ├── SKILL.md                      # Entry point principale per Claude Code
 ├── setup_skill.md                # Protocollo completo di intervista e setup
 ├── templates/                    # Template per i file di progetto
 │   ├── AGENTS.md.template
 │   ├── AGENT_ROLE.md.template
-│   ├── CURRENT_SPRINT.md.template
+│   ├── CURRENT_SPRINT.md.template # Milestone con checklist closing gate
 │   ├── dashboard.html.template   # Control Room visiva interattiva (dark mode)
 │   ├── DECISIONS.md.template
-│   ├── DISPATCH.md.template      # Guida operativa Dispatcher AGY (Ambiente B)
-│   ├── HANDOVER.md.template
+│   ├── DISPATCH.md.template      # Guida operativa Dispatcher AGY con Runaway Protection
+│   ├── FINDINGS.md.template      # Registro immutabile debito tecnico e blocker (P0-P3)
+│   ├── HANDOVER.md.template      # HANDOVER v2 con matrice invarianti SHA256
 │   ├── hooks.json.template       # Configurazione hook Antigravity (Ambiente B)
 │   ├── multiagent-rule.md.template # Regola permanente di workspace Antigravity (Ambiente B)
 │   ├── PROJECT.md.template
-│   └── TASK.md.template
+│   ├── TASK.md.template          # TASK v2 con 4 livelli di verifica e metadati
+│   └── scripts/                  # Template per script di automazione e diagnostica locale
+│       ├── preflight-audit.py.template     # Audit rapido ambiente, file e consistenza Git
+│       ├── smoketest.ps1.template          # Smoke test PowerShell rapido per Windows
+│       └── service-controller.bat.template # Controller batch per gestione processi background
 └── tools/                        # Script per hook Antigravity, Claude Mod, runner & telemetria
     ├── claude-mod/               # In-process Claude Mod (Claude Code v2.1.287+)
     │   ├── .claude-plugin/plugin.json
     │   └── hooks/
     │       ├── hooks.json
     │       └── register.js       # tool.call interceptor, checkpointing & status bar
-    ├── agy-gate.mjs              # Guardrail PreToolUse anti-distrazione
+    ├── agy-gate.mjs              # Guardrail PreToolUse con blocco comandi remoti e file sensibili
     ├── agy-checkpoint.mjs        # Checkpoint PostToolUse dei fatti su disco
-    ├── agy-quota-banner.mjs      # Banner PreInvocation e semaforo quote
+    ├── agy-quota-banner.mjs      # Banner PreInvocation e promemoria di ruolo perentorio
     ├── quota-anthropic.mjs       # Sensore quota Claude (opt-in VIBE_ANTHROPIC_QUOTA=1)
-    ├── runner.mjs                # Runner universale con multiplexing streaming log
-    ├── telemetry.mjs             # Motore di telemetria e generazione state.json
-    └── test/                     # Suite di test automatizzati per i tool
+    ├── runner.mjs                # Runner universale con decodifica UTF-8 e multiplexing streaming
+    ├── telemetry.mjs             # Motore di telemetria con ID canonici e parsing log annidati
+    └── test/                     # Suite di test automatizzati (8 suite, 100% GREEN)
         ├── claude-mod.test.mjs
         ├── agy-gate.test.mjs
         ├── agy-checkpoint.test.mjs
         ├── agy-quota-banner.test.mjs
         ├── quota-anthropic.test.mjs
         ├── runner.test.mjs
-        └── telemetry.test.mjs
+        ├── telemetry.test.mjs
+        └── dashboard.test.mjs
 ```
 
 ---
