@@ -236,6 +236,40 @@ Il dispatcher lancia un esecutore con `run_command`, impostando `WaitMsBeforeAsy
 
 Le istruzioni operative complete del dispatcher sono nel template `DISPATCH.md.template`, generato come `{{DIR_COORD}}/DISPATCH.md`.
 
+## Contratti di Governance v2.0 e Ciclo di Vita del Task
+
+La versione 2.0 formalizza contratti rigidi e verificabili per evitare completamenti fittizi o loop infiniti tra agenti:
+
+### 1. Stati del Task
+```text
+PRONTO ──► IN CORSO ──► CONSEGNATO ──► IN VERIFICA ──► INTEGRATO
+   ▲           │                           │
+   │           ▼                           ▼
+   └─────── SOSPESO ◄──────────────────────┘
+```
+- **`PRONTO`**: Task pianificato con budget esecuzioni (default 3), AC a 4 livelli, proprietario e revisore assegnati.
+- **`IN CORSO`**: Esecutore attivo con punto di ripresa aggiornato a ogni file scritto/modificato.
+- **`CONSEGNATO`**: L'esecutore ha redatto l'HANDOVER v2 con matrice dei criteri, commit git e invarianti verificate.
+- **`IN VERIFICA`**: Review Gate obbligatorio. L'Integratore riesegue personalmente i test e le verifiche d'invarianza prima dell'integrazione.
+- **`INTEGRATO`**: Solo l'Orchestratore/Integratore sposta a `INTEGRATO` dopo collaudo superato, compilando il *Registro di Integrazione*.
+- **`SOSPESO`**: Quota esaurita, budget superato o deviazione architetturale non risolvibile. Richiede intervento del Direttore.
+
+### 2. I 4 Livelli di Verifica dei Criteri di Accettazione (AC)
+Ogni criterio deve specificare il livello richiesto e il comando oggettivo:
+- `CONFIGURATO`: Variabili d'ambiente, file di configurazione o dipendenze impostate e valide.
+- `ESEGUITO`: Il codice, script o comando è stato eseguito senza eccezioni non gestite.
+- `VERIFICATO`: I test e controlli restituiscono exit code 0 ed evidenze conformi (`node --test`, `pytest`, etc.).
+- `COLLAUDATO`: Integrazione end-to-end conclamata (interfaccia utente, flusso completo, integrità dati).
+
+### 3. Registro Immutabile Debito & Blocker (`FINDINGS.md`)
+I debiti tecnici, i difetti rimandati e le vulnerabilità non possono disperdersi nella chat:
+- Vengono registrati in `{{DIR_COORD}}/FINDINGS.md` classificati per severità (`P0 - Bloccante`, `P1 - Alto`, `P2 - Medio`, `P3 - Basso`).
+- **Milestone Closing Gate**: Nessuna milestone può essere dichiarata conclusa se ci sono P0 aperti o P1 privi di piano di mitigazione formalmente approvato dal Direttore.
+
+### 4. Runaway Protection & Gap Analysis a Tre Mani
+- **Budget Rigido**: Massimo 3 iterazioni/run per singolo task. Al superamento scatta lo stop di sicurezza per evitare spreco di quote e loop degenerativi.
+- **Gap Analysis & Sintesi Triangolare**: In presenza di blocker architetturali complessi o disaccordi, si innesca la sintesi a tre mani (Diagnosi autonoma AGY / Claude / Codex -> Gap Analysis incrociata -> Piano di convergenza unitario approvato dal Direttore).
+
 ## Esaurimento e sostituzione di un agente
 
 **Per Claude Code la quota è osservabile prima di consumarla; per gli altri due no.** Il client interroga `GET /api/oauth/usage` e ne ricava l'utilizzo per finestra. Lo strumento è `tools/quota-anthropic.mjs` in questa skill. `agy` e `codex` invece non espongono nulla: `agy --help` non ha comandi di quota e `codex doctor` riporta solo che l'autenticazione è configurata. Per loro l'esaurimento si scopre ancora quando accade, da un'uscita diversa da zero.
