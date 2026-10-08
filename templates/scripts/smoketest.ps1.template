@@ -1,0 +1,83 @@
+<#
+.SYNOPSIS
+    Smoketest parametrizzato per verifiche di connettività HTTP/WebSocket e stato del servizio.
+.DESCRIPTION
+    Esegue test ripetibili con calcolo di latenza (min/avg/max), verifica codici di stato
+    e restituisce exit code 0 (successo) o 1 (fallimento) per l'integrazione CI e nei task.
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory=$false)]
+    [string]$TargetUrl = 'http://localhost:3000/api/health',
+
+    [ValidateRange(1, 20)]
+    [int]$SampleCount = 3,
+
+    [ValidateRange(1, 60)]
+    [int]$TimeoutSeconds = 5,
+
+    [switch]$AsJson
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Get-LatencyStats {
+    param([double[]]$Values)
+    if (-not $Values -or $Values.Count -eq 0) {
+        return [pscustomobject]@{ count = 0; min_ms = 0; average_ms = 0; max_ms = 0 }
+    }
+    $avg = ($Values | Measure-Object -Average).Average
+    return [pscustomobject]@{
+        count      = $Values.Count
+        min_ms     = [math]::Round(($Values | Measure-Object -Minimum).Minimum, 2)
+        average_ms = [math]::Round($avg, 2)
+        max_ms     = [math]::Round(($Values | Measure-Object -Maximum).Maximum, 2)
+    }
+}
+
+$latencies = @()
+$successCount = 0
+
+Write-Host "== Avvio Smoketest: $TargetUrl (Campioni: $SampleCount) ==" -ForegroundColor Cyan
+
+for ($i = 1; $i -le $SampleCount; $i++) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    try {
+        $response = Invoke-WebRequest -Uri $TargetUrl -UseBasicParsing -TimeoutSec $TimeoutSeconds -Method Get
+        $sw.Stop()
+        $elapsed = $sw.Elapsed.TotalMilliseconds
+        $latencies += $elapsed
+        if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400) {
+            $successCount++
+            Write-Host "  [$i/$SampleCount] OK ($($response.StatusCode)) in $([math]::Round($elapsed, 1)) ms" -ForegroundColor Green
+        } else {
+            Write-Host "  [$i/$SampleCount] Risposta imprevista: $($response.StatusCode)" -ForegroundColor Yellow
+        }
+    } catch {
+        $sw.Stop()
+        Write-Host "  [$i/$SampleCount] Fallito: $($_.Exception.Message)" -ForegroundColor Red
+    }
+    Start-Sleep -Milliseconds 250
+}
+
+$stats = Get-LatencyStats -Values $latencies
+$isPassed = ($successCount -eq $SampleCount)
+
+$result = [pscustomobject]@{
+    target_url   = $TargetUrl
+    passed       = $isPassed
+    successful   = $successCount
+    total        = $SampleCount
+    latency_ms   = $stats
+    timestamp    = (Get-Date).ToUniversalTime().ToString('o')
+}
+
+if ($AsJson) {
+    $result | ConvertTo-Json -Depth 4
+} else {
+    Write-Host "`n== Esito: $(if ($isPassed) { 'PASS ✅' } else { 'FAIL ❌' }) ==" -ForegroundColor $(if ($isPassed) { 'Green' } else { 'Red' })
+    Write-Host "Latenza media: $($stats.average_ms) ms (Min: $($stats.min_ms) ms, Max: $($stats.max_ms) ms)"
+}
+
+if ($isPassed) { exit 0 } else { exit 1 }

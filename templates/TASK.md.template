@@ -1,20 +1,43 @@
 # {{ID_TASK}} — {{TITOLO}}
-
+Contratto: TASK v2
 Stato: PRONTO
 Proprietario: {{PROPRIETARIO}}
+Revisore: {{REVISORE}} (diverso dal proprietario; fornitore/modello alternativo se Sensibile)
+Integratore: {{AGENTE_INTEGRATORE}}
+Sensibile: no (sì per lockdown, telemetria, segreti, migrazioni DB, deploy di produzione)
+Decisione: DEC-xxx|nessuna (obbligatoria per deploy, migrazioni, push su main, cambi versione)
+Taglia: {{COSTO_STIMATO}} (S, M o L) · Budget esecuzioni: 3 · Scadenza: nessuna
+Lease: nessuno (agente · sessione · scade ISO all'avvio)
+Apre finestra di esposizione: no (se sì → chiusa tassativamente da TASK-xxx)
 Handover atteso in: `{{DIR_COORD}}/handover/{{ID_TASK}}.md`
 
-Stati ammessi, in quest'ordine: `PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`. Solo {{AGENTE_INTEGRATORE}} assegna `INTEGRATO`, e solo dopo aver rieseguito le verifiche in prima persona.
+Stati ammessi, in quest'ordine:
+`PRONTO` → `IN CORSO` → `CONSEGNATO` → `IN VERIFICA` → `INTEGRATO`
+`SOSPESO(quota|budget|fallimenti|ciclo|scadenza|decisione)`, `ANNULLATO(DEC)`
+
+Solo {{AGENTE_INTEGRATORE}} assegna `INTEGRATO`, e solo dopo aver rieseguito le verifiche in prima persona e compilato il Registro di Integrazione in calce.
 
 ## Obiettivo
 
 {{OBIETTIVO}}
 
+## Premesse
+
+| Premessa di Contesto / Ambiente | Verificata (come) / Assunta |
+|---|---|
+| (es. Repository privato su branch integration) | Verificata via `git status` |
+| (es. Versione PostgreSQL VPS = 17) | Assunta da PROJECT.md |
+
+## Riferimenti fissati
+- Base Git commit: (SHA se applicabile)
+- Target branch / worktree:
+- Ambiente operativo:
+
 ## Confini
-
-Incluso: {{INCLUSO}}
-
-Escluso: {{ESCLUSO}}
+- **Incluso**: {{INCLUSO}}
+- **Escluso**: {{ESCLUSO}}
+- **Invarianti da preservare**: (es. Zero costi API, DO_NOT_TRACK=true, backward compatibility)
+- **Azioni vietate**: (es. Nessun push su main, nessuna installazione non dichiarata, nessun bypass permessi)
 
 ## File riservati
 
@@ -43,7 +66,7 @@ Aggiornato dal proprietario **prima** di iniziare un blocco di lavoro, non dopo:
 
 Scrivere qui e portare `Stato:` a `IN CORSO` sono **un gesto solo**. Un punto di ripresa compilato su un task ancora `PRONTO` è una contraddizione: dice che il lavoro è iniziato e che non lo è. Chi arriva dopo crede allo stato e perde il punto di ripresa.
 
-Quando il task esce da `IN CORSO`, riscrivi `Sto per:` con ciò che vale adesso: «nulla, il task è chiuso, esito in `handover/{{ID_TASK}}.md`», oppure, se è sospeso, il motivo e cosa serve per riprenderlo.
+Quando il task esce da `IN CORSO`, riscrivi `Sto per:` con ciò che vale adesso: «nulla, il task è consegnato, esito in `handover/{{ID_TASK}}.md`», oppure, se è sospeso, il motivo e cosa serve per riprenderlo. Non usare il Punto di ripresa come riassunto prolisso di chiusura.
 
 - Aggiornato il: (data e ora)
 - Sto per: (cosa)
@@ -57,12 +80,46 @@ Quando il task esce da `IN CORSO`, riscrivi `Sto per:` con ciò che vale adesso:
 
 ## Criteri di accettazione
 
+Ogni criterio deve dichiarare il suo livello di verifica formale:
+- `CONFIGURATO`: codice scritto o file di configurazione posizionato.
+- `ESEGUITO`: processo avviato con esito exit code 0.
+- `VERIFICATO`: test mirati passati, inclusa la prova dei percorsi di errore/fail-closed.
+- `COLLAUDATO`: collaudo E2E o prova di ripristino/rollback eseguita con successo.
+
 {{CRITERI_ACCETTAZIONE}}
 
 ## Verifiche richieste
 
-{{VERIFICHE}}
+| ID | Comando di verifica | Cartella di esecuzione (cwd) | Esito atteso |
+|---|---|---|---|
+| V-1 | `npm run test` (o analogo) | root | exit 0, tutti i test PASS |
+
+## Deliverable e Artefatti
+
+| Percorso file | Sezioni obbligatorie / Tipo | SHA256 / Dimensione attesa |
+|---|---|---|
+| `{{DIR_COORD}}/handover/{{ID_TASK}}.md` | Contratto HANDOVER v2 | Obbligatorio |
+| (eventuali binari o script in staging) | `.coord/bin/...` | Calcolare SHA256 in handover |
+
+## Vincoli aggiunti al dispatch
+(Eventuali delta, limiti di tempo o flag di compilazione aggiunti al momento del dispatch senza riscrivere l'obiettivo primario).
 
 ## Autorizzazioni o blocchi
 
 {{AUTORIZZAZIONI_O_BLOCCHI}}
+
+---
+
+## Registro di integrazione (compilato dall'Integratore)
+
+L'assegnazione dello stato `INTEGRATO` è subordinata alla compilazione obbligatoria di questa sezione da parte di {{AGENTE_INTEGRATORE}}:
+
+| AC | Evidenza verificata | Rieseguito da / Data | Esito riesecuzione |
+|---|---|---|---|
+| AC-1 | (es. log di test rieseguito) | {{AGENTE_INTEGRATORE}} · AAAA-MM-GG | PASS ✅ |
+
+- **Revisione eseguita da**: (Nome revisore e fornitore)
+- **Rilievi aperti trascritti in FINDINGS.md**: (Nessuno oppure ID: F-xxx)
+- **Deroghe autorizzate**: (Nessuna oppure DEC-xxx)
+- **Approvazione Direttore**: «Citazione esplicita messaggio chat» · Data (obbligatoria se Sensibile: sì)
+- **Data e firma integrazione**: {{AGENTE_INTEGRATORE}} · AAAA-MM-GG HH:MM

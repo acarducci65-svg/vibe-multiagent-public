@@ -7,6 +7,12 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
+export function canonicalTaskId(stem) {
+  if (!stem) return "";
+  const m = /^(TASK-\d+|T-\d+)(?=-|$)/i.exec(stem);
+  return m ? m[1].toUpperCase() : stem.toUpperCase();
+}
+
 export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
   const coordNome = customCoord ?? process.env.DIR_COORD ?? ".coord";
   const dirCoord = isAbsolute(coordNome) ? coordNome : join(radice, coordNome);
@@ -52,12 +58,13 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           const mVerifiche = raw.match(/##\s*Verifiche eseguite\s+([\s\S]*?)(?=\n##|$)/i);
 
           const statoRaw = (mStato ? mStato[1].trim() : "PRONTO").replace(/\*\*/g, "").trim();
-          const mMatchStato = statoRaw.match(/^(PRONTO|IN CORSO|CONSEGNATO|INTEGRATO|SOSPESO|CHIUSO)\b/i);
-          const stato = mMatchStato ? mMatchStato[1].toUpperCase() : (statoRaw ? "SCONOSCIUTO" : "PRONTO");
+          const mMatchStato = statoRaw.match(/^(PRONTO|IN CORSO|CONSEGNATO|IN VERIFICA|INTEGRATO|COMPLETATO|SOSPESO|CHIUSO)\b/i);
+          let stato = mMatchStato ? mMatchStato[1].toUpperCase() : (statoRaw ? "SCONOSCIUTO" : "PRONTO");
+          if (stato === "COMPLETATO") stato = "INTEGRATO";
           const statoEsteso = statoRaw;
 
           if (stato === "INTEGRATO" || stato === "CHIUSO") completatiCount++;
-          if (stato === "IN CORSO") inCorsoCount++;
+          if (stato === "IN CORSO" || stato === "IN VERIFICA") inCorsoCount++;
 
           const proprietario = (mProprietario ? mProprietario[1].trim() : "Non assegnato").replace(/\*\*/g, "").trim();
 
@@ -97,6 +104,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
   milestone.totale = tasks.length;
   milestone.completamento = completatiCount;
+  milestone.inCorso = inCorsoCount;
 
   // 3. Flotta agenti
   const isAmbienteB = existsSync(join(dirCoord, "DISPATCH.md"));
@@ -182,33 +190,66 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     }
   }
 
-  // 4. Scansione dei log recenti da .coord/logs/ (lettura della sola coda con limite a 64KB per file)
+  // 4. Scansione dei log recenti da .coord/logs/ (file diretti o sottocartelle task, con limite a 64KB per file)
   const dirLogs = join(dirCoord, "logs");
   const logs = {};
   if (existsSync(dirLogs)) {
     try {
-      const logFiles = readdirSync(dirLogs).filter((f) => f.endsWith(".log"));
-      for (const lf of logFiles) {
-        try {
-          const lPath = join(dirLogs, lf);
-          const stat = statSync(lPath);
-          const maxBytes = 64 * 1024;
-          let content = "";
-          if (stat.size <= maxBytes) {
-            content = readFileSync(lPath, "utf8");
-          } else {
-            const fd = openSync(lPath, "r");
-            const buf = Buffer.alloc(maxBytes);
-            readSync(fd, buf, 0, maxBytes, stat.size - maxBytes);
-            closeSync(fd);
-            content = buf.toString("utf8");
-          }
-          const righe = content.split(/\r?\n/).filter(Boolean);
-          const taskId = lf.replace(/\.log$/, "");
-          logs[taskId] = righe.slice(-40); // Ultime 40 righe
-        } catch {}
+      const entries = readdirSync(dirLogs, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isFile() && (entry.name.endsWith(".log") || entry.name.endsWith(".txt"))) {
+          try {
+            const lPath = join(dirLogs, entry.name);
+            const stat = statSync(lPath);
+            const maxBytes = 64 * 1024;
+            let content = "";
+            if (stat.size <= maxBytes) {
+              content = readFileSync(lPath, "utf8");
+            } else {
+              const fd = openSync(lPath, "r");
+              const buf = Buffer.alloc(maxBytes);
+              readSync(fd, buf, 0, maxBytes, stat.size - maxBytes);
+              closeSync(fd);
+              content = buf.toString("utf8");
+            }
+            const righe = content.split(/\r?\n/).filter(Boolean);
+            const taskId = entry.name.replace(/\.(log|txt)$/, "");
+            logs[taskId] = righe.slice(-40); // Ultime 40 righe
+          } catch {}
+        } else if (entry.isDirectory() && !entry.name.startsWith(".")) {
+          try {
+            const subDir = join(dirLogs, entry.name);
+            const subFiles = readdirSync(subDir).filter((f) => f.endsWith(".log") || f.endsWith(".txt"));
+            const subRighe = [];
+            for (const sf of subFiles) {
+              try {
+                const sp = join(subDir, sf);
+                const stat = statSync(sp);
+                if (stat.size <= 32 * 1024) {
+                  const sc = readFileSync(sp, "utf8");
+                  subRighe.push(`--- [${sf}] ---`);
+                  subRighe.push(...sc.split(/\r?\n/).filter(Boolean).slice(-20));
+                }
+              } catch {}
+            }
+            if (subRighe.length > 0) {
+              logs[entry.name] = subRighe.slice(-40);
+            }
+          } catch {}
+        }
       }
     } catch {}
+  }
+
+  // Associa i log ai task tramite ID canonico (evita falsi positivi di prefisso come TASK-01 vs TASK-018)
+  for (const t of tasks) {
+    if (!logs[t.id]) {
+      const cId = canonicalTaskId(t.id);
+      const matchLogKey = Object.keys(logs).find((k) => canonicalTaskId(k) === cId);
+      if (matchLogKey) {
+        logs[t.id] = logs[matchLogKey];
+      }
+    }
   }
 
   // Se un task non ha un file .log grezzo da runner.mjs, genera il registro di avanzamento strutturato
@@ -237,7 +278,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
   // 5. Quota Anthropic se abilitata esplicitamente (opt-in) o in modalità mock
   let quota = { ok: false, source: "disabled", fiveHourPct: null, sevenDayPct: null, resetsAt: null };
-  if (true) {
+  const quotaOptIn = process.env.VIBE_ANTHROPIC_QUOTA === "1" || Boolean(process.env.VIBE_MOCK_QUOTA_PAYLOAD);
+  if (quotaOptIn) {
     try {
       const scriptQuota = join(__dirname, "quota-anthropic.mjs");
       if (existsSync(scriptQuota)) {
@@ -249,7 +291,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           execFileSync(process.execPath, execArgs, {
             encoding: "utf8",
             timeout: 8000,
-            env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "1" },
+            env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "0" },
           })
         );
       }

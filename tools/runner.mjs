@@ -7,6 +7,7 @@ import { createWriteStream, createReadStream, mkdirSync, existsSync } from "node
 import { join, resolve, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { constants } from "node:os";
+import { StringDecoder } from "node:string_decoder";
 import { raccogliTelemetria } from "./telemetry.mjs";
 
 export function formattaRigaNdjson(riga) {
@@ -82,7 +83,11 @@ export function formattaRigaNdjson(riga) {
     const dur = ev.duration_ms ? ` (durata: ${(ev.duration_ms / 1000).toFixed(1)}s` : "";
     const costo = ev.total_cost_usd !== undefined ? `, costo: $${ev.total_cost_usd.toFixed(4)})` : dur ? ")" : "";
     const resSummary = typeof ev.result === "string" ? ev.result.trim().split(/\r?\n/)[0] : "";
-    out.push(`${prefix} ✅ Completato${dur}${costo}${resSummary ? `: ${resSummary.slice(0, 150)}` : ""}`);
+    if (ev.is_error) {
+      out.push(`${prefix} ❌ Errore agente${dur}${costo}${resSummary ? `: ${resSummary.slice(0, 150)}` : ""}`);
+    } else {
+      out.push(`${prefix} ✅ Completato${dur}${costo}${resSummary ? `: ${resSummary.slice(0, 150)}` : ""}`);
+    }
   } else if (ev.type === "rate_limit_event") {
     const fiveH = ev.rate_limit_info?.unifiedWindows?.five_hour?.utilization;
     const sevenD = ev.rate_limit_info?.unifiedWindows?.seven_day?.utilization;
@@ -98,16 +103,21 @@ export function formattaRigaNdjson(riga) {
   }
 
   if (out.length === 0) {
+    if (typeof ev === "object" && ev !== null && ev.type) {
+      const payload = ev.payload || ev.message || ev.text || JSON.stringify(ev);
+      return `${prefix} ℹ️ [${ev.type}] ${String(payload).slice(0, 160)}\n`;
+    }
     return "";
   }
   return out.join("\n") + "\n";
 }
 
 export function creaGestoreStream(suChunkFormattato) {
+  const decoder = new StringDecoder("utf8");
   let buffer = "";
   return {
     scrivi(chunk) {
-      buffer += chunk.toString("utf8");
+      buffer += typeof chunk === "string" ? chunk : decoder.write(chunk);
       const righe = buffer.split(/\r?\n/);
       buffer = righe.pop();
       for (const riga of righe) {
@@ -118,10 +128,16 @@ export function creaGestoreStream(suChunkFormattato) {
       }
     },
     chiudi() {
+      buffer += decoder.end();
       if (buffer.length > 0) {
-        const formattata = formattaRigaNdjson(buffer);
-        if (formattata) {
-          suChunkFormattato(formattata);
+        const righe = buffer.split(/\r?\n/);
+        for (const riga of righe) {
+          if (riga.trim()) {
+            const formattata = formattaRigaNdjson(riga);
+            if (formattata) {
+              suChunkFormattato(formattata);
+            }
+          }
         }
         buffer = "";
       }

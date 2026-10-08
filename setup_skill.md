@@ -388,8 +388,8 @@ Ogni informazione ha un solo file di riferimento: `AGENTS.md` porta il protocoll
 
 Dopo l'approvazione:
 
-1. Crea `{{DIR_COORD}}/` con le sottocartelle `agents/`, `tasks/`, `handover/`, `logs/` che servono.
-2. Copia i template alle destinazioni della tabella (incluso `{{DIR_COORD}}/dashboard.html`), sostituendo i segnaposto secondo la mappatura.
+1. Crea `{{DIR_COORD}}/` con le sottocartelle `agents/`, `tasks/`, `handover/`, `logs/`, `scripts/` che servono.
+2. Copia i template alle destinazioni della tabella (inclusi `{{DIR_COORD}}/dashboard.html`, `{{DIR_COORD}}/FINDINGS.md` da `FINDINGS.md.template`, e i template di script in `{{DIR_COORD}}/scripts/` da `templates/scripts/`), sostituendo i segnaposto secondo la mappatura.
 3. Se `AGENTS.md` non esiste, genera il file dal template. Se esiste, conserva tutto il contenuto e aggiungi o aggiorna solo la sezione delimitata da `<!-- INIZIO CONFIGURAZIONE MULTI-AGENTE -->` e `<!-- FINE CONFIGURAZIONE MULTI-AGENTE -->`.
 4. Crea `CURRENT_SPRINT.md` con una prima milestone ancora pianificata, non dichiarata completata.
 5. Scomponi prima di creare task: se la milestone tocca più di cinque file di produzione, o più di un dominio applicativo, o non ha un criterio di accettazione verificabile con un comando, proponi la scomposizione e fatti approvare le parti prima di generare `tasks/`.

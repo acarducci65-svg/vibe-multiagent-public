@@ -144,6 +144,23 @@ const r2 = spawnSync(process.execPath, [
 
 assert.equal(r2.status, 7, "Runner deve propagare il codice di uscita 7");
 
+// 6. Test di regressione UTF-8 split chunks
+let chunkOut = "";
+const stream = creaGestoreStream(s => chunkOut += s);
+const bytes = Buffer.from("test è accentata\n");
+stream.scrivi(bytes.subarray(0, 6)); // taglia a metà la lettera 'è'
+stream.scrivi(bytes.subarray(6));
+stream.chiudi();
+assert.equal(chunkOut, "test è accentata\n", "StringDecoder deve ricomporre correttamente UTF-8 multibyte");
+
+// 7. Test formattaRigaNdjson con result is_error
+const rErr = formattaRigaNdjson('{"type":"result","is_error":true,"result":"Simulated error"}');
+assert.match(rErr, /❌ Errore agente.*Simulated error/, "is_error deve visualizzare ❌ Errore agente e non Completato");
+
+// 8. Test formattaRigaNdjson con evento sconosciuto
+const rCust = formattaRigaNdjson('{"type":"custom_ping","payload":"pong"}');
+assert.match(rCust, /ℹ️ \[custom_ping\] pong/, "Eventi sconosciuti non devono essere persi");
+
 // Pulizia
 rmSync(testDir, { recursive: true, force: true });
 console.log("runner: collaudi superati con successo");

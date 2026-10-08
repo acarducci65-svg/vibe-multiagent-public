@@ -1,0 +1,68 @@
+@echo off
+rem Launcher e controller interattivo Windows con ambiente protetto (setlocal)
+rem Ispirato a Multica_Daemon.bat di multica_porting
+setlocal
+cd /d "%~dp0\..\.."
+
+rem Variabili di ambiente di salvaguardia
+set "DO_NOT_TRACK=true"
+set "NODE_ENV=production"
+
+:MENU
+cls
+echo ========================================================
+echo   CONTROLLER SERVIZIO / DAEMON — PROGETTO MULTI-AGENTE
+echo ========================================================
+echo.
+echo   [1] Avvia servizio in background
+echo   [2] Controlla stato e processi attivi
+echo   [3] Mostra ultimi log
+echo   [4] Riavvia servizio
+echo   [5] Arresta servizio
+echo   [0] Esci
+echo.
+echo ========================================================
+choice /c 123450 /m "Seleziona opzione:"
+
+if errorlevel 6 goto EXIT
+if errorlevel 5 goto STOP
+if errorlevel 4 goto RESTART
+if errorlevel 3 goto LOGS
+if errorlevel 2 goto STATUS
+if errorlevel 1 goto START
+
+:START
+echo.
+echo [*] Avvio del servizio...
+rem Esempio: node tools/runner.mjs oppure eseguibile dedicato
+pause
+goto MENU
+
+:STATUS
+echo.
+echo [*] Controllo stato del servizio...
+pause
+goto MENU
+
+:LOGS
+echo.
+echo [*] Visualizzazione log recenti...
+pause
+goto MENU
+
+:RESTART
+echo.
+echo [*] Riavvio in corso...
+pause
+goto MENU
+
+:STOP
+echo.
+echo [*] Arresto ordinato del servizio...
+pause
+goto MENU
+
+:EXIT
+echo.
+echo Uscita.
+exit /b 0

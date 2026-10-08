@@ -1,22 +1,30 @@
-# Sprint corrente
+# Sprint corrente — {{PRIMA_MILESTONE}}
+Contratto: CURRENT_SPRINT v2
 
 Stato: PIANIFICATO
 
-## Obiettivo
+## Obiettivo della Milestone
 
-{{PRIMA_MILESTONE}}
+{{OBIETTIVO_MILESTONE}}
+
+## Politica di Risveglio dell'Integratore
+- Modalità: `per-consegna` (default per 1-2 task) | `a-lotti` (consigliata per 3+ task paralleli per risparmiare quota)
 
 ## Criterio di completamento
 
 {{CRITERIO_DI_COMPLETAMENTO}}
 
-Deve essere verificabile con un comando o con un'osservazione ripetibile, non con un giudizio.
+Deve essere verificabile con un comando o con un'osservazione ripetibile, non con un giudizio discrezionale.
 
 ## Task pianificati
 
-I file dei task stanno in `{{DIR_COORD}}/tasks/`.
+I file dei task risiedono in `{{DIR_COORD}}/tasks/`.
 
-- {{PRIMO_TASK}}
+- [ ] {{PRIMO_TASK}} — Proprietà: {{PROPRIETARIO_PRIMO_TASK}}
+
+## Bloccanti e Rilievi Aperti (da FINDINGS.md)
+Nessun bloccante attivo. Se emergono rilievi P0 o P1 durante gli handover, annotarli qui:
+- (nessun rilievo P0/P1 aperto)
 
 ## Rischi e dipendenze
 
@@ -25,3 +33,13 @@ I file dei task stanno in `{{DIR_COORD}}/tasks/`.
 ## Autorizzazioni necessarie
 
 {{AUTORIZZAZIONI}}
+
+---
+
+## Gate di Chiusura Milestone
+Per portare lo stato della Milestone a `COMPLETATO`, devono essere soddisfatte tutte le condizioni:
+- [ ] Tutti i task della milestone sono in stato `INTEGRATO` con il relativo Registro di Integrazione compilato e verifiche superate.
+- [ ] Nessun rilievo con severità P0 (Bloccante) o P1 (Alto) è in stato `APERTO` in `{{DIR_COORD}}/FINDINGS.md` (tutti `RISOLTO` o `ACCETTATO con DEC`).
+- [ ] Nessuna finestra di esposizione temporanea (`ALLOW_SIGNUP`, porte aperte, configurazioni di debug) è rimasta aperta.
+- [ ] Verifiche e collaudi E2E globali rieseguiti con esito positivo dall'Integratore.
+- [ ] Approvazione esplicita del Direttore ricevuta in chat e registrata.

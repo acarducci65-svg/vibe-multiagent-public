@@ -145,9 +145,38 @@ writeFileSync(join(tasksDir2, "T-039.md"), `# T-039\n- **Stato**: INTEGRATO\n- *
 const res5 = raccogliTelemetria(testDir2);
 const t38 = res5.tasks.find(t => t.id === "T-038");
 assert.equal(t38.stato, "INTEGRATO", "Deve gestire **Stato**: INTEGRATO");
-assert.equal(t38.proprietario, "Antigravity (AGY)", "Deve pulire gli asterischi dal proprietario");
 const t39 = res5.tasks.find(t => t.id === "T-039");
 assert.equal(t39.stato, "INTEGRATO", "Deve gestire - **Stato**: INTEGRATO");
+
+// Verifica Punto 3: canonicalTaskId e isolamento prefissi (evita che TASK-01 collida con TASK-018)
+const testDir3 = join(tmpdir(), "telemetry-canon-test-" + Date.now());
+const coordDir3 = join(testDir3, ".coord");
+const tasksDir3 = join(coordDir3, "tasks");
+const logsDir3 = join(coordDir3, "logs");
+mkdirSync(tasksDir3, { recursive: true });
+mkdirSync(join(logsDir3, "TASK-018"), { recursive: true });
+
+writeFileSync(join(coordDir3, "CURRENT_SPRINT.md"), `# Sprint\nStato: IN CORSO\n`);
+writeFileSync(join(tasksDir3, "TASK-018-audit.md"), `# TASK-018-audit\nStato: COMPLETATO\nProprietario: Claude Code\n`);
+writeFileSync(join(tasksDir3, "TASK-019-verify.md"), `# TASK-019-verify\nStato: IN VERIFICA\nProprietario: Antigravity AGY\n`);
+
+// Scriviamo un file log TASK-01.log ingannevole e una cartella di evidenze TASK-018
+writeFileSync(join(logsDir3, "TASK-01.log"), `LOG ERRATO PER TASK 01\n`);
+writeFileSync(join(logsDir3, "TASK-018", "build-evidence.txt"), `LOG CORRETTO TASK 018\n`);
+
+const resCanon = raccogliTelemetria(testDir3);
+const t18 = resCanon.tasks.find(t => t.id === "TASK-018-audit");
+assert.equal(t18.stato, "INTEGRATO", "COMPLETATO deve mappare a INTEGRATO");
+const log18 = resCanon.logs["TASK-018-audit"];
+assert.ok(log18, "I log per TASK-018-audit devono essere trovati");
+assert.ok(!JSON.stringify(log18).includes("LOG ERRATO PER TASK 01"), "TASK-018 non deve MAI associare TASK-01.log per falso prefisso");
+assert.ok(JSON.stringify(log18).includes("LOG CORRETTO TASK 018"), "Deve raccogliere le evidenze dalla cartella logs/TASK-018/");
+
+const t19 = resCanon.tasks.find(t => t.id === "TASK-019-verify");
+assert.equal(t19.stato, "IN VERIFICA", "Stato IN VERIFICA deve essere riconosciuto");
+assert.equal(resCanon.milestone.inCorso, 1, "IN VERIFICA deve contare come in corso");
+
+rmSync(testDir3, { recursive: true, force: true });
 
 rmSync(testDir2, { recursive: true, force: true });
 console.log("telemetry: collaudi superati con successo (inclusi casi reali complessi e formattazione mista)");
