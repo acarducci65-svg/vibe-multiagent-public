@@ -176,6 +176,23 @@ const t19 = resCanon.tasks.find(t => t.id === "TASK-019-verify");
 assert.equal(t19.stato, "IN VERIFICA", "Stato IN VERIFICA deve essere riconosciuto");
 assert.equal(resCanon.milestone.inCorso, 1, "IN VERIFICA deve contare come in corso");
 
+// Verifica Punto 4: UTF-16LE log decoder e transizione Revisore per task CONSEGNATO
+const utf16Buf = Buffer.from("\ufeffLog scritto in UTF-16LE da PowerShell redirect >\nAltra riga di log\n", "utf16le");
+writeFileSync(join(logsDir3, "TASK-020.log"), utf16Buf);
+writeFileSync(join(tasksDir3, "TASK-020-review.md"), `# TASK-020-review\nStato: CONSEGNATO\nProprietario: Codex CLI\nRevisore: Claude Code CLI\nIntegratore: Antigravity AGY\n`);
+
+const resReview = raccogliTelemetria(testDir3);
+const log20 = resReview.logs["TASK-020-review"];
+assert.ok(log20, "I log per TASK-020 devono essere recuperati");
+assert.ok(log20[0].includes("Log scritto in UTF-16LE"), "UTF-16LE con BOM deve essere decodificato correttamente senza spazi o byte NUL");
+assert.ok(!log20[0].includes("\u0000"), "Nessun carattere NUL deve essere presente nel log decodificato");
+
+const agClaudeRev = resReview.agents.find(a => a.name === "Claude Code");
+const agCodexRev = resReview.agents.find(a => a.name === "Codex CLI");
+assert.equal(agCodexRev.status, "idle", "Codex deve essere idle poiché il task è CONSEGNATO");
+assert.equal(agClaudeRev.status, "reviewing", "Claude deve essere in stato reviewing poiché è il Revisore del task CONSEGNATO");
+assert.ok(agClaudeRev.currentTask.includes("TASK-020-review"), "Claude deve avere il task di revisione assegnato");
+
 rmSync(testDir3, { recursive: true, force: true });
 
 rmSync(testDir2, { recursive: true, force: true });

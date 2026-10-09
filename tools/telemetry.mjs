@@ -51,6 +51,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           const mTitolo = raw.match(/^#\s+([^\r\n]+)/m);
           const mStato = raw.match(/^[\s*-]*\**Stato[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mProprietario = raw.match(/^[\s*-]*\**Proprietario[\*:]*\s*:?\s*([^\r\n]+)/im);
+          const mRevisore = raw.match(/^[\s*-]*\**Revisore[\*:]*\s*:?\s*([^\r\n]+)/im);
+          const mIntegratore = raw.match(/^[\s*-]*\**Integratore[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mFile = raw.match(/(?:##\s*)?File riservati:?\s*([\s\S]*?)(?=(?:\n##|\n[A-Z][a-z]+:|$))/i);
           const mStoPer = raw.match(/^[\s*-]*\**Sto per[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mFatti = raw.match(/^[\s*-]*\**Fatti[\*:]*\s*:?\s*([^\r\n]+)/im);
@@ -67,6 +69,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           if (stato === "IN CORSO" || stato === "IN VERIFICA") inCorsoCount++;
 
           const proprietario = (mProprietario ? mProprietario[1].trim() : "Non assegnato").replace(/\*\*/g, "").trim();
+          const revisore = (mRevisore ? mRevisore[1].trim() : "").replace(/\*\*/g, "").trim();
+          const integratore = (mIntegratore ? mIntegratore[1].trim() : "").replace(/\*\*/g, "").trim();
 
           let fattiDesc = "";
           if (mFatti) fattiDesc = mFatti[1].trim().replace(/\*\*/g, "");
@@ -93,6 +97,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
             stato,
             statoEsteso,
             proprietario,
+            revisore,
+            integratore,
             fileRiservati,
             stoPer: mStoPer ? mStoPer[1].trim().replace(/\*\*/g, "") : "",
             fatti: fattiDesc,
@@ -147,14 +153,29 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           ag.currentTask = t.id;
         }
       }
+    } else if (t.stato === "IN VERIFICA" || t.stato === "CONSEGNATO") {
+      // In fase di verifica o consegna, l'esecutore originario ha terminato la bozza:
+      // l'agente attivo è il Revisore (se presente), oppure l'Integratore / Proprietario in verifica
+      const nomeRevisore = trovaProprietario(t.revisore);
+      const nomeIntegratore = trovaProprietario(t.integratore);
+      const nomeProprietario = trovaProprietario(t.proprietario);
+      const targetReviewer = nomeRevisore || nomeIntegratore || (t.stato === "IN VERIFICA" ? nomeProprietario : coordinatorName);
+
+      if (targetReviewer) {
+        const ag = agents.find((a) => a.name === targetReviewer);
+        if (ag && ag.status === "idle") {
+          ag.status = t.stato === "IN VERIFICA" ? "running" : "reviewing";
+          ag.currentTask = `${t.id} (${t.stato === "IN VERIFICA" ? "Verifica" : "Review"})`;
+        }
+      }
     }
   }
 
   // Verifica attività recente del Coordinatore (ultimi 15 minuti)
   // Limitata a CURRENT_SPRINT.md e DECISIONS.md (file propri del coordinamento)
-  // e attiva solo se nessun esecutore è attualmente 'running'
+  // e attiva solo se nessun esecutore è attualmente 'running' o 'reviewing'
   const coordinatorAgent = agents.find((a) => a.name === coordinatorName);
-  const esecutoriAttivi = agents.some((a) => a.status === "running");
+  const esecutoriAttivi = agents.some((a) => a.status === "running" || a.status === "reviewing");
 
   if (coordinatorAgent && coordinatorAgent.status === "idle" && !esecutoriAttivi) {
     let ultimoTempoModifica = 0;
@@ -190,6 +211,37 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     }
   }
 
+  // Helper di decodifica universale per log (gestisce UTF-8, UTF-16LE da PowerShell redirect `>` e rimuove byte NUL)
+  function decodificaBufferLog(buf) {
+    if (!buf || buf.length === 0) return "";
+    let content = "";
+    if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) {
+      content = buf.subarray(2).toString("utf16le");
+    } else if (buf.length >= 4 && buf[1] === 0x00 && buf[3] === 0x00) {
+      content = buf.toString("utf16le");
+    } else if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
+      content = buf.subarray(3).toString("utf8");
+    } else {
+      content = buf.toString("utf8");
+    }
+    content = content.replace(/\u0000/g, "");
+    // Correzione automatica mojibake tipici da console Windows (CP437/CP850/CP1252)
+    return content
+      .replace(/├¿/g, "è")
+      .replace(/├®/g, "é")
+      .replace(/├á/g, "à")
+      .replace(/├í/g, "í")
+      .replace(/├│/g, "ó")
+      .replace(/├╣/g, "ù")
+      .replace(/ÔÇÖ/g, "’")
+      .replace(/â€™/g, "’")
+      .replace(/â€œ/g, "“")
+      .replace(/â€/g, "”")
+      .replace(/â€”/g, "—")
+      .replace(/â€“/g, "–")
+      .replace(/Â·/g, "·");
+  }
+
   // 4. Scansione dei log recenti da .coord/logs/ (file diretti o sottocartelle task, con limite a 64KB per file)
   const dirLogs = join(dirCoord, "logs");
   const logs = {};
@@ -202,16 +254,16 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
             const lPath = join(dirLogs, entry.name);
             const stat = statSync(lPath);
             const maxBytes = 64 * 1024;
-            let content = "";
+            let rawBuf = null;
             if (stat.size <= maxBytes) {
-              content = readFileSync(lPath, "utf8");
+              rawBuf = readFileSync(lPath);
             } else {
               const fd = openSync(lPath, "r");
-              const buf = Buffer.alloc(maxBytes);
-              readSync(fd, buf, 0, maxBytes, stat.size - maxBytes);
+              rawBuf = Buffer.alloc(maxBytes);
+              readSync(fd, rawBuf, 0, maxBytes, stat.size - maxBytes);
               closeSync(fd);
-              content = buf.toString("utf8");
             }
+            const content = decodificaBufferLog(rawBuf);
             const righe = content.split(/\r?\n/).filter(Boolean);
             const taskId = entry.name.replace(/\.(log|txt)$/, "");
             logs[taskId] = righe.slice(-40); // Ultime 40 righe
@@ -226,7 +278,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
                 const sp = join(subDir, sf);
                 const stat = statSync(sp);
                 if (stat.size <= 32 * 1024) {
-                  const sc = readFileSync(sp, "utf8");
+                  const rawSub = readFileSync(sp);
+                  const sc = decodificaBufferLog(rawSub);
                   subRighe.push(`--- [${sf}] ---`);
                   subRighe.push(...sc.split(/\r?\n/).filter(Boolean).slice(-20));
                 }
@@ -298,8 +351,9 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     } catch {}
   }
 
-  const projectName = basename(resolve(radice));
-  const coordRel = relative(radice, dirCoord) || coordNome;
+  const projectDir = isAbsolute(dirCoord) ? dirname(resolve(dirCoord)) : resolve(radice);
+  const projectName = basename(projectDir);
+  const coordRel = relative(projectDir, dirCoord) || coordNome;
 
   const telemetry = {
     updatedAt: new Date().toISOString(),

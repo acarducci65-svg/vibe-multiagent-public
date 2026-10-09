@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control Room Multi-Agente — {{NOME_PROGETTO}}</title>
+  <title>Control Room Multi-Agente &mdash; {{NOME_PROGETTO}}</title>
   <script src="state.js"></script>
   <style>
     :root {
@@ -616,7 +616,7 @@
 
   <header>
     <div class="title-group">
-      <h1>🎮 Control Room Multi-Agente <span id="headerProjectName">{{NOME_PROGETTO}}</span></h1>
+      <h1>&#127918; Control Room Multi-Agente <span id="headerProjectName">{{NOME_PROGETTO}}</span></h1>
       <span class="badge-coord" id="headerCoordDir">{{DIR_COORD}}</span>
     </div>
     <div class="header-actions">
@@ -625,16 +625,16 @@
         <span id="lastUpdate">In attesa di dati...</span>
         <div class="header-btns">
           <input type="file" id="jsonFileInput" accept=".json,.js" style="display: none;">
-          <button id="btnSelectFile" class="term-tab" title="Carica snapshot JSON locale">📁 Carica file</button>
-          <button id="btnManualReload" class="term-tab" title="Aggiorna telemetria">🔄 Ricarica</button>
+          <button id="btnSelectFile" class="term-tab" title="Carica snapshot JSON locale">&#128193; Carica file</button>
+          <button id="btnManualReload" class="term-tab" title="Aggiorna telemetria">&#128259; Ricarica</button>
         </div>
       </div>
-      <span class="privacy-hint">🔒 Dati e log 100% locali. Non esporre pubblicamente.</span>
+      <span class="privacy-hint">&#128274; Dati e log 100% locali. Non esporre pubblicamente.</span>
     </div>
   </header>
 
   <div id="corsBanner" class="cors-banner">
-    ⚠️ <strong>Visualizzazione da file locale:</strong> Il browser blocca il caricamento asincrono di <code>state.json</code> via <code>file://</code>.<br>
+    &#9888;&#65039; <strong>Visualizzazione da file locale:</strong> Il browser blocca il caricamento asincrono di <code>state.json</code> via <code>file://</code>.<br>
     Per attivare il refresh in tempo reale, apri questa pagina con <strong>Live Server</strong> in VS Code, usa <strong>Simple Browser</strong> nell'IDE, oppure trascina il file <code>state.json</code> direttamente in questa finestra.
   </div>
 
@@ -684,13 +684,13 @@
   </div>
 
   <!-- Flotta Agenti -->
-  <div class="section-title">🤖 Flotta Agenti Collaborativi</div>
+  <div class="section-title">&#129302; Flotta Agenti Collaborativi</div>
   <div class="agents-grid" id="agentsList">
     <!-- Generato dinamicamente -->
   </div>
 
   <!-- Mini Kanban / Task Tracker con Toolbar -->
-  <div class="section-title">📋 Task dello Sprint</div>
+  <div class="section-title">&#128203; Task dello Sprint</div>
   <div class="tasks-toolbar">
     <div class="filter-group" id="filterButtons">
       <button class="filter-btn active" data-filter="ALL">Tutti <span class="filter-count" id="countAll">0</span></button>
@@ -701,7 +701,7 @@
       <button class="filter-btn" data-filter="CHIUSO">Chiusi <span class="filter-count" id="countChiuso">0</span></button>
     </div>
     <div class="search-box">
-      <input type="text" id="taskSearchInput" placeholder="🔍 Cerca task per ID o titolo..." autocomplete="off">
+      <input type="text" id="taskSearchInput" placeholder="&#128269; Cerca task per ID o titolo..." autocomplete="off">
     </div>
   </div>
   <div class="kanban-grid" id="tasksList">
@@ -709,7 +709,7 @@
   </div>
 
   <!-- Live Log Console -->
-  <div class="section-title" id="terminalAnchor">📺 Live Terminal Stream (.coord/logs/)</div>
+  <div class="section-title" id="terminalAnchor">&#128250; Live Terminal Stream (.coord/logs/)</div>
   <div class="terminal-section" id="terminalSection">
     <div class="terminal-header">
       <div class="terminal-tabs" id="logTabs">
@@ -829,7 +829,7 @@
           document.getElementById('corsBanner').style.display = 'block';
           document.getElementById('liveDot').style.backgroundColor = '#fbbf24';
           document.getElementById('liveDot').style.boxShadow = '0 0 8px #fbbf24';
-          document.getElementById('lastUpdate').innerText = 'file:// (Usa 📁 Carica file o trascina state.json)';
+          document.getElementById('lastUpdate').innerText = 'file:// (Usa \ud83d\udcc1 Carica file o trascina state.json)';
         }
       };
       document.head.appendChild(s);
@@ -864,7 +864,7 @@
       }
       if (nomeProgetto && nomeProgetto !== '{{NOME_PROGETTO}}') {
         if (elHeaderName) elHeaderName.textContent = nomeProgetto;
-        document.title = 'Control Room Multi-Agente — ' + nomeProgetto;
+        document.title = 'Control Room Multi-Agente \u2014 ' + nomeProgetto;
       } else if (elHeaderName && elHeaderName.textContent.includes('{{NOME_PROGETTO}}')) {
         elHeaderName.textContent = '';
       }
@@ -901,10 +901,11 @@
       if (data.agents && data.agents.length > 0) {
         agentsContainer.innerHTML = data.agents.map(ag => {
           const isRunning = ag.status === 'running';
+          const isReviewing = ag.status === 'reviewing';
           const isCoordinating = ag.status === 'coordinating';
-          const cardClass = isRunning ? 'running' : (isCoordinating ? 'coordinating' : '');
-          const badgeClass = isRunning ? 'status-running' : (isCoordinating ? 'status-coordinating' : 'status-idle');
-          const badgeText = isRunning ? '● In esecuzione' : (isCoordinating ? '● In coordinamento' : 'In attesa');
+          const cardClass = (isRunning || isReviewing) ? 'running' : (isCoordinating ? 'coordinating' : '');
+          const badgeClass = (isRunning || isReviewing) ? 'status-running' : (isCoordinating ? 'status-coordinating' : 'status-idle');
+          const badgeText = isReviewing ? '\u25cf In revisione' : (isRunning ? '\u25cf In esecuzione' : (isCoordinating ? '\u25cf In coordinamento' : 'In attesa'));
           return `
             <div class="agent-card ${cardClass}">
               <div class="agent-header">
@@ -915,7 +916,7 @@
               </div>
               <div class="agent-role">${escapeHtml(ag.defaultRole)}</div>
               <div class="agent-task">
-                ${ag.currentTask ? `Attività: <strong>${escapeHtml(ag.currentTask)}</strong>` : 'Nessuna attività in corso'}
+                ${ag.currentTask ? `Attivit\u00e0: <strong>${escapeHtml(ag.currentTask)}</strong>` : 'Nessuna attivit\u00e0 in corso'}
               </div>
             </div>
           `;
