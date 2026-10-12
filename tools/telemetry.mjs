@@ -155,20 +155,46 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
       }
     } else if (t.stato === "IN VERIFICA" || t.stato === "CONSEGNATO") {
       // In fase di verifica o consegna, l'esecutore originario ha terminato la bozza:
-      // l'agente attivo è il Revisore (se presente), oppure l'Integratore / Proprietario in verifica
+      // l'agente attivo è il Revisore designato (o l'agente complementare naturale per peer-review),
+      // oppure l'Integratore / Coordinatore di ambiente.
       const nomeRevisore = trovaProprietario(t.revisore);
       const nomeIntegratore = trovaProprietario(t.integratore);
       const nomeProprietario = trovaProprietario(t.proprietario);
-      const targetReviewer = nomeRevisore || nomeIntegratore || (t.stato === "IN VERIFICA" ? nomeProprietario : coordinatorName);
+
+      // Risoluzione intelligente del revisore predefinito se non esplicitato:
+      // - Se proprietario è Codex CLI -> peer review naturale affidata a Claude Code
+      // - Se proprietario è Claude Code -> revisione/integrazione affidata ad Antigravity AGY
+      // - Se proprietario è Antigravity AGY -> peer review affidata a Claude Code
+      let defaultPeerReviewer = coordinatorName;
+      if (nomeProprietario === "Codex CLI") {
+        defaultPeerReviewer = "Claude Code";
+      } else if (nomeProprietario === "Claude Code") {
+        defaultPeerReviewer = "Antigravity AGY";
+      } else if (nomeProprietario === "Antigravity AGY") {
+        defaultPeerReviewer = "Claude Code";
+      }
+
+      const targetReviewer = nomeRevisore || nomeIntegratore || (t.stato === "IN VERIFICA" && nomeProprietario !== coordinatorName ? nomeProprietario : defaultPeerReviewer);
 
       if (targetReviewer) {
         const ag = agents.find((a) => a.name === targetReviewer);
-        if (ag && ag.status === "idle") {
-          ag.status = t.stato === "IN VERIFICA" ? "running" : "reviewing";
-          ag.currentTask = `${t.id} (${t.stato === "IN VERIFICA" ? "Verifica" : "Review"})`;
+        if (ag) {
+          const labelAzione = t.stato === "IN VERIFICA" ? "Verifica" : "Review";
+          if (ag.status === "idle") {
+            ag.status = t.stato === "IN VERIFICA" ? "running" : "reviewing";
+            ag.currentTask = `${t.id} (${labelAzione})`;
+          } else if (ag.status === "reviewing" && ag.currentTask && !ag.currentTask.includes(t.id)) {
+            ag.currentTask = `${ag.currentTask}, ${t.id}`;
+          }
         }
       }
     }
+  }
+
+  // Se ci sono task avviati, consegnati o integrati, la milestone corrente è effettivamente in corso
+  const haAttivita = inCorsoCount > 0 || completatiCount > 0 || tasks.some((t) => t.stato === "CONSEGNATO" || t.stato === "IN VERIFICA");
+  if (haAttivita && (/^pianificat/i.test(milestone.stato))) {
+    milestone.stato = "IN CORSO";
   }
 
   // Verifica attività recente del Coordinatore (ultimi 15 minuti)

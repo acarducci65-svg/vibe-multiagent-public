@@ -193,6 +193,25 @@ assert.equal(agCodexRev.status, "idle", "Codex deve essere idle poiché il task 
 assert.equal(agClaudeRev.status, "reviewing", "Claude deve essere in stato reviewing poiché è il Revisore del task CONSEGNATO");
 assert.ok(agClaudeRev.currentTask.includes("TASK-020-review"), "Claude deve avere il task di revisione assegnato");
 
+// Verifica Punto 5: Peer review implicita e transizione stato sprint
+const testDir4 = join(tmpdir(), "vibe-test-telemetry-peer-" + Date.now());
+const coordDir4 = join(testDir4, ".coord");
+const tasksDir4 = join(coordDir4, "tasks");
+mkdirSync(tasksDir4, { recursive: true });
+writeFileSync(join(coordDir4, "CURRENT_SPRINT.md"), "# Sprint Test\nStato: PIANIFICATO\n");
+writeFileSync(join(tasksDir4, "T-001.md"), "# T-001\nStato: CONSEGNATO\nProprietario: Codex CLI\n");
+writeFileSync(join(tasksDir4, "T-002.md"), "# T-002\nStato: CONSEGNATO\nProprietario: Claude Code\n");
+
+const resPeer = raccogliTelemetria(testDir4);
+assert.equal(resPeer.milestone.stato, "IN CORSO", "Sprint con task consegnati deve risultare IN CORSO anche se file dice PIANIFICATO");
+const agClaudePeer = resPeer.agents.find(a => a.name === "Claude Code");
+const agAgyPeer = resPeer.agents.find(a => a.name === "Antigravity AGY");
+assert.equal(agClaudePeer.status, "reviewing", "Claude Code deve essere reviewing per il task di Codex anche senza annotazione esplicita");
+assert.ok(agClaudePeer.currentTask.includes("T-001"), "Claude deve avere T-001");
+assert.equal(agAgyPeer.status, "reviewing", "Antigravity AGY deve essere reviewing per il task di Claude Code");
+assert.ok(agAgyPeer.currentTask.includes("T-002"), "AGY deve avere T-002");
+rmSync(testDir4, { recursive: true, force: true });
+
 rmSync(testDir3, { recursive: true, force: true });
 
 rmSync(testDir2, { recursive: true, force: true });
