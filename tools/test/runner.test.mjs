@@ -7,8 +7,18 @@ import { strict as assert } from "node:assert";
 
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
-// 1. Test unitari di formattaRigaNdjson
-const { formattaRigaNdjson, creaGestoreStream } = await import("../runner.mjs");
+// 1. Test unitari di formattaRigaNdjson e analizzaArgomenti
+const { formattaRigaNdjson, creaGestoreStream, analizzaArgomenti } = await import("../runner.mjs");
+
+// Test risoluzione automatica --agent e --model
+const rCodex = analizzaArgomenti(["node", "runner.mjs", "--task", "T-1", "--prompt-file", "prompt.txt", "--agent", "codex", "--model", "gpt-6-astra"]);
+assert.match(rCodex.cmd, /^codex exec -m gpt-6-astra --sandbox workspace-write -/);
+
+const rClaude = analizzaArgomenti(["node", "runner.mjs", "--task", "T-1", "--prompt-file", "prompt.txt", "--agent", "claude"]);
+assert.match(rClaude.cmd, /^claude -p - --output-format stream-json --verbose/);
+
+const rAgy = analizzaArgomenti(["node", "runner.mjs", "--task", "T-1", "--prompt-file", "prompt.txt", "--agent", "agy"]);
+assert.match(rAgy.cmd, /^agy -p -/);
 
 // Linea testo normale non JSON
 assert.equal(formattaRigaNdjson("testo normale\r"), "testo normale\n");
