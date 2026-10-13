@@ -173,6 +173,9 @@ export function analizzaArgomenti(argv) {
     cmd = cmdTokens.map(quoteArg).join(" ");
   }
 
+  let agent = "claude";
+  let model = "";
+
   for (let i = 0; i < opzioni.length; i++) {
     const a = opzioni[i];
     if (a === "--task" || a === "-t") {
@@ -183,14 +186,27 @@ export function analizzaArgomenti(argv) {
       cmd = opzioni[++i] || cmd;
     } else if (a === "--prompt-file" || a === "-f") {
       promptFile = opzioni[++i] || promptFile;
+    } else if (a === "--agent" || a === "-a") {
+      agent = (opzioni[++i] || agent).toLowerCase();
+    } else if (a === "--model" || a === "-m") {
+      model = opzioni[++i] || model;
     }
   }
 
   if (!cmd && promptFile) {
-    cmd = "claude -p - --output-format stream-json --verbose";
+    if (agent === "codex") {
+      const modelFlag = model ? ` -m ${model}` : "";
+      cmd = `codex exec${modelFlag} --sandbox workspace-write -`;
+    } else if (agent === "agy") {
+      const modelFlag = model ? ` -m ${model}` : "";
+      cmd = `agy -p -${modelFlag}`;
+    } else {
+      const modelFlag = model ? ` --model ${model}` : "";
+      cmd = `claude -p - --output-format stream-json --verbose${modelFlag}`;
+    }
   }
 
-  return { taskId, dirCoord, cmd, promptFile };
+  return { taskId, dirCoord, cmd, promptFile, agent, model };
 }
 
 export function eseguiRunner(argv = process.argv) {

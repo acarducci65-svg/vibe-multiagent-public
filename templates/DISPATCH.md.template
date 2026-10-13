@@ -26,24 +26,24 @@ Se `Sto per:` e `Fatti:` si contraddicono, **credi a `Fatti:`**: lo scrive l'hoo
 
 ## Come lanci un esecutore
 
-Dal terminale, con `run_command` (impostando `WaitMsBeforeAsync` a 500ms per mandarlo in background), poi lo segui con `manage_task`.
+Dal terminale di Antigravity, con `run_command` impostando:
+- `WaitMsBeforeAsync: 500` (per mandarlo in background);
+- **`BypassSandbox: true` (TASSATIVO su Windows per Claude e Codex)**: la sandbox predefinita di Antigravity isola il processo bloccando l'accesso ai file di configurazione e token utente (`~/.claude/`, `~/.codex/config.toml`) e disattiva la rete. Con `BypassSandbox: true` le CLI accedono alle credenziali dell'utente e alle API esterne regolarmente.
+Poi lo segui con `manage_task`.
 
-Per consentire al Direttore e a te di vedere l'output in tempo reale nella **Control Room Visiva (`{{DIR_COORD}}/dashboard.html`)**, incanala sempre l'esecuzione tramite il runner universale:
-`node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "<COMANDO>"`
+### Il metodo standard: Prompt-File + Runner Universale
+Per prevenire **qualsiasi errore di quoting, apici o caratteri speciali su Windows** e garantire al contempo streaming in tempo reale sulla **Control Room Visiva (`{{DIR_COORD}}/dashboard.html`)**:
+1. Scrivi sempre il prompt dell'agente nel file dedicato: `{{DIR_COORD}}/prompts/<ID>.txt`.
+2. Incanala l'esecuzione con il runner tramite `--prompt-file`:
 
-| Esecutore | Comando standard (tramite runner) | Quota consumata | Note operative essenziali |
+| Esecutore | Comando standard (con `BypassSandbox: true`) | Quota consumata | Note operative essenziali |
 |---|---|---|---|
-| Claude Code | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "claude -p 'Esegui {{DIR_COORD}}/tasks/<ID>.md. Leggi prima AGENTS.md. Scrivi tassativamente i deliverable sui file assegnati e l\'handover in {{DIR_COORD}}/handover/<ID>.md come ultima tool call prima di terminare.' --output-format stream-json --verbose"` | Anthropic | Streaming real-time eventi NDJSON, deliverable su file e log in `{{DIR_COORD}}/logs/<ID>.log` |
-| Codex CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "codex exec -m <MODELLO> --sandbox workspace-write 'Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Sei in modalità headless non-interattiva: procedi con implementazione e test senza chiedere conferme.'"` | OpenAI | Forza `-m` esplicito e autorizzazione headless |
-| AGY CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --cmd "agy -p 'Leggi AGENTS.md, {{DIR_COORD}}/PROJECT.md e {{DIR_COORD}}/tasks/<ID>.md. Esegui SOLO le verifiche richieste; non eseguire comandi shell o test non dichiarati. La scrittura dell'handover in {{DIR_COORD}}/handover/<ID>.md e l'aggiornamento del task devono essere le ultime tool call prima di terminare.' --add-dir <percorso>"` | Google | Pre-approvare i comandi esatti in `settings.json` (modello verificabile con `agy models`) |
+| Claude Code | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent claude` | Anthropic | Streaming real-time eventi NDJSON, deliverable su file e log in `{{DIR_COORD}}/logs/<ID>.log` |
+| Codex CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent codex --model <MODELLO>` | OpenAI | Inoltra prompt su stdin a `codex exec -m ... --sandbox workspace-write -` senza blocchi interattivi |
+| AGY CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent agy` | Google | Pre-approvare i comandi esatti in `settings.json` (modello verificabile con `agy models`) |
 | Sotto-agente AGY | `invoke_subagent` con `TypeName: self` | Google | Gestito internamente |
 
-### Lancio di prompt lunghi o articolati da file (senza problemi di quoting)
-Se il prompt per Claude Code è lungo o salvato in un file (es. `{{DIR_COORD}}/prompts/<ID>.txt`), **non bypassare il runner** e non fare pipe manuali in PowerShell. Usa il flag nativo `--prompt-file`:
-```bash
-node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt"
-```
-Il runner inoltra il file direttamente su stdin a `claude -p - --output-format stream-json --verbose`, evitando errori di virgolette su Windows e garantendo lo streaming continuo in `{{DIR_COORD}}/logs/<ID>.log` e sulla Dashboard.
+*Nota di compatibilità comandi inline*: se eccezionalmente lanci un comando inline con `--cmd`, evita assolutamente gli apici singoli `'` all'interno di stringhe su Windows; usa la sintassi double-dash `--` oppure usa il file prompt dedicato.
 
 Il sistema ti notifica automaticamente al completamento di ogni task in background. Per verificare lo stato intermedio, usa `manage_task` con `status`. Per interrompere un esecutore bloccato, usa `manage_task` con `kill`.
 
