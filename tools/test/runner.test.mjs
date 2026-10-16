@@ -59,6 +59,16 @@ const evDone = JSON.stringify({
 });
 assert.match(formattaRigaNdjson(evDone), /\[Claude\] ✅ Completato \(durata: 5.4s, costo: \$0.0420\): Task completato/);
 
+// Evento thinking_tokens (telemetria interna di Claude: deve essere silenziata)
+const evThinking = JSON.stringify({
+  type: "system",
+  subtype: "thinking_tokens",
+  estimated_tokens: 1500,
+  estimated_tokens_delta: 100,
+  session_id: "test-session"
+});
+assert.equal(formattaRigaNdjson(evThinking), "", "thinking_tokens deve essere silenziato per non intasare i log");
+
 // Gestore stream con chunk parziali
 let catturato = "";
 const gestore = creaGestoreStream((chunk) => { catturato += chunk; });
