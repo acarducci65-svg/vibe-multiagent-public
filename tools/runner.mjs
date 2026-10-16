@@ -99,6 +99,14 @@ export function formattaRigaNdjson(riga) {
   } else if (ev.type === "system") {
     if (ev.subtype === "init") {
       out.push(`${prefix} 🚀 Sessione avviata (modello: ${ev.model || "default"})`);
+    } else if (
+      ev.subtype === "thinking_tokens" ||
+      ev.subtype === "hook_started" ||
+      ev.subtype === "hook_response" ||
+      ev.subtype === "status"
+    ) {
+      // Eventi di telemetria e heartbeat interno di Claude: silenzia per non inondare i log e la dashboard
+      return "";
     }
   }
 
