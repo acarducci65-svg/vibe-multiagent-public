@@ -44,10 +44,16 @@ export function verificaSaluteHook(radice = process.cwd(), dirStrumenti = __dirn
   };
 }
 
-export function verificaPosta(dirCoord) {
+export function verificaPosta(dirCoord, tasks = []) {
   const mailDir = join(dirCoord, "mail", "agents");
   const posta = { totaleInviati: 0, nonLetti: 0, perAgente: {}, messages: [] };
   if (!existsSync(mailDir)) return posta;
+
+  const taskCompletati = new Set(
+    tasks
+      .filter((t) => t.stato === "INTEGRATO" || t.stato === "CHIUSO")
+      .map((t) => canonicalTaskId(t.id))
+  );
 
   try {
     const agents = readdirSync(mailDir);
@@ -59,10 +65,25 @@ export function verificaPosta(dirCoord) {
       let outCount = 0;
       if (existsSync(inbox)) {
         const inFiles = readdirSync(inbox).filter((f) => f.endsWith(".json") && !f.startsWith("."));
-        inCount = inFiles.length;
         for (const f of inFiles) {
           try {
             const raw = JSON.parse(readFileSync(join(inbox, f), "utf8"));
+            const tid = canonicalTaskId(raw.taskId);
+            // Se il task correlato e' gia' INTEGRATO o CHIUSO, auto-archivia in inbox/.done
+            if (tid && taskCompletati.has(tid)) {
+              const inboxDone = join(inbox, ".done");
+              if (!existsSync(inboxDone)) mkdirSync(inboxDone, { recursive: true });
+              try {
+                renameSync(join(inbox, f), join(inboxDone, f));
+              } catch {
+                try {
+                  writeFileSync(join(inboxDone, f), JSON.stringify(raw, null, 2), "utf8");
+                  unlinkSync(join(inbox, f));
+                } catch {}
+              }
+            } else {
+              inCount++;
+            }
             tuttiMessaggi.push(raw);
           } catch {}
         }
@@ -574,7 +595,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
   const coordRel = relative(projectDir, dirCoord) || coordNome;
 
   const hookHealth = verificaSaluteHook(radice);
-  const mail = verificaPosta(dirCoord);
+  const mail = verificaPosta(dirCoord, tasks);
   const circuitBreaker = verificaCircuitBreaker(dirCoord);
   const memoryGraph = estraiMemoryGraph(dirCoord, tasks);
 
