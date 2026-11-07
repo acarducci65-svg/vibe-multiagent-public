@@ -66,6 +66,18 @@ export function verificaPosta(dirCoord) {
             tuttiMessaggi.push(raw);
           } catch {}
         }
+        const inboxDone = join(inbox, ".done");
+        if (existsSync(inboxDone)) {
+          const doneFiles = readdirSync(inboxDone).filter((f) => f.endsWith(".json"));
+          for (const f of doneFiles) {
+            try {
+              const raw = JSON.parse(readFileSync(join(inboxDone, f), "utf8"));
+              if (!tuttiMessaggi.some((m) => m.id === raw.id)) {
+                tuttiMessaggi.push(raw);
+              }
+            } catch {}
+          }
+        }
       }
       if (existsSync(outbox)) {
         const outFiles = readdirSync(outbox).filter((f) => f.endsWith(".json") && !f.startsWith("."));
