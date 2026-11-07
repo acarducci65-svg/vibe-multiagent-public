@@ -1006,7 +1006,7 @@
       if (!node) return;
       document.querySelectorAll('.graph-node').forEach(el => el.classList.remove('selected'));
       nodeEl.classList.add('selected');
-      document.getElementById('graphDetail').textContent = [node.label || node.id, node.type, node.status].filter(Boolean).join(' • ');
+      document.getElementById('graphDetail').textContent = [node.label || node.id, node.type, node.status].filter(Boolean).join(' \u2022 ');
     }
     document.getElementById('graphContainer').addEventListener('click', e => selectGraphNode(e.target));
     document.getElementById('graphContainer').addEventListener('keydown', e => {
