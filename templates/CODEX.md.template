@@ -1,0 +1,27 @@
+# Istruzioni Operative per Codex CLI
+
+Questo repository e' coordinato dal framework multi-agente (`{{DIR_COORD}}/`).
+Codex CLI opera principalmente per elaborazioni algoritmiche, backend, migrazioni e suite di test.
+
+## Regole di Esecuzione Task
+1. Prima di iniziare, leggi `AGENTS.md`, `{{DIR_COORD}}/PROJECT.md` e il task assegnato in `{{DIR_COORD}}/tasks/<ID_TASK>.md`.
+2. Rispetta rigorosamente i `File riservati` dichiarati nel task. Non modificare file assegnati ad altri esecutori.
+3. Quando modifichi lo stato del task a `IN CORSO`:
+   - Aggiorna il `## Punto di ripresa` nel task.
+   - Sincronizza la telemetria: `node tools/telemetry.mjs --coord "{{DIR_COORD}}"`.
+4. Quando completi il lavoro e i test passano con successo (exit code 0):
+   - Compila `{{DIR_COORD}}/handover/<ID_TASK>.md` e `{{DIR_COORD}}/handover/<ID_TASK>.json` conforme a HANDOVER v2.1.
+   - Imposta lo `Stato: CONSEGNATO` in `{{DIR_COORD}}/tasks/<ID_TASK>.md`.
+   - Invia la notifica di consegna nella Mailbox FIPA-lite e smista la posta:
+     ```bash
+     node tools/mail-router.mjs send --from codex --to agy --act done --task <ID_TASK> --subject "Consegna <ID_TASK>" --body "Verifiche superate e handover compilato"
+     node tools/mail-router.mjs route
+     node tools/telemetry.mjs --coord "{{DIR_COORD}}"
+     ```
+   - Fermati: non eseguire `git commit` né integrare il codice direttamente (spetta all'Integratore).
+5. Richieste di peer-review o supporto:
+   - Se necessiti di revisione da Claude Code:
+     ```bash
+     node tools/mail-router.mjs send --from codex --to claude --act request --task <ID_TASK> --subject "Richiesta review" --body "<dettagli>"
+     node tools/mail-router.mjs route
+     ```

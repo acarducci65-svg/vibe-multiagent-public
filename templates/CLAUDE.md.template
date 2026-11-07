@@ -9,13 +9,24 @@ Nelle versioni di Claude Code v2.1.277+, `AGENTS.md` e' ingerito nativamente all
    - Compila sempre `## Punto di ripresa` con le azioni pianificate ed eseguite (se il Claude Mod e' attivo, ogni modifica file traccia un checkpoint incrementale automatico).
    - **Esegui subito il comando di telemetria per sincronizzare la Control Room / Dashboard**:
      ```bash
-     node {{DIR_COORD}}/tools/telemetry.mjs
+     node tools/telemetry.mjs --coord "{{DIR_COORD}}"
      ```
 3. Rispetta rigorosamente i `File riservati` dichiarati nel task e non modificare file assegnati ad altri esecutori.
 4. Quando completi il lavoro e i test passano:
-   - Compila l'handover in `{{DIR_COORD}}/handover/<ID_TASK>.md`.
+   - Compila l'handover in `{{DIR_COORD}}/handover/<ID_TASK>.md` e il contratto `{{DIR_COORD}}/handover/<ID_TASK>.json` conforme allo schema v2.1.
    - Imposta lo `Stato: CONSEGNATO` in `{{DIR_COORD}}/tasks/<ID_TASK>.md`.
-   - Esegui di nuovo `node {{DIR_COORD}}/tools/telemetry.mjs` per notificare all'Integratore che il task e' pronto per la revisione.
-5. In caso di avviso di limite di quota/sessione (5-hour limit o Wrap-Up Allowance in Claude Code v2.1.287+):
+   - Invia la notifica di completamento nella Mailbox FIPA-lite e smista la posta:
+     ```bash
+     node tools/mail-router.mjs send --from claude --to agy --act done --task <ID_TASK> --subject "Consegna <ID_TASK>" --body "Verifiche superate e handover compilato"
+     node tools/mail-router.mjs route
+     ```
+   - Esegui di nuovo `node tools/telemetry.mjs --coord "{{DIR_COORD}}"` per notificare all'Integratore che il task e' pronto per la revisione.
+5. Comunicazione asincrona e richieste di revisione (Mailbox FIPA-lite):
+   - Per richiedere peer-review a Codex o revisione ad AGY:
+     ```bash
+     node tools/mail-router.mjs send --from claude --to <destinatario> --act request --task <ID_TASK> --subject "Richiesta review" --body "<dettagli>"
+     node tools/mail-router.mjs route
+     ```
+6. In caso di avviso di limite di quota/sessione (5-hour limit o Wrap-Up Allowance in Claude Code v2.1.287+):
    - Non avviare nuovi file o refactoring estesi.
    - Usa l'indennità residua per completare i test in corso, aggiornare il `## Punto di ripresa` nel task ed emettere l'handover con `Stato consegna: PARZIALE`.
