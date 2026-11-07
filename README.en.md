@@ -31,7 +31,7 @@
 4. **Mechanical Guardrails**: Pre-tool hooks automatically block unapproved `git push`, production deploys, schema migrations, and out-of-bounds deletions.
 5. **Interactive Visual Control Room**: Standalone, dark-mode HTML5 dashboard (`.coord/dashboard.html`) and log streaming runner (`runner.mjs`) to eliminate the "black box" effect of background agent sessions.
 6. **Zero External Dependencies**: All core telemetry and gate tools run on standard Node.js without third-party npm runtime dependencies.
-7. **Formal Governance Contracts & Runaway Protection (v2.0)**: TASK v2 and HANDOVER v2 protocols featuring 4 formal verification levels, strict execution budgets to eliminate agent loops, an immutable issue/debt registry (`FINDINGS.md`), three-way gap analysis synthesis, and hardened security gates.
+7. **Formal Governance Contracts, 4-Level Circuit Breaker & FIPA-lite Mailbox (v2.1)**: TASK v2 and HANDOVER v2 protocols with machine-readable JSON Schema validation (`tools/validate-handover.mjs`), 4-level anti-loop Circuit Breaker (`healthy` → `steering` → `constrained` → `stopped`), single-writer asynchronous FIPA-lite Mailbox (`tools/mail-router.mjs`), offline relational SVG Memory Graph in the Control Room, immutable technical debt registry (`FINDINGS.md`), three-way gap analysis synthesis, and hardened security gates.
 
 ---
 
@@ -188,9 +188,9 @@ claude mod add ./tools/claude-mod
 
 ---
 
-## 📋 Formal Governance Contracts v2.0
+## 📋 Formal Governance Contracts, Circuit Breaker & v2.1 Enhancements
 
-Version 2.0 introduces rigorous formal contracts to eliminate superficial completion claims and agent thrashing:
+Version 2.1 formalizes rigorous, verifiable, and machine-validated contracts to eliminate superficial completion claims and agent thrashing:
 
 ### 1. TASK v2 Contract
 - **Governance Metadata**: Explicit headers for `Reviewer:`, `Integrator:`, `Sensitive: (Yes/No)`, `Decision:`, and an enforced `Execution Budget: 3`.
@@ -201,20 +201,36 @@ Version 2.0 introduces rigorous formal contracts to eliminate superficial comple
   - `COLLAUDATO` (Validated): End-to-end integration proven and functional.
 - **Integration Log**: Reserved section populated exclusively by the Lead Integrator containing re-executed test commands, git commits, and formal sign-off.
 
-### 2. HANDOVER v2 Contract
+### 2. HANDOVER v2 Contract & Machine-Readable JSON Schema Validator
+- **Rigid JSON Schema**: The HANDOVER v2 structure is formalized in `tools/schemas/handover-v2.schema.json`.
+- **Deterministic CLI Validator**: `node tools/validate-handover.mjs <handover-file>` validates handovers 100% offline prior to code integration.
 - **Criteria Matrix**: Every acceptance criterion is explicitly cross-referenced with its status (`✅ Passed`, `⚪ N/A`, `⚠️ Partial`).
-- **Git Commit Tracking**: Mandatory tracking of git commit hash and working branch.
+- **Git Commit & Branch Tracking**: Mandatory tracking of git commit hash and working branch.
 - **Mandatory *"Not executed, and why"* Section**: Explicit accountability for incomplete scope or deferred work.
 - **Invariants Matrix with SHA256 Hashes**: Cryptographic or structural integrity checks on core files to prevent silent regressions.
 
-### 3. Technical Debt & Blocker Registry (`FINDINGS.md`)
+### 3. 4-Level Circuit Breaker & Runaway Protection
+To prevent runaway executions, thrashing loops, or uncontrolled token exhaustion:
+- **4-Stage Progressive Circuit Breaker**:
+  1. `healthy` (Nominal call 1): Standard execution with full toolset access.
+  2. `steering` (Retry 1 after error/loop): Automatic injection of focused corrective instructions into prompt context.
+  3. `constrained` (Retry 2): Restricted perimeter with high-impact or destructive tools disabled.
+  4. `stopped` (Retry 3 / 4 calls total): **Deterministic Breaker Trip**. Complete freeze, task switched to `SOSPESO`, and human Director notification emitted.
+- **Git Worktree Isolation**: `--worktree <path>` flag in `runner.mjs` to physically separate concurrent agent worktrees without `.git/index` contention.
+- **Lease Tracking & Telemetry**: `--dispatch-id <id>` flag to deterministically correlate logs, background processes, and breaker state.
+
+### 4. Asynchronous FIPA-lite Mailbox & Single-Writer Concurrency
+- **Isolated Directory Topology**: Mailbox workspace in `.coord/mail/` structured into `agents/<agent>/outbox/`, `inbox/`, and `archive/`.
+- **Dedicated Router CLI**: `node tools/mail-router.mjs` with `send`, `route`, and `drain` commands.
+- **FIPA-lite Protocol**: Structured JSON messages with `performative` (`request`, `inform`, `agree`, `refuse`, `failure`), `conversationId`, `sender`, `recipient`, `timestamp`, and `content`.
+- **Single-Writer Guarantee & Atomic Delivery**: Each agent only writes to its dedicated outbox; router performs atomic filesystem deliveries with retry on Windows/OneDrive to prevent race conditions.
+
+### 5. Technical Debt & Blocker Registry (`FINDINGS.md`)
 - Immutable registry categorized by severity (`P0 - Blocker`, `P1 - High`, `P2 - Medium`, `P3 - Low`).
 - **Milestone Closing Gate**: No milestone may be closed if open P0 findings remain, or if open P1 findings lack a Director-approved mitigation plan.
 
-### 4. Runaway Protection & Anti-Loop
-- **Strict Execution Budget**: Maximum 3 runs per single task before requiring human intervention.
-- **Cycle Detection**: Identifies unproductive bounces and architectural impasses.
-- **Three-Way Gap Analysis Protocol**: Structured 3-stage synthesis (AGY/Claude/Codex independent diagnoses -> Cross-gap synthesis -> Unified plan) to resolve complex impasses.
+### 6. Three-Way Gap Analysis Protocol
+- Structured 3-stage synthesis (AGY/Claude/Codex independent diagnoses -> Cross-gap synthesis -> Unified master plan) to resolve complex architectural divergence.
 
 ---
 
@@ -295,6 +311,9 @@ In multi-agent sessions, background processes can feel like an opaque "black box
 - **Real-Time Log Stream**: Multiplexed by `tools/runner.mjs`, allows switching between task tabs to read stdout/stderr with auto-scrolling.
 - **Sprint Kanban**: Tracks tasks across states (`PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`), reserved files touched, and completed milestones.
 - **Quota & Provider Gauges**: Visual gauges monitoring 5-hour and 7-day quota thresholds.
+- **Relational SVG Memory Graph (v2.1)**: Interactive relational network graph rendered 100% offline (zero CDNs, zero external libraries) to visualize dependencies between decisions (`DECISIONS.md`), findings (`FINDINGS.md`), milestones, and tasks.
+- **Dynamic Circuit Breaker Badge (v2.1)**: Real-time visual monitoring of agent health and breaker levels (`healthy`, `steering`, `constrained`, `tripped`).
+- **Integrated Mailbox Panel (v2.1)**: Dashboard view to inspect in-flight FIPA-lite messages, agent notifications, and delivery queues.
 
 ### 🕹️ Try the Interactive Sandbox Demo (`demo/`)
 This repository includes a standalone, zero-setup interactive demo simulating a live sprint with synthetic telemetry:
@@ -340,6 +359,8 @@ node tools/test/telemetry.test.mjs
 node tools/test/runner.test.mjs
 node tools/test/dashboard.test.mjs
 node tools/test/claude-mod.test.mjs
+node tools/test/mail-router.test.mjs
+node tools/test/validate-handover.test.mjs
 ```
 
 ---
@@ -353,19 +374,19 @@ vibe-multiagent/
 │       └── ci.yml                # Cross-platform CI pipeline (Ubuntu, Windows, macOS)
 ├── .gitattributes                # Cross-platform LF line-ending normalization
 ├── .gitignore                    # Git ignore rules for telemetry and temp files
-├── package.json                  # Package definition (v2.0.0) and npm test scripts
-├── plugin.json                   # Antigravity IDE plugin manifest (v2.0.0)
+├── package.json                  # Package definition (v2.1.0) and npm test scripts
+├── plugin.json                   # Antigravity IDE plugin manifest (v2.1.0)
 ├── LICENSE                       # MIT License (Alessandro Carducci)
 ├── SECURITY.md                   # Security policy and quota transparency disclosures
 ├── CONTRIBUTING.md               # External contributor workflow and standards
 ├── CODE_OF_CONDUCT.md            # Contributor Covenant v2.1 code of conduct
-├── README.md                     # Comprehensive Italian documentation (v2.0.0)
-├── README.en.md                  # Comprehensive English documentation (v2.0.0)
-├── SKILL.md                      # Primary entry point for Claude Code
-├── setup_skill.md                # Full 12-question interview & setup protocol
+├── README.md                     # Comprehensive Italian documentation (v2.1.0)
+├── README.en.md                  # Comprehensive English documentation (v2.1.0)
+├── SKILL.md                      # Primary entry point for Claude Code (v2.1)
+├── setup_skill.md                # Full 12-question interview & setup protocol (v2.1)
 ├── demo/                         # Standalone interactive Control Room sandbox
 │   ├── apri-demo.cmd             # Windows 1-click launcher
-│   ├── dashboard.html            # Offline interactive sandbox dashboard
+│   ├── dashboard.html            # Offline interactive sandbox dashboard (with Memory Graph SVG)
 │   ├── state.js                  # Simulated multi-agent sprint telemetry
 │   ├── social-preview.png        # Official 1280x640 GitHub preview card
 │   └── control-room-demo.gif     # High-definition animated showcase
@@ -375,11 +396,11 @@ vibe-multiagent/
 │   ├── AGENTS.md.template
 │   ├── AGENT_ROLE.md.template
 │   ├── CURRENT_SPRINT.md.template # Sprint milestone with closing gate checklist
-│   ├── dashboard.html.template   # Interactive visual Control Room (dark mode)
+│   ├── dashboard.html.template   # Interactive visual Control Room (dark mode with Memory Graph SVG)
 │   ├── DECISIONS.md.template
-│   ├── DISPATCH.md.template      # AGY Dispatcher manual with Runaway Protection
+│   ├── DISPATCH.md.template      # AGY Dispatcher manual with 4-level Circuit Breaker
 │   ├── FINDINGS.md.template      # Immutable technical debt & blocker registry (P0-P3)
-│   ├── HANDOVER.md.template      # HANDOVER v2 with SHA256 invariants matrix
+│   ├── HANDOVER.md.template      # HANDOVER v2 with SHA256 invariants matrix & JSON schema
 │   ├── hooks.json.template       # Antigravity hook configuration (Environment B)
 │   ├── multiagent-rule.md.template # Antigravity permanent workspace rule (Environment B)
 │   ├── PROJECT.md.template
@@ -388,7 +409,7 @@ vibe-multiagent/
 │       ├── preflight-audit.py.template     # Environment, file & git sanity check
 │       ├── smoketest.ps1.template          # Fast PowerShell smoke test for Windows
 │       └── service-controller.bat.template # Background service lifecycle script
-└── tools/                        # Antigravity hooks, Claude Mod, process runner & telemetry engine
+└── tools/                        # Antigravity hooks, Claude Mod, runner, mailbox & validators
     ├── claude-mod/               # In-process Claude Mod (Claude Code v2.1.287+)
     │   ├── .claude-plugin/plugin.json
     │   └── hooks/
@@ -398,9 +419,13 @@ vibe-multiagent/
     ├── agy-checkpoint.mjs        # PostToolUse on-disk fact checkpointing
     ├── agy-quota-banner.mjs      # PreInvocation banner & unyielding role reminder
     ├── quota-anthropic.mjs       # Claude quota sensor (opt-in VIBE_ANTHROPIC_QUOTA=1)
-    ├── runner.mjs                # Process runner with UTF-8 decoding & stream multiplexing
-    ├── telemetry.mjs             # Telemetry engine with canonical task IDs & nested log parsing
-    └── test/                     # Automated unit test suite (8 test suites, 100% GREEN)
+    ├── runner.mjs                # Process runner with 4-level Circuit Breaker & worktree support
+    ├── mail-router.mjs           # FIPA-lite async messaging router & single-writer concurrency
+    ├── validate-handover.mjs     # Deterministic offline validator for HANDOVER v2
+    ├── schemas/                  # Formal machine-readable JSON schemas
+    │   └── handover-v2.schema.json
+    ├── telemetry.mjs             # Telemetry engine with canonical task IDs, mailbox & breaker state
+    └── test/                     # Automated unit test suite (10 test suites, 100% GREEN)
         ├── claude-mod.test.mjs
         ├── agy-gate.test.mjs
         ├── agy-checkpoint.test.mjs
@@ -408,7 +433,9 @@ vibe-multiagent/
         ├── quota-anthropic.test.mjs
         ├── runner.test.mjs
         ├── telemetry.test.mjs
-        └── dashboard.test.mjs
+        ├── dashboard.test.mjs
+        ├── mail-router.test.mjs
+        └── validate-handover.test.mjs
 ```
 
 ---

@@ -60,7 +60,7 @@ git clone https://github.com/acarducci65-svg/vibe-multiagent-public.git .agents/
 4. **Presidi Meccanici su Antigravity**: Hook automatici per bloccare comandi distruttivi (`git push`, deploy, migrazioni), checkpoint automatici su disco ad ogni modifica e semaforo di quota preventivo.
 5. **Lezioni di Produzione Integrate**: Risoluzione automatica di problemi tipici su Windows (PATH stantio delle CLI, normalizzazione CRLF/LF, conflitti di working tree condivisi).
 6. **Control Room Visiva & Streaming in Tempo Reale**: Dashboard HTML5 dark-mode standalone (`dashboard.html`), telemetria di stato (`state.json`) e runner universale (`runner.mjs`) per eliminare l'effetto "scatola nera", monitorando la flotta, i log e l'avanzamento dei task in tempo reale.
-7. **Contratti Formali di Governance & Runaway Protection (v2.0)**: Protocolli TASK v2 e HANDOVER v2 con 4 livelli di verifica formale, budget esecuzioni rigido anti-loop, registro immutabile del debito tecnico (`FINDINGS.md`), gap analysis a tre mani e security gates rafforzati.
+7. **Contratti Formali di Governance, Circuit Breaker a 4 Livelli & Mailbox FIPA-lite (v2.1)**: Protocolli TASK v2 e HANDOVER v2 con JSON Schema e validatore deterministico machine-readable (`tools/validate-handover.mjs`), Circuit Breaker a 4 livelli anti-loop (`healthy` → `steering` → `constrained` → `stopped`), Mailbox asincrona FIPA-lite single-writer (`tools/mail-router.mjs`), Memory Graph SVG interattivo offline nella Control Room, registro immutabile del debito tecnico (`FINDINGS.md`), gap analysis a tre mani e security gates rafforzati.
 
 ---
 
@@ -339,6 +339,9 @@ Nelle sessioni con molteplici agenti esecutori (Codex, AGY CLI, Claude Code), l'
 - **Terminale di Streaming Log**: incanalato da `tools/runner.mjs`, permette di selezionare le schede dei task per leggere lo streaming in tempo reale di stdout/stderr con opzione di auto-scrolling.
 - **Mini-Kanban dello Sprint**: visualizza l'avanzamento dei task (`PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`), i file riservati toccati e l'ultimo passo completato.
 - **Indicatori di Quota & Fornitori**: cruscotto visuale per monitorare i limiti a 5 ore e a 7 giorni.
+- **Memory Graph Relazionale SVG (v2.1)**: mappa visiva interattiva renderizzata offline al 100% (zero CDN, zero librerie esterne) per esplorare in tempo reale le relazioni tra decisioni (`DECISIONS.md`), findings (`FINDINGS.md`), milestone e task.
+- **Badge Dinamico del Circuit Breaker (v2.1)**: monitoraggio visuale in tempo reale dello stato operativo degli agenti (`healthy`, `steering`, `constrained`, `tripped`).
+- **Pannello Mailbox Integrato (v2.1)**: cruscotto per ispezionare messaggi FIPA-lite, notifiche e code di recapito della flotta.
 
 ### Come Aprire la Dashboard:
 - **In VS Code**: clic destro su `.coord/dashboard.html` -> *Open with Live Server*, oppure `Ctrl+Shift+P` -> `Simple Browser: Show`.
@@ -384,6 +387,8 @@ node tools/test/telemetry.test.mjs
 node tools/test/runner.test.mjs
 node tools/test/dashboard.test.mjs
 node tools/test/claude-mod.test.mjs
+node tools/test/mail-router.test.mjs
+node tools/test/validate-handover.test.mjs
 ```
 
 ---
@@ -397,25 +402,25 @@ vibe-multiagent/
 │       └── ci.yml                # CI multipiattaforma (Ubuntu, Windows, macOS)
 ├── .gitattributes                # Normalizzazione LF cross-platform
 ├── .gitignore                    # Esclusioni per file volatili e telemetria
-├── package.json                  # Definizione pacchetto (v2.0.0) e script npm test
-├── plugin.json                   # Manifest plugin per Antigravity IDE (v2.0.0)
+├── package.json                  # Definizione pacchetto (v2.1.0) e script npm test
+├── plugin.json                   # Manifest plugin per Antigravity IDE (v2.1.0)
 ├── LICENSE                       # Licenza MIT (Alessandro Carducci)
 ├── SECURITY.md                   # Policy di sicurezza e trasparenza quote
 ├── CONTRIBUTING.md               # Guida per contributori esterni
 ├── CODE_OF_CONDUCT.md            # Codice di condotta Contributor Covenant
-├── README.md                     # Documentazione principale in italiano (v2.0.0)
-├── README.en.md                  # Documentazione internazionale in inglese (v2.0.0)
-├── SKILL.md                      # Entry point principale per Claude Code
-├── setup_skill.md                # Protocollo completo di intervista e setup
+├── README.md                     # Documentazione principale in italiano (v2.1.0)
+├── README.en.md                  # Documentazione internazionale in inglese (v2.1.0)
+├── SKILL.md                      # Entry point principale per Claude Code (v2.1)
+├── setup_skill.md                # Protocollo completo di intervista e setup (v2.1)
 ├── templates/                    # Template per i file di progetto
 │   ├── AGENTS.md.template
 │   ├── AGENT_ROLE.md.template
 │   ├── CURRENT_SPRINT.md.template # Milestone con checklist closing gate
-│   ├── dashboard.html.template   # Control Room visiva interattiva (dark mode)
+│   ├── dashboard.html.template   # Control Room visiva interattiva (dark mode con Memory Graph SVG)
 │   ├── DECISIONS.md.template
-│   ├── DISPATCH.md.template      # Guida operativa Dispatcher AGY con Runaway Protection
+│   ├── DISPATCH.md.template      # Guida operativa Dispatcher AGY con Circuit Breaker a 4 livelli
 │   ├── FINDINGS.md.template      # Registro immutabile debito tecnico e blocker (P0-P3)
-│   ├── HANDOVER.md.template      # HANDOVER v2 con matrice invarianti SHA256
+│   ├── HANDOVER.md.template      # HANDOVER v2 con matrice invarianti SHA256 e schema JSON
 │   ├── hooks.json.template       # Configurazione hook Antigravity (Ambiente B)
 │   ├── multiagent-rule.md.template # Regola permanente di workspace Antigravity (Ambiente B)
 │   ├── PROJECT.md.template
@@ -424,7 +429,7 @@ vibe-multiagent/
 │       ├── preflight-audit.py.template     # Audit rapido ambiente, file e consistenza Git
 │       ├── smoketest.ps1.template          # Smoke test PowerShell rapido per Windows
 │       └── service-controller.bat.template # Controller batch per gestione processi background
-└── tools/                        # Script per hook Antigravity, Claude Mod, runner & telemetria
+└── tools/                        # Script per hook Antigravity, Claude Mod, runner, mailbox & validatori
     ├── claude-mod/               # In-process Claude Mod (Claude Code v2.1.287+)
     │   ├── .claude-plugin/plugin.json
     │   └── hooks/
@@ -434,9 +439,13 @@ vibe-multiagent/
     ├── agy-checkpoint.mjs        # Checkpoint PostToolUse dei fatti su disco
     ├── agy-quota-banner.mjs      # Banner PreInvocation e promemoria di ruolo perentorio
     ├── quota-anthropic.mjs       # Sensore quota Claude (opt-in VIBE_ANTHROPIC_QUOTA=1)
-    ├── runner.mjs                # Runner universale con decodifica UTF-8 e multiplexing streaming
-    ├── telemetry.mjs             # Motore di telemetria con ID canonici e parsing log annidati
-    └── test/                     # Suite di test automatizzati (8 suite, 100% GREEN)
+    ├── runner.mjs                # Runner universale con Circuit Breaker a 4 livelli e supporto worktree
+    ├── mail-router.mjs           # Router messaggistica FIPA-lite e concorrenza single-writer
+    ├── validate-handover.mjs     # Validatore deterministico offline per HANDOVER v2
+    ├── schemas/                  # Schema JSON formali machine-readable
+    │   └── handover-v2.schema.json
+    ├── telemetry.mjs             # Motore di telemetria con ID canonici, mailbox e stato breaker
+    └── test/                     # Suite di test automatizzati (10 suite, 100% GREEN)
         ├── claude-mod.test.mjs
         ├── agy-gate.test.mjs
         ├── agy-checkpoint.test.mjs
@@ -444,7 +453,9 @@ vibe-multiagent/
         ├── quota-anthropic.test.mjs
         ├── runner.test.mjs
         ├── telemetry.test.mjs
-        └── dashboard.test.mjs
+        ├── dashboard.test.mjs
+        ├── mail-router.test.mjs
+        └── validate-handover.test.mjs
 ```
 
 ---

@@ -236,9 +236,9 @@ Il dispatcher lancia un esecutore con `run_command`, impostando `WaitMsBeforeAsy
 
 Le istruzioni operative complete del dispatcher sono nel template `DISPATCH.md.template`, generato come `{{DIR_COORD}}/DISPATCH.md`.
 
-## Contratti di Governance v2.0 e Ciclo di Vita del Task
+## Contratti di Governance v2.1 e Ciclo di Vita del Task
 
-La versione 2.0 formalizza contratti rigidi e verificabili per evitare completamenti fittizi o loop infiniti tra agenti:
+La versione 2.1 formalizza contratti rigidi, verificabili e validati in modo machine-readable per evitare completamenti fittizi o loop infiniti tra agenti:
 
 ### 1. Stati del Task
 ```text
@@ -250,7 +250,7 @@ PRONTO ──► IN CORSO ──► CONSEGNATO ──► IN VERIFICA ──► I
 - **`PRONTO`**: Task pianificato con budget esecuzioni (default 3), AC a 4 livelli, proprietario e revisore assegnati.
 - **`IN CORSO`**: Esecutore attivo con punto di ripresa aggiornato a ogni file scritto/modificato.
 - **`CONSEGNATO`**: L'esecutore ha redatto l'HANDOVER v2 con matrice dei criteri, commit git e invarianti verificate.
-- **`IN VERIFICA`**: Review Gate obbligatorio. L'Integratore riesegue personalmente i test e le verifiche d'invarianza prima dell'integrazione.
+- **`IN VERIFICA`**: Review Gate obbligatorio. L'Integratore riesegue personalmente i test, convalida l'handover con `validate-handover.mjs` e controlla le invarianti prima dell'integrazione.
 - **`INTEGRATO`**: Solo l'Orchestratore/Integratore sposta a `INTEGRATO` dopo collaudo superato, compilando il *Registro di Integrazione*.
 - **`SOSPESO`**: Quota esaurita, budget superato o deviazione architetturale non risolvibile. Richiede intervento del Direttore.
 
@@ -261,14 +261,39 @@ Ogni criterio deve specificare il livello richiesto e il comando oggettivo:
 - `VERIFICATO`: I test e controlli restituiscono exit code 0 ed evidenze conformi (`node --test`, `pytest`, etc.).
 - `COLLAUDATO`: Integrazione end-to-end conclamata (interfaccia utente, flusso completo, integrità dati).
 
-### 3. Registro Immutabile Debito & Blocker (`FINDINGS.md`)
+### 3. HANDOVER v2 Machine-Readable & Validatore Deterministico
+Ogni report di consegna (`{{DIR_COORD}}/handover/<ID>.md`) viene validato in modo deterministico e offline:
+- **JSON Schema formale**: definito in `tools/schemas/handover-v2.schema.json`.
+- **Validatore deterministico CLI**: `node "{{DIR_SKILL}}/tools/validate-handover.mjs" <file-handover>`.
+- **Controlli automatici**: verifica la presenza dei metadati obbligatori, l'esito esplicito per ogni criterio di accettazione (`✅ Superato`, `⚪ Non applicabile`, `⚠️ Parziale`), l'hash del commit Git, le invarianti e le sezioni vincolanti (*"Non eseguito, e perché"*).
+- L'Integratore esegue la validazione prima di qualunque merge o promozione a `INTEGRATO`.
+
+### 4. Circuit Breaker a 4 Livelli & Runaway Protection
+Per impedire esecuzioni degenerate o loop di correzione infruttuosi, `runner.mjs` applica una progressione a 4 livelli:
+- `healthy`: Esecuzione nominale (chiamata 1). L'agente lavora con il proprio set completo di istruzioni e strumenti.
+- `steering`: Richiamo correttivo (ripetizione 1 dopo errore). Viene iniettato nel prompt un richiamo mirato a circoscrivere la correzione.
+- `constrained`: Esecuzione vincolata (ripetizione 2). Viene limitato il perimetro d'azione, disabilitando modifiche strutturali o tool invasivi.
+- `stopped`: Trip del breaker (ripetizione 3 / 4 chiamate complessive). Blocco a freddo deterministico: viene emessa una notifica di Trip, il task passa a `SOSPESO` e si richiede la decisione esplicita del Direttore umano.
+- **Isolamento Worktree**: Il runner supporta `--worktree <path>` per confinare l'agente in un clone/worktree isolato, prevenendo lock concorrenti su `.git/index`.
+- **Tracciamento Lease**: Flag `--dispatch-id <id>` per correlare telemetria, log streaming e stato del breaker.
+
+### 5. Mailbox Asincrona FIPA-lite e Concorrenza Single-Writer
+Per la comunicazione disaccoppiata tra agenti senza collisioni di filesystem:
+- **Topologia Mailbox**: cartella `{{DIR_COORD}}/mail/` con directory isolate `agents/<agente>/outbox/`, `inbox/` e `archive/`.
+- **Router e CLI**: `node "{{DIR_SKILL}}/tools/mail-router.mjs"` con comandi `send`, `route` e `drain`.
+- **Messaggi FIPA-lite**: payload JSON con `performative` (`request`, `inform`, `agree`, `refuse`, `failure`), `conversationId`, `sender`, `recipient`, `timestamp` e `content`.
+- **Garanzia Single-Writer**: ogni agente scrive esclusivamente nella propria outbox; il router processa i messaggi con rename atomico e retry su Windows/OneDrive, evitando contese e race condition.
+
+### 6. Registro Immutabile Debito & Blocker (`FINDINGS.md`)
 I debiti tecnici, i difetti rimandati e le vulnerabilità non possono disperdersi nella chat:
 - Vengono registrati in `{{DIR_COORD}}/FINDINGS.md` classificati per severità (`P0 - Bloccante`, `P1 - Alto`, `P2 - Medio`, `P3 - Basso`).
 - **Milestone Closing Gate**: Nessuna milestone può essere dichiarata conclusa se ci sono P0 aperti o P1 privi di piano di mitigazione formalmente approvato dal Direttore.
 
-### 4. Runaway Protection & Gap Analysis a Tre Mani
-- **Budget Rigido**: Massimo 3 iterazioni/run per singolo task. Al superamento scatta lo stop di sicurezza per evitare spreco di quote e loop degenerativi.
-- **Gap Analysis & Sintesi Triangolare**: In presenza di blocker architetturali complessi o disaccordi, si innesca la sintesi a tre mani (Diagnosi autonoma AGY / Claude / Codex -> Gap Analysis incrociata -> Piano di convergenza unitario approvato dal Direttore).
+### 7. Gap Analysis a Tre Mani
+In presenza di divergenze metodologiche, blocchi architetturali o incidenti non banali, si applica la sintesi triangolare a tre mani:
+1. **Fase 1 — Diagnosi Indipendente**: Ciascun agente (AGY, Claude Code, Codex) analizza il problema separatamente registrando fatti ed evidenze oggettive.
+2. **Fase 2 — Gap Analysis Incrociata**: Confronto triangolare dei report per evidenziare convergenze, divergenze e rischi non considerati.
+3. **Fase 3 — Master Report & Decisione**: Sintesi unitaria presentata al Direttore per approvazione e registrazione formale in `DECISIONS.md`.
 
 ## Esaurimento e sostituzione di un agente
 
@@ -455,12 +480,19 @@ Se un agente si esaurisce, applica il protocollo di sostituzione: stato `SOSPESO
 
 Usa `DECISIONS.md` per le decisioni che cambiano architettura, dati, confini o coordinamento; la ragione deve restare accanto alla decisione, non solo nella chat.
 
-## Control Room Visiva & Runner Telemetrico
+## Control Room Visiva & Runner Telemetrico (v2.1)
 
 Per eliminare l'effetto "scatola nera" e consentire a utente e coordinatore di visualizzare in tempo reale l'attività degli agenti:
-- **`{{DIR_COORD}}/dashboard.html`**: dashboard reattiva dark-mode standalone. Mostra lo stato della flotta (Claude Code, Codex, AGY), l'avanzamento milestone/sprint, il mini-kanban dei task e un terminale di streaming log.
-- **`tools/runner.mjs`**: wrapper per i comandi shell degli esecutori che incanala contemporaneamente l'output su terminale e su `{{DIR_COORD}}/logs/<ID_TASK>.log`, aggiornando `{{DIR_COORD}}/state.json` ogni 2 secondi.
-- **`tools/telemetry.mjs`**: generatore di telemetria cross-platform che alimenta `state.json` con lo stato di task, quote e log.
+- **`{{DIR_COORD}}/dashboard.html`**: dashboard reattiva dark-mode standalone 100% offline (zero CDN e zero dipendenze esterne). Include:
+  - **Memory Graph relazionale SVG**: visualizzazione grafica interattiva della rete di dipendenze tra decisioni (`DECISIONS.md`), findings/blocker (`FINDINGS.md`), milestone e task.
+  - **Flotta Agenti & Circuit Breaker**: monitoraggio dello stato operativo di ogni agente e del livello del breaker (`healthy`, `steering`, `constrained`, `stopped`).
+  - **Pannello Mailbox**: monitoraggio dei messaggi FIPA-lite scambiati tra gli agenti.
+  - **Terminale Log Streaming**: visualizzazione in tempo reale di stdout/stderr con auto-scroll.
+  - **Mini-Kanban**: avanzamento in tempo reale dei task.
+- **`tools/runner.mjs`**: wrapper per i comandi shell degli esecutori con Circuit Breaker a 4 livelli, tracciamento lease (`--dispatch-id`), isolamento su worktree separati (`--worktree`) e multiplexing streaming su terminale e log.
+- **`tools/mail-router.mjs`**: router di messaggistica asincrona FIPA-lite single-writer per prevenire race conditions su filesystem.
+- **`tools/validate-handover.mjs`**: validatore deterministico offline dei contratti HANDOVER v2 su schema JSON.
+- **`tools/telemetry.mjs`**: generatore di telemetria cross-platform che alimenta `state.json` con lo stato di flotta, mailbox, circuit breaker, quote e log.
 - **`tools/quota-anthropic.mjs`**: sensore opzionale di quota Anthropic, disattivato di default per privacy e attivabile esplicitamente con `VIBE_ANTHROPIC_QUOTA=1`.
 
 ### Installare la Control Room in un progetto esistente (senza ripetere il setup)
