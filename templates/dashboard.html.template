@@ -700,7 +700,7 @@
   <div class="v21-panel" id="circuitBreaker"><span id="breakerState" class="breaker-badge breaker-unknown">Non disponibile</span> <span id="breakerCounts"></span></div>
   <div class="section-title">Mailbox FIPA-lite</div>
   <div class="v21-panel" id="mailbox"><p>Non letti: <strong id="mailUnread">0</strong></p><div id="mailMessages"></div></div>
-  <div class="section-title">Memory Graph ? Task DAG &amp; Decisions</div>
+  <div class="section-title">Memory Graph &mdash; Task DAG &amp; Decisions</div>
   <div class="v21-panel" id="memoryGraph"><div class="graph-scroll" id="graphContainer"></div><p id="graphDetail" aria-live="polite">Seleziona un nodo per i dettagli.</p></div>
   <div class="section-title">&#129302; Flotta Agenti Collaborativi</div>
   <div class="agents-grid" id="agentsList">
@@ -959,7 +959,7 @@
       badge.className = 'breaker-badge breaker-' + (state || 'unknown');
       badge.textContent = state || 'Non disponibile';
       document.getElementById('breakerCounts').textContent = breaker
-        ? `Errori consecutivi: ${breaker.consecutiveErrors ?? 0} ? Chiamate identiche consecutive: ${breaker.consecutiveIdenticalCalls ?? 0}` : '';
+        ? `Errori consecutivi: ${breaker.consecutiveErrors ?? 0} &bull; Chiamate identiche consecutive: ${breaker.consecutiveIdenticalCalls ?? 0}` : '';
     }
 
     function renderMail(mail) {
@@ -1006,7 +1006,7 @@
       if (!node) return;
       document.querySelectorAll('.graph-node').forEach(el => el.classList.remove('selected'));
       nodeEl.classList.add('selected');
-      document.getElementById('graphDetail').textContent = [node.label || node.id, node.type, node.status].filter(Boolean).join(' ? ');
+      document.getElementById('graphDetail').textContent = [node.label || node.id, node.type, node.status].filter(Boolean).join(' • ');
     }
     document.getElementById('graphContainer').addEventListener('click', e => selectGraphNode(e.target));
     document.getElementById('graphContainer').addEventListener('keydown', e => {
