@@ -959,7 +959,7 @@
       badge.className = 'breaker-badge breaker-' + (state || 'unknown');
       badge.textContent = state || 'Non disponibile';
       document.getElementById('breakerCounts').textContent = breaker
-        ? `Errori consecutivi: ${breaker.consecutiveErrors ?? 0} &bull; Chiamate identiche consecutive: ${breaker.consecutiveIdenticalCalls ?? 0}` : '';
+        ? `Errori consecutivi: ${breaker.consecutiveErrors ?? 0} \u2022 Chiamate identiche consecutive: ${breaker.consecutiveIdenticalCalls ?? 0}` : '';
     }
 
     function renderMail(mail) {
