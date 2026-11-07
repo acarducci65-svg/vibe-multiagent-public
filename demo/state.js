@@ -8,6 +8,17 @@ window.__VIBE_STATE__ = {
     "completamento": 3,
     "totale": 5
   },
+  "circuitBreaker": { "state": "healthy", "consecutiveErrors": 0, "consecutiveIdenticalCalls": 0 },
+  "mail": { "unread": 1, "messages": [{ "from": "claude", "to": "codex", "act": "request", "subject": "Verifica AST parser", "createdAt": new Date().toISOString() }] },
+  "memoryGraph": {
+    "nodes": [
+      { "id": "T-001", "label": "T-001 Auth", "type": "task", "status": "INTEGRATO" },
+      { "id": "T-002", "label": "T-002 Stripe", "type": "task", "status": "INTEGRATO" },
+      { "id": "T-003", "label": "T-003 UI", "type": "task", "status": "IN CORSO" },
+      { "id": "DEC-001", "label": "DEC-001 Architettura B", "type": "decision" }
+    ],
+    "edges": [{ "from": "DEC-001", "to": "T-001" }, { "from": "T-001", "to": "T-002" }, { "from": "T-002", "to": "T-003" }]
+  },
   "quota": {
     "ok": true,
     "source": "live",

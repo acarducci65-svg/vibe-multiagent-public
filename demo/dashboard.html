@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control Room Multi-Agente — Nexus Cloud Platform</title>
+  <title>Control Room Multi-Agente &mdash; {{NOME_PROGETTO}}</title>
   <script src="state.js"></script>
   <style>
     :root {
@@ -610,13 +610,25 @@
       justify-content: flex-end;
       gap: 10px;
     }
+    .v21-panel { background: var(--bg-card, #1e293b); border: 1px solid #334155; border-radius: 10px; padding: 16px; margin-bottom: 18px; overflow-x: auto; }
+    .breaker-badge { display: inline-block; border-radius: 12px; padding: 3px 10px; font-weight: bold; color: #111827; }
+    .breaker-healthy { background: #4ade80; } .breaker-steering { background: #fbbf24; }
+    .breaker-constrained { background: #fb923c; } .breaker-stopped { background: #f87171; }
+    .breaker-unknown { background: #94a3b8; }
+    .mail-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .mail-table th, .mail-table td { padding: 8px; border-bottom: 1px solid #334155; }
+    .graph-scroll { overflow-x: auto; } .graph-scroll svg { display: block; min-width: 100%; }
+    .graph-node { cursor: pointer; } .graph-node rect { fill: #1e3a5f; stroke: #60a5fa; stroke-width: 2; }
+    .graph-node.decision rect { fill: #4c1d45; stroke: #f0abfc; }
+    .graph-node:focus rect, .graph-node.selected rect { stroke: #fbbf24; stroke-width: 4; }
+    .graph-node text { fill: #f8fafc; font-size: 12px; } .graph-edge { stroke: #94a3b8; stroke-width: 2; }
   </style>
 </head>
 <body>
 
   <header>
     <div class="title-group">
-      <h1>🎮 Control Room Multi-Agente <span id="headerProjectName">Nexus Cloud Platform</span></h1>
+      <h1>&#127918; Control Room Multi-Agente <span id="headerProjectName">{{NOME_PROGETTO}}</span></h1>
       <span class="badge-coord" id="headerCoordDir">{{DIR_COORD}}</span>
     </div>
     <div class="header-actions">
@@ -625,16 +637,16 @@
         <span id="lastUpdate">In attesa di dati...</span>
         <div class="header-btns">
           <input type="file" id="jsonFileInput" accept=".json,.js" style="display: none;">
-          <button id="btnSelectFile" class="term-tab" title="Carica snapshot JSON locale">📁 Carica file</button>
-          <button id="btnManualReload" class="term-tab" title="Aggiorna telemetria">🔄 Ricarica</button>
+          <button id="btnSelectFile" class="term-tab" title="Carica snapshot JSON locale">&#128193; Carica file</button>
+          <button id="btnManualReload" class="term-tab" title="Aggiorna telemetria">&#128259; Ricarica</button>
         </div>
       </div>
-      <span class="privacy-hint">🔒 Dati e log 100% locali. Non esporre pubblicamente.</span>
+      <span class="privacy-hint">&#128274; Dati e log 100% locali. Non esporre pubblicamente.</span>
     </div>
   </header>
 
   <div id="corsBanner" class="cors-banner">
-    ⚠️ <strong>Visualizzazione da file locale:</strong> Il browser blocca il caricamento asincrono di <code>state.json</code> via <code>file://</code>.<br>
+    &#9888;&#65039; <strong>Visualizzazione da file locale:</strong> Il browser blocca il caricamento asincrono di <code>state.json</code> via <code>file://</code>.<br>
     Per attivare il refresh in tempo reale, apri questa pagina con <strong>Live Server</strong> in VS Code, usa <strong>Simple Browser</strong> nell'IDE, oppure trascina il file <code>state.json</code> direttamente in questa finestra.
   </div>
 
@@ -684,13 +696,19 @@
   </div>
 
   <!-- Flotta Agenti -->
-  <div class="section-title">🤖 Flotta Agenti Collaborativi</div>
+  <div class="section-title">Circuit Breaker</div>
+  <div class="v21-panel" id="circuitBreaker"><span id="breakerState" class="breaker-badge breaker-unknown">Non disponibile</span> <span id="breakerCounts"></span></div>
+  <div class="section-title">Mailbox FIPA-lite</div>
+  <div class="v21-panel" id="mailbox"><p>Non letti: <strong id="mailUnread">0</strong></p><div id="mailMessages"></div></div>
+  <div class="section-title">Memory Graph ? Task DAG &amp; Decisions</div>
+  <div class="v21-panel" id="memoryGraph"><div class="graph-scroll" id="graphContainer"></div><p id="graphDetail" aria-live="polite">Seleziona un nodo per i dettagli.</p></div>
+  <div class="section-title">&#129302; Flotta Agenti Collaborativi</div>
   <div class="agents-grid" id="agentsList">
     <!-- Generato dinamicamente -->
   </div>
 
   <!-- Mini Kanban / Task Tracker con Toolbar -->
-  <div class="section-title">📋 Task dello Sprint</div>
+  <div class="section-title">&#128203; Task dello Sprint</div>
   <div class="tasks-toolbar">
     <div class="filter-group" id="filterButtons">
       <button class="filter-btn active" data-filter="ALL">Tutti <span class="filter-count" id="countAll">0</span></button>
@@ -701,7 +719,7 @@
       <button class="filter-btn" data-filter="CHIUSO">Chiusi <span class="filter-count" id="countChiuso">0</span></button>
     </div>
     <div class="search-box">
-      <input type="text" id="taskSearchInput" placeholder="🔍 Cerca task per ID o titolo..." autocomplete="off">
+      <input type="text" id="taskSearchInput" placeholder="&#128269; Cerca task per ID o titolo..." autocomplete="off">
     </div>
   </div>
   <div class="kanban-grid" id="tasksList">
@@ -709,7 +727,7 @@
   </div>
 
   <!-- Live Log Console -->
-  <div class="section-title" id="terminalAnchor">📺 Live Terminal Stream (.coord/logs/)</div>
+  <div class="section-title" id="terminalAnchor">&#128250; Live Terminal Stream (.coord/logs/)</div>
   <div class="terminal-section" id="terminalSection">
     <div class="terminal-header">
       <div class="terminal-tabs" id="logTabs">
@@ -829,7 +847,7 @@
           document.getElementById('corsBanner').style.display = 'block';
           document.getElementById('liveDot').style.backgroundColor = '#fbbf24';
           document.getElementById('liveDot').style.boxShadow = '0 0 8px #fbbf24';
-          document.getElementById('lastUpdate').innerText = 'file:// (Usa 📁 Carica file o trascina state.json)';
+          document.getElementById('lastUpdate').innerText = 'file:// (Usa \ud83d\udcc1 Carica file o trascina state.json)';
         }
       };
       document.head.appendChild(s);
@@ -862,10 +880,10 @@
           nomeProgetto = pathParts[pathParts.length - 2] === '.coord' ? pathParts[pathParts.length - 3] : pathParts[pathParts.length - 2];
         }
       }
-      if (nomeProgetto && nomeProgetto !== 'Nexus Cloud Platform') {
+      if (nomeProgetto && nomeProgetto !== '{{NOME_PROGETTO}}') {
         if (elHeaderName) elHeaderName.textContent = nomeProgetto;
-        document.title = 'Control Room Multi-Agente — ' + nomeProgetto;
-      } else if (elHeaderName && elHeaderName.textContent.includes('Nexus Cloud Platform')) {
+        document.title = 'Control Room Multi-Agente \u2014 ' + nomeProgetto;
+      } else if (elHeaderName && elHeaderName.textContent.includes('{{NOME_PROGETTO}}')) {
         elHeaderName.textContent = '';
       }
 
@@ -893,6 +911,10 @@
         document.getElementById('milestonePercentuale').innerText = pct + '%';
       }
 
+      renderBreaker(data.circuitBreaker);
+      renderMail(data.mail || data.posta);
+      renderMemoryGraph(data.memoryGraph);
+
       // 2. Quota & Fornitori
       renderQuota(data.quota);
 
@@ -901,10 +923,11 @@
       if (data.agents && data.agents.length > 0) {
         agentsContainer.innerHTML = data.agents.map(ag => {
           const isRunning = ag.status === 'running';
+          const isReviewing = ag.status === 'reviewing';
           const isCoordinating = ag.status === 'coordinating';
-          const cardClass = isRunning ? 'running' : (isCoordinating ? 'coordinating' : '');
-          const badgeClass = isRunning ? 'status-running' : (isCoordinating ? 'status-coordinating' : 'status-idle');
-          const badgeText = isRunning ? '● In esecuzione' : (isCoordinating ? '● In coordinamento' : 'In attesa');
+          const cardClass = (isRunning || isReviewing) ? 'running' : (isCoordinating ? 'coordinating' : '');
+          const badgeClass = (isRunning || isReviewing) ? 'status-running' : (isCoordinating ? 'status-coordinating' : 'status-idle');
+          const badgeText = isReviewing ? '\u25cf In revisione' : (isRunning ? '\u25cf In esecuzione' : (isCoordinating ? '\u25cf In coordinamento' : 'In attesa'));
           return `
             <div class="agent-card ${cardClass}">
               <div class="agent-header">
@@ -915,7 +938,7 @@
               </div>
               <div class="agent-role">${escapeHtml(ag.defaultRole)}</div>
               <div class="agent-task">
-                ${ag.currentTask ? `Attività: <strong>${escapeHtml(ag.currentTask)}</strong>` : 'Nessuna attività in corso'}
+                ${ag.currentTask ? `Attivit\u00e0: <strong>${escapeHtml(ag.currentTask)}</strong>` : 'Nessuna attivit\u00e0 in corso'}
               </div>
             </div>
           `;
@@ -928,6 +951,67 @@
       // 5. Terminal Logs
       aggiornaLogs(data.logs || {});
     }
+
+    function renderBreaker(breaker) {
+      const states = ['healthy', 'steering', 'constrained', 'stopped'];
+      const state = breaker && states.includes(breaker.state) ? breaker.state : null;
+      const badge = document.getElementById('breakerState');
+      badge.className = 'breaker-badge breaker-' + (state || 'unknown');
+      badge.textContent = state || 'Non disponibile';
+      document.getElementById('breakerCounts').textContent = breaker
+        ? `Errori consecutivi: ${breaker.consecutiveErrors ?? 0} ? Chiamate identiche consecutive: ${breaker.consecutiveIdenticalCalls ?? 0}` : '';
+    }
+
+    function renderMail(mail) {
+      const agents = mail && mail.perAgente && typeof mail.perAgente === 'object' ? Object.values(mail.perAgente) : [];
+      const inboxCount = agents.reduce((sum, agent) => sum + (Number(agent?.inbox) || 0), 0);
+      const unread = mail?.unread ?? (Array.isArray(mail?.inbox) ? mail.inbox.length : (typeof mail?.inbox === 'number' ? mail.inbox : inboxCount));
+      document.getElementById('mailUnread').textContent = unread;
+      const messages = Array.isArray(mail?.messages) ? mail.messages : (Array.isArray(mail?.inbox) ? mail.inbox : []);
+      document.getElementById('mailMessages').innerHTML = messages.length ?
+        '<table class="mail-table"><thead><tr><th>Mittente</th><th>Destinatario</th><th>Atto</th><th>Oggetto</th></tr></thead><tbody>' +
+        messages.map(m => `<tr><td>${escapeHtml(m.from)}</td><td>${escapeHtml(m.to)}</td><td>${escapeHtml(m.act)}</td><td>${escapeHtml(m.subject)}</td></tr>`).join('') + '</tbody></table>' : 'Nessun messaggio disponibile.';
+    }
+
+    let graphSignature = null;
+    function renderMemoryGraph(graph) {
+      const signature = JSON.stringify(graph ?? null);
+      if (signature === graphSignature) return;
+      graphSignature = signature;
+      const nodes = Array.isArray(graph?.nodes) ? graph.nodes : [];
+      const edges = Array.isArray(graph?.edges) ? graph.edges : [];
+      const container = document.getElementById('graphContainer');
+      document.getElementById('graphDetail').textContent = 'Seleziona un nodo per i dettagli.';
+      if (!nodes.length) { container.textContent = 'Nessun nodo disponibile.'; return; }
+      // Layout deterministico a griglia; gli indici numerici sono gli unici dati negli attributi SVG.
+      const cols = Math.min(nodes.length, 4), width = cols * 220, height = Math.ceil(nodes.length / cols) * 100;
+      const point = i => ({ x: (i % cols) * 220 + 110, y: Math.floor(i / cols) * 100 + 50 });
+      const lines = edges.map(edge => {
+        const a = nodes.findIndex(n => n.id === edge.from), b = nodes.findIndex(n => n.id === edge.to);
+        if (a < 0 || b < 0) return '';
+        const p = point(a), q = point(b);
+        return `<line class="graph-edge" x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" marker-end="url(#graphArrow)" />`;
+      }).join('');
+      const shapes = nodes.map((node, i) => {
+        const p = point(i), kind = node.type === 'decision' ? 'decision' : 'task';
+        return `<g class="graph-node ${kind}" data-graph-index="${i}" tabindex="0" role="button" aria-label="${escapeHtml(node.label || node.id)}"><rect x="${p.x - 92}" y="${p.y - 22}" width="184" height="44" rx="8"/><text x="${p.x}" y="${p.y + 4}" text-anchor="middle">${escapeHtml(node.label || node.id)}</text></g>`;
+      }).join('');
+      container.innerHTML = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-label="Grafo delle dipendenze"><defs><marker id="graphArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/></marker></defs>${lines}${shapes}</svg>`;
+    }
+
+    function selectGraphNode(target) {
+      const nodeEl = target.closest('[data-graph-index]');
+      if (!nodeEl || !stateCache?.memoryGraph?.nodes) return;
+      const node = stateCache.memoryGraph.nodes[Number(nodeEl.dataset.graphIndex)];
+      if (!node) return;
+      document.querySelectorAll('.graph-node').forEach(el => el.classList.remove('selected'));
+      nodeEl.classList.add('selected');
+      document.getElementById('graphDetail').textContent = [node.label || node.id, node.type, node.status].filter(Boolean).join(' ? ');
+    }
+    document.getElementById('graphContainer').addEventListener('click', e => selectGraphNode(e.target));
+    document.getElementById('graphContainer').addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectGraphNode(e.target); }
+    });
 
     function renderQuota(quota) {
       const qContent = document.getElementById('quotaContent');
@@ -1250,36 +1334,6 @@
     // Avvio e Polling ogni 1.5s
     caricaStato();
     setInterval(caricaStato, 1500);
-  
-  // Modalita Demo Live: simula streaming live su T-003 per clip/video
-  (function initDemoStream() {
-    const fakeStreamLines = [
-      "[Claude] 🔧 Tool: Bash -> npx vitest run test/checkout-ui.test.tsx --coverage",
-      "[Claude] 📄 Esito: Coverage statements: 94.2%, branch: 88.5%",
-      "[Claude] 💬 Verifica accessibilità WCAG AA su form di checkout...",
-      "[Claude] 🔧 Tool: ReadFile -> src/components/checkout/CheckoutForm.tsx",
-      "[Claude] 📄 Esito: Letto con successo (65 righe)",
-      "[Claude] 🔧 Tool: EditFile -> src/components/checkout/CheckoutForm.tsx",
-      "[Claude] 📄 Esito: Aggiunti attributi aria-live e feedback di caricamento ad alto contrasto",
-      "[Claude] ⏱️ Quota: 5h 43%, 7d 24%",
-      "[Claude] 🔧 Tool: Bash -> npm run build",
-      "[Claude] 📄 Esito: Compiled in 780ms (Production build success)",
-      "[Claude] ✅ Criteri di accettazione task T-003 completati con successo.",
-      "[Claude] 📝 Compilazione handover in .coord/handover/T-003.md...",
-      "[Claude] 🚀 Stato task aggiornato a: CONSEGNATO"
-    ];
-    let streamIdx = 0;
-    setInterval(() => {
-      if (activeTaskLog === "T-003" && streamIdx < fakeStreamLines.length) {
-        if (stateCache && stateCache.logs && stateCache.logs["T-003"]) {
-          stateCache.logs["T-003"].push(fakeStreamLines[streamIdx]);
-          aggiornaLogs(stateCache.logs);
-          streamIdx++;
-        }
-      }
-    }, 2400);
-  })();
-
-</script>
+  </script>
 </body>
 </html>

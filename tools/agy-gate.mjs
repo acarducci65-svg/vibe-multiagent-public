@@ -10,7 +10,17 @@ let grezzo = "";
 for await (const c of process.stdin) grezzo += c;
 const esci = (decision, reason) => { process.stdout.write(JSON.stringify({ decision, reason })); process.exit(0); };
 
-let p; try { p = JSON.parse(grezzo); } catch { esci("allow", ""); }
+let p;
+try {
+  p = JSON.parse(grezzo);
+} catch {
+  // S-2 fix: fail-closed per preservare la sicurezza meccanica contro payload corrotti o anomalie di input
+  esci("deny", "Guardrail Antigravity: input JSON non valido o mancante. Richiesta bloccata in sicurezza (fail-closed).");
+}
+// S-2: anche un JSON sintatticamente valido ma non conforme (null, array, scalare, toolCall assente) è input malformato
+if (p === null || typeof p !== "object" || Array.isArray(p) || p.toolCall === null || typeof p.toolCall !== "object" || Array.isArray(p.toolCall)) {
+  esci("deny", "Guardrail Antigravity: payload non conforme (toolCall mancante o non valido). Richiesta bloccata in sicurezza (fail-closed).");
+}
 const nome = p?.toolCall?.name ?? "";
 
 // 1. Intercettazione modifiche file sorgente (No Self-Coding senza autorizzazione del Direttore)

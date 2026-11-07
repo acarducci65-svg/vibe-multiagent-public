@@ -1,4 +1,4 @@
-import { raccogliTelemetria } from "../telemetry.mjs";
+﻿import { raccogliTelemetria, verificaSaluteHook } from "../telemetry.mjs";
 import { writeFileSync, mkdirSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -13,11 +13,11 @@ mkdirSync(tasksDir, { recursive: true });
 mkdirSync(logsDir, { recursive: true });
 
 // 1. Fixture CURRENT_SPRINT.md
-writeFileSync(join(coordDir, "CURRENT_SPRINT.md"), `# Sprint 1 — Setup e Core\n\nStato: IN CORSO\n`);
+writeFileSync(join(coordDir, "CURRENT_SPRINT.md"), `# Sprint 1 â€” Setup e Core\n\nStato: IN CORSO\n`);
 
 // 2. Fixture Tasks
 writeFileSync(join(tasksDir, "T-001.md"), `
-# T-001 — Motore di Calcolo
+# T-001 â€” Motore di Calcolo
 Stato: IN CORSO
 Proprietario: Claude Code
 ## File riservati
@@ -25,11 +25,11 @@ Proprietario: Claude Code
 ## Punto di ripresa
 - Aggiornato il: 2026-09-11 10:00
 - Sto per: implementare la funzione sum
-- Fatti: 2026-09-11 10:05 — modificati: src/calc.ts
+- Fatti: 2026-09-11 10:05 â€” modificati: src/calc.ts
 `);
 
 writeFileSync(join(tasksDir, "T-002.md"), `
-# T-002 — Test Suite
+# T-002 â€” Test Suite
 Stato: INTEGRATO
 Proprietario: Codex CLI
 ## File riservati
@@ -51,7 +51,25 @@ const res = raccogliTelemetria(testDir);
 assert.ok(res, "Telemetria deve restituire un oggetto");
 assert.ok(res.projectName, "Telemetria deve contenere projectName");
 assert.equal(res.coordDir, ".coord");
-assert.equal(res.milestone.titolo, "Sprint 1 — Setup e Core");
+assert.ok(res.hookHealth, "Telemetria deve contenere hookHealth (S-3 fix)");
+assert.equal(res.hookHealth.ok, true, "Hook health deve risultare ok con file presenti");
+assert.equal(res.hookHealth.agy_gate, "active");
+assert.equal(res.hookHealth.claude_mod, "active");
+assert.match(res.hookHealth.sha256.agy_gate, /^[a-f0-9]{64}$/);
+assert.match(res.hookHealth.sha256.claude_mod, /^[a-f0-9]{64}$/);
+// S-3: hook assenti o vuoti => missing e ok=false
+{
+  const dirVuota = join(tmpdir(), "telemetry-hook-missing-" + Date.now());
+  mkdirSync(join(dirVuota, "claude-mod", "hooks"), { recursive: true });
+  writeFileSync(join(dirVuota, "claude-mod", "hooks", "register.js"), "");
+  const hh = verificaSaluteHook(testDir, dirVuota);
+  assert.equal(hh.ok, false);
+  assert.equal(hh.agy_gate, "missing");
+  assert.equal(hh.claude_mod, "missing", "un file hook vuoto non è un hook attivo");
+  rmSync(dirVuota, { recursive: true, force: true });
+}
+assert.ok(res.mail, "Telemetria deve contenere verifica della posta");
+assert.equal(res.milestone.titolo, "Sprint 1 â€” Setup e Core");
 assert.equal(res.milestone.totale, 2);
 assert.equal(res.milestone.completamento, 1);
 
@@ -79,7 +97,7 @@ assert.equal(res.logs["T-001"].length, 3);
 const stateJsonPath = join(coordDir, "state.json");
 assert.ok(existsSync(stateJsonPath), "state.json deve essere scritto su disco");
 const saved = JSON.parse(readFileSync(stateJsonPath, "utf8"));
-assert.equal(saved.milestone.titolo, "Sprint 1 — Setup e Core");
+assert.equal(saved.milestone.titolo, "Sprint 1 â€” Setup e Core");
 
 // Pulizia
 rmSync(testDir, { recursive: true, force: true });
@@ -92,7 +110,7 @@ const coordDir2 = join(testDir2, ".coord");
 const tasksDir2 = join(coordDir2, "tasks");
 mkdirSync(tasksDir2, { recursive: true });
 
-writeFileSync(join(coordDir2, "CURRENT_SPRINT.md"), `# Sprint\n\nStato: **IN CORSO** — F4, chiusura sprint\n`);
+writeFileSync(join(coordDir2, "CURRENT_SPRINT.md"), `# Sprint\n\nStato: **IN CORSO** â€” F4, chiusura sprint\n`);
 
 // 28 task INTEGRATO standard
 for (let i = 1; i <= 28; i++) {
@@ -107,15 +125,15 @@ writeFileSync(join(tasksDir2, "T-031.md"), `# T-031\nStato: CHIUSO\nProprietario
 writeFileSync(join(tasksDir2, "T-032.md"), `# T-032\nStato: CHIUSO\nProprietario: Claude Code\n`);
 
 // 2 task INTEGRATO con testo esteso
-writeFileSync(join(tasksDir2, "T-033.md"), `# T-033\nStato: INTEGRATO — parte 1 (rilevamento e avviso); la parte 2 sta in T-032\nProprietario: Codex CLI\n`);
-writeFileSync(join(tasksDir2, "T-034.md"), `# T-034\nStato: INTEGRATO — completato con test\nProprietario: AGY CLI / Claude Code\n`);
+writeFileSync(join(tasksDir2, "T-033.md"), `# T-033\nStato: INTEGRATO â€” parte 1 (rilevamento e avviso); la parte 2 sta in T-032\nProprietario: Codex CLI\n`);
+writeFileSync(join(tasksDir2, "T-034.md"), `# T-034\nStato: INTEGRATO â€” completato con test\nProprietario: AGY CLI / Claude Code\n`);
 
 const res2 = raccogliTelemetria(testDir2);
 
 // Verifica Punto 1: Tutti i 34 task devono risultare completati (28 + 4 CHIUSO + 2 INTEGRATO estesi)
 assert.equal(res2.milestone.totale, 34, "Totale task deve essere 34");
 assert.equal(res2.milestone.completamento, 34, `Attesi 34 completati, ottenuti ${res2.milestone.completamento}`);
-assert.equal(res2.milestone.stato, "IN CORSO — F4, chiusura sprint", "Markdown ** deve essere rimosso da milestone.stato");
+assert.equal(res2.milestone.stato, "IN CORSO â€” F4, chiusura sprint", "Markdown ** deve essere rimosso da milestone.stato");
 
 // Verifica stato normalizzato e stato esteso su T-033
 const t33 = res2.tasks.find(t => t.id === "T-033");
@@ -124,7 +142,7 @@ assert.match(t33.statoEsteso, /parte 1 \(rilevamento e avviso\)/, "Stato esteso 
 
 // Verifica Punto 2: Riconoscimento AGY CLI
 // Creiamo un task IN CORSO assegnato ad AGY CLI
-writeFileSync(join(tasksDir2, "T-035.md"), `# T-035\nStato: IN CORSO — punto di ripresa aggiornato alle 18:30\nProprietario: AGY CLI\n`);
+writeFileSync(join(tasksDir2, "T-035.md"), `# T-035\nStato: IN CORSO â€” punto di ripresa aggiornato alle 18:30\nProprietario: AGY CLI\n`);
 const res3 = raccogliTelemetria(testDir2);
 const agAgy = res3.agents.find(a => a.name === "Antigravity AGY");
 assert.equal(agAgy.status, "running", "AGY CLI deve essere riconosciuto e contrassegnato come running");
@@ -176,7 +194,44 @@ const t19 = resCanon.tasks.find(t => t.id === "TASK-019-verify");
 assert.equal(t19.stato, "IN VERIFICA", "Stato IN VERIFICA deve essere riconosciuto");
 assert.equal(resCanon.milestone.inCorso, 1, "IN VERIFICA deve contare come in corso");
 
+// Verifica Punto 4: UTF-16LE log decoder e transizione Revisore per task CONSEGNATO
+const utf16Buf = Buffer.from("\ufeffLog scritto in UTF-16LE da PowerShell redirect >\nAltra riga di log\n", "utf16le");
+writeFileSync(join(logsDir3, "TASK-020.log"), utf16Buf);
+writeFileSync(join(tasksDir3, "TASK-020-review.md"), `# TASK-020-review\nStato: CONSEGNATO\nProprietario: Codex CLI\nRevisore: Claude Code CLI\nIntegratore: Antigravity AGY\n`);
+
+const resReview = raccogliTelemetria(testDir3);
+const log20 = resReview.logs["TASK-020-review"];
+assert.ok(log20, "I log per TASK-020 devono essere recuperati");
+assert.ok(log20[0].includes("Log scritto in UTF-16LE"), "UTF-16LE con BOM deve essere decodificato correttamente senza spazi o byte NUL");
+assert.ok(!log20[0].includes("\u0000"), "Nessun carattere NUL deve essere presente nel log decodificato");
+
+const agClaudeRev = resReview.agents.find(a => a.name === "Claude Code");
+const agCodexRev = resReview.agents.find(a => a.name === "Codex CLI");
+assert.equal(agCodexRev.status, "idle", "Codex deve essere idle poichÃ© il task Ã¨ CONSEGNATO");
+assert.equal(agClaudeRev.status, "reviewing", "Claude deve essere in stato reviewing poichÃ© Ã¨ il Revisore del task CONSEGNATO");
+assert.ok(agClaudeRev.currentTask.includes("TASK-020-review"), "Claude deve avere il task di revisione assegnato");
+
+// Verifica Punto 5: Peer review implicita e transizione stato sprint
+const testDir4 = join(tmpdir(), "vibe-test-telemetry-peer-" + Date.now());
+const coordDir4 = join(testDir4, ".coord");
+const tasksDir4 = join(coordDir4, "tasks");
+mkdirSync(tasksDir4, { recursive: true });
+writeFileSync(join(coordDir4, "CURRENT_SPRINT.md"), "# Sprint Test\nStato: PIANIFICATO\n");
+writeFileSync(join(tasksDir4, "T-001.md"), "# T-001\nStato: CONSEGNATO\nProprietario: Codex CLI\n");
+writeFileSync(join(tasksDir4, "T-002.md"), "# T-002\nStato: CONSEGNATO\nProprietario: Claude Code\n");
+
+const resPeer = raccogliTelemetria(testDir4);
+assert.equal(resPeer.milestone.stato, "IN CORSO", "Sprint con task consegnati deve risultare IN CORSO anche se file dice PIANIFICATO");
+const agClaudePeer = resPeer.agents.find(a => a.name === "Claude Code");
+const agAgyPeer = resPeer.agents.find(a => a.name === "Antigravity AGY");
+assert.equal(agClaudePeer.status, "reviewing", "Claude Code deve essere reviewing per il task di Codex anche senza annotazione esplicita");
+assert.ok(agClaudePeer.currentTask.includes("T-001"), "Claude deve avere T-001");
+assert.equal(agAgyPeer.status, "reviewing", "Antigravity AGY deve essere reviewing per il task di Claude Code");
+assert.ok(agAgyPeer.currentTask.includes("T-002"), "AGY deve avere T-002");
+rmSync(testDir4, { recursive: true, force: true });
+
 rmSync(testDir3, { recursive: true, force: true });
 
 rmSync(testDir2, { recursive: true, force: true });
 console.log("telemetry: collaudi superati con successo (inclusi casi reali complessi e formattazione mista)");
+

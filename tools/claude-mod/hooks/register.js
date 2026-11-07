@@ -9,6 +9,7 @@
 
 import { existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { resolve, normalize, join } from "node:path";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 // Regole dei comandi vietati (analogo a agy-gate.mjs)
 export const COMANDI_VIETATI = [
@@ -23,6 +24,45 @@ export const COMANDI_VIETATI = [
   [/--dangerously-bypass-approvals/i, "disattiva le approvazioni per conto del Direttore"],
 ];
 
+/** Lunghezza minima del segreto DIRECTOR_TOKEN per essere preso in considerazione. */
+export const LUNGHEZZA_MINIMA_TOKEN = 8;
+/** Contesto fisso firmato con HMAC-SHA256 per il formato `AUTORIZZATO_DA_DIRETTORE:<hex>`. */
+export const CONTESTO_FIRMA_OVERRIDE = "vibe-multiagent:director-override:v1";
+
+/**
+ * Calcola la firma attesa per il file di override (strumento per il Direttore).
+ * @param {string} token - Segreto DIRECTOR_TOKEN
+ * @returns {string} contenuto da scrivere in .coord/DIRECTOR_OVERRIDE
+ */
+export function firmaOverride(token) {
+  const hex = createHmac("sha256", String(token)).update(CONTESTO_FIRMA_OVERRIDE).digest("hex");
+  return `AUTORIZZATO_DA_DIRETTORE:${hex}`;
+}
+
+function ugualeCostante(a, b) {
+  const ba = Buffer.from(String(a), "utf8");
+  const bb = Buffer.from(String(b), "utf8");
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
+
+/**
+ * true solo se .coord/DIRECTOR_OVERRIDE o .coord/EMERGENCY_OVERRIDE contengono il token del Direttore
+ * o la sua firma HMAC. Senza DIRECTOR_TOKEN nell'ambiente nessun file può concedere l'override (fail-closed).
+ */
+export function overrideFirmato(cwd = process.cwd()) {
+  const token = process.env.DIRECTOR_TOKEN ?? "";
+  if (token.length < LUNGHEZZA_MINIMA_TOKEN) return false;
+  for (const nome of ["DIRECTOR_OVERRIDE", "EMERGENCY_OVERRIDE"]) {
+    const p = resolve(cwd, ".coord", nome);
+    if (!existsSync(p)) continue;
+    try {
+      const contenuto = readFileSync(p, "utf8").trim();
+      if (ugualeCostante(contenuto, token) || ugualeCostante(contenuto, firmaOverride(token))) return true;
+    } catch {}
+  }
+  return false;
+}
+
 /**
  * Valuta un comando Bash per verificare se viola i guardrail del cantiere.
  * @param {string} cmd - Comando da verificare
@@ -32,10 +72,14 @@ export const COMANDI_VIETATI = [
 export function valutaComando(cmd, cwd = process.cwd()) {
   if (!cmd || typeof cmd !== "string") return { allowed: true };
 
-  // Verifica override del Direttore
-  const overrideFile = resolve(cwd, ".coord", "EMERGENCY_OVERRIDE");
-  const directEditFile = resolve(cwd, ".coord", "DIRECTOR_OVERRIDE");
-  if (process.env.DIRECTOR_OVERRIDE === "1" || existsSync(overrideFile) || existsSync(directEditFile)) {
+  // Verifica override autorizzato del Direttore (S-1 hardening).
+  // L'esistenza di un file (vuoto o con testo arbitrario) NON basta: un agente può crearlo con touch/Write.
+  // Ammessi solo: DIRECTOR_OVERRIDE=1 nell'ambiente operatore, oppure file firmato con il segreto
+  // DIRECTOR_TOKEN (che vive solo nell'ambiente del Direttore, mai su disco nel repository).
+  if (process.env.DIRECTOR_OVERRIDE === "1") {
+    return { allowed: true };
+  }
+  if (overrideFirmato(cwd)) {
     return { allowed: true };
   }
 

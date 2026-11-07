@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+﻿import { execFileSync } from "node:child_process";
 import { strict as assert } from "node:assert";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -44,7 +44,7 @@ const casi = [
 ];
 for (const [tc, atteso, ws] of casi) {
   const r = ws ? gate(tc, ws) : gate(tc);
-  assert.equal(r.decision, atteso, `${tc.args?.CommandLine ?? tc.args?.TargetFile ?? tc.name} → atteso ${atteso}, ottenuto ${r.decision} (${r.reason})`);
+  assert.equal(r.decision, atteso, `${tc.args?.CommandLine ?? tc.args?.TargetFile ?? tc.name} â†’ atteso ${atteso}, ottenuto ${r.decision} (${r.reason})`);
 }
 
 // Collaudo override di emergenza autorizzato dal Direttore
@@ -66,7 +66,10 @@ try {
   if (existsSync(tmpDir)) rmdirSync(tmpDir);
 }
 
-// stdin malformato non deve mai bloccare l'agente
-assert.equal(JSON.parse(execFileSync("node", ["../agy-gate.mjs"], { cwd: __dirname, encoding: "utf8", input: "non-json" })).decision, "allow");
+// S-2: stdin malformato o non conforme => deny (fail-closed)
+const grezzo = (input) => JSON.parse(execFileSync("node", ["../agy-gate.mjs"], { cwd: __dirname, encoding: "utf8", input })).decision;
+const malformati = ["non-json", "", "{", "null", "[]", "42", "\"stringa\"", "{}", '{"toolCall":null}', '{"toolCall":"run_command"}'];
+for (const m of malformati) assert.equal(grezzo(m), "deny", `input malformato ${JSON.stringify(m)} deve dare deny`);
 
-console.log(`agy-gate: ${casi.length + 2} collaudi superati`);
+console.log(`agy-gate: ${casi.length + 1 + malformati.length} collaudi superati`);
+

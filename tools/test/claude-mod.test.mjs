@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Test deterministici e offline per il modulo Claude Mod (tools/claude-mod)
  */
 
@@ -6,7 +6,7 @@ import { strictEqual, ok } from "node:assert";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { valutaComando, registraCheckpoint, formattaStatoTerminale, register } from "../claude-mod/hooks/register.js";
+import { valutaComando, registraCheckpoint, formattaStatoTerminale, register, firmaOverride } from "../claude-mod/hooks/register.js";
 
 let superati = 0;
 const test = (nome, fn) => {
@@ -49,6 +49,55 @@ test("valutaComando consente comandi ordinari", () => {
   strictEqual(valutaComando("node server.js").allowed, true);
 });
 
+test("valutaComando rifiuta file override non firmato o privo di token (S-1 fix)", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "vibe-override-test-"));
+  try {
+    const coordDir = join(tempDir, ".coord");
+    mkdirSync(coordDir, { recursive: true });
+    writeFileSync(join(coordDir, "DIRECTOR_OVERRIDE"), "fake-override", "utf8");
+
+    const res = valutaComando("git push origin main", tempDir);
+    strictEqual(res.allowed, false, "Un file non firmato non deve disabilitare il guardrail");
+
+    // Con token valido
+    process.env.DIRECTOR_TOKEN = "secret-12345";
+    writeFileSync(join(coordDir, "DIRECTOR_OVERRIDE"), "secret-12345", "utf8");
+    const resAuth = valutaComando("git push origin main", tempDir);
+    strictEqual(resAuth.allowed, true, "File con token valido deve concedere l'override");
+  } finally {
+    delete process.env.DIRECTOR_TOKEN;
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+test("valutaComando: file vuoti, finte firme e EMERGENCY_OVERRIDE non firmati non sbloccano (S-1)", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "vibe-override-s1-"));
+  const prima = process.env.DIRECTOR_TOKEN;
+  delete process.env.DIRECTOR_TOKEN;
+  try {
+    const coordDir = join(tempDir, ".coord");
+    mkdirSync(coordDir, { recursive: true });
+    for (const nome of ["DIRECTOR_OVERRIDE", "EMERGENCY_OVERRIDE"]) {
+      for (const contenuto of ["", "AUTORIZZATO DAL DIRETTORE", "AUTORIZZATO_DA_DIRETTORE:" + "a".repeat(64)]) {
+        writeFileSync(join(coordDir, nome), contenuto, "utf8");
+        strictEqual(valutaComando("git push origin main", tempDir).allowed, false, `${nome}=${JSON.stringify(contenuto)} senza token non deve sbloccare`);
+      }
+      rmSync(join(coordDir, nome));
+    }
+    // Firma HMAC valida solo con il token giusto nell'ambiente
+    process.env.DIRECTOR_TOKEN = "segreto-direttore-xyz";
+    writeFileSync(join(coordDir, "EMERGENCY_OVERRIDE"), firmaOverride("segreto-direttore-xyz"), "utf8");
+    strictEqual(valutaComando("git push origin main", tempDir).allowed, true, "firma HMAC valida deve sbloccare");
+    writeFileSync(join(coordDir, "EMERGENCY_OVERRIDE"), firmaOverride("altro-segreto-123"), "utf8");
+    strictEqual(valutaComando("git push origin main", tempDir).allowed, false, "firma con token diverso non deve sbloccare");
+    // Token troppo corto ignorato
+    process.env.DIRECTOR_TOKEN = "abc";
+    writeFileSync(join(coordDir, "EMERGENCY_OVERRIDE"), "abc", "utf8");
+    strictEqual(valutaComando("git push origin main", tempDir).allowed, false, "token sotto la lunghezza minima ignorato");
+  } finally {
+    if (prima === undefined) delete process.env.DIRECTOR_TOKEN; else process.env.DIRECTOR_TOKEN = prima;
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
 test("valutaComando rispetta DIRECTOR_OVERRIDE da env", () => {
   process.env.DIRECTOR_OVERRIDE = "1";
   try {
@@ -154,3 +203,4 @@ test("register(on) registra tool.call e ui.render e blocca Bash pericolosi", asy
 });
 
 console.log(`claude-mod: ${superati} collaudi superati con successo`);
+

@@ -2,6 +2,7 @@
 // Motore di telemetria: scansiona .coord/ e genera .coord/state.json per la Control Room Dashboard.
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync, mkdirSync, openSync, readSync, closeSync, renameSync, watch } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { join, resolve, isAbsolute, dirname, basename, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +12,62 @@ export function canonicalTaskId(stem) {
   if (!stem) return "";
   const m = /^(TASK-\d+|T-\d+)(?=-|$)/i.exec(stem);
   return m ? m[1].toUpperCase() : stem.toUpperCase();
+}
+
+
+/**
+ * S-3: stato di salute degli hook meccanici (agy-gate, claude-mod) incluso nel battito di telemetria.
+ * "active" = file presente, leggibile e non vuoto; "missing" altrimenti. sha256 permette di rilevare
+ * manomissioni confrontandolo con la matrice invarianti dell'HANDOVER.
+ * @param {string} [radice] - radice del progetto (riportata nel risultato)
+ * @param {string} [dirStrumenti] - cartella tools/ della skill (default: quella di questo file)
+ */
+export function verificaSaluteHook(radice = process.cwd(), dirStrumenti = __dirname) {
+  const controlla = (p) => {
+    try {
+      const buf = readFileSync(p);
+      if (buf.length === 0) return { stato: "missing", sha256: null };
+      return { stato: "active", sha256: createHash("sha256").update(buf).digest("hex") };
+    } catch {
+      return { stato: "missing", sha256: null };
+    }
+  };
+  const agy = controlla(join(dirStrumenti, "agy-gate.mjs"));
+  const mod = controlla(join(dirStrumenti, "claude-mod", "hooks", "register.js"));
+  return {
+    ok: agy.stato === "active" && mod.stato === "active",
+    agy_gate: agy.stato,
+    claude_mod: mod.stato,
+    sha256: { agy_gate: agy.sha256, claude_mod: mod.sha256 },
+    radice: resolve(radice),
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+export function verificaPosta(dirCoord) {
+  const mailDir = join(dirCoord, "mail", "agents");
+  const posta = { totaleInviati: 0, nonLetti: 0, perAgente: {} };
+  if (!existsSync(mailDir)) return posta;
+
+  try {
+    const agents = readdirSync(mailDir);
+    for (const ag of agents) {
+      const inbox = join(mailDir, ag, "inbox");
+      const outbox = join(mailDir, ag, "outbox");
+      let inCount = 0;
+      let outCount = 0;
+      if (existsSync(inbox)) {
+        inCount = readdirSync(inbox).filter((f) => f.endsWith(".json") && !f.startsWith(".")).length;
+      }
+      if (existsSync(outbox)) {
+        outCount = readdirSync(outbox).filter((f) => f.endsWith(".json") && !f.startsWith(".")).length;
+      }
+      posta.nonLetti += inCount;
+      posta.totaleInviati += outCount;
+      posta.perAgente[ag] = { inbox: inCount, outbox: outCount };
+    }
+  } catch {}
+  return posta;
 }
 
 export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
@@ -51,6 +108,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           const mTitolo = raw.match(/^#\s+([^\r\n]+)/m);
           const mStato = raw.match(/^[\s*-]*\**Stato[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mProprietario = raw.match(/^[\s*-]*\**Proprietario[\*:]*\s*:?\s*([^\r\n]+)/im);
+          const mRevisore = raw.match(/^[\s*-]*\**Revisore[\*:]*\s*:?\s*([^\r\n]+)/im);
+          const mIntegratore = raw.match(/^[\s*-]*\**Integratore[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mFile = raw.match(/(?:##\s*)?File riservati:?\s*([\s\S]*?)(?=(?:\n##|\n[A-Z][a-z]+:|$))/i);
           const mStoPer = raw.match(/^[\s*-]*\**Sto per[\*:]*\s*:?\s*([^\r\n]+)/im);
           const mFatti = raw.match(/^[\s*-]*\**Fatti[\*:]*\s*:?\s*([^\r\n]+)/im);
@@ -67,6 +126,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           if (stato === "IN CORSO" || stato === "IN VERIFICA") inCorsoCount++;
 
           const proprietario = (mProprietario ? mProprietario[1].trim() : "Non assegnato").replace(/\*\*/g, "").trim();
+          const revisore = (mRevisore ? mRevisore[1].trim() : "").replace(/\*\*/g, "").trim();
+          const integratore = (mIntegratore ? mIntegratore[1].trim() : "").replace(/\*\*/g, "").trim();
 
           let fattiDesc = "";
           if (mFatti) fattiDesc = mFatti[1].trim().replace(/\*\*/g, "");
@@ -93,6 +154,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
             stato,
             statoEsteso,
             proprietario,
+            revisore,
+            integratore,
             fileRiservati,
             stoPer: mStoPer ? mStoPer[1].trim().replace(/\*\*/g, "") : "",
             fatti: fattiDesc,
@@ -147,14 +210,55 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           ag.currentTask = t.id;
         }
       }
+    } else if (t.stato === "IN VERIFICA" || t.stato === "CONSEGNATO") {
+      // In fase di verifica o consegna, l'esecutore originario ha terminato la bozza:
+      // l'agente attivo è il Revisore designato (o l'agente complementare naturale per peer-review),
+      // oppure l'Integratore / Coordinatore di ambiente.
+      const nomeRevisore = trovaProprietario(t.revisore);
+      const nomeIntegratore = trovaProprietario(t.integratore);
+      const nomeProprietario = trovaProprietario(t.proprietario);
+
+      // Risoluzione intelligente del revisore predefinito se non esplicitato:
+      // - Se proprietario è Codex CLI -> peer review naturale affidata a Claude Code
+      // - Se proprietario è Claude Code -> revisione/integrazione affidata ad Antigravity AGY
+      // - Se proprietario è Antigravity AGY -> peer review affidata a Claude Code
+      let defaultPeerReviewer = coordinatorName;
+      if (nomeProprietario === "Codex CLI") {
+        defaultPeerReviewer = "Claude Code";
+      } else if (nomeProprietario === "Claude Code") {
+        defaultPeerReviewer = "Antigravity AGY";
+      } else if (nomeProprietario === "Antigravity AGY") {
+        defaultPeerReviewer = "Claude Code";
+      }
+
+      const targetReviewer = nomeRevisore || nomeIntegratore || (t.stato === "IN VERIFICA" && nomeProprietario !== coordinatorName ? nomeProprietario : defaultPeerReviewer);
+
+      if (targetReviewer) {
+        const ag = agents.find((a) => a.name === targetReviewer);
+        if (ag) {
+          const labelAzione = t.stato === "IN VERIFICA" ? "Verifica" : "Review";
+          if (ag.status === "idle") {
+            ag.status = t.stato === "IN VERIFICA" ? "running" : "reviewing";
+            ag.currentTask = `${t.id} (${labelAzione})`;
+          } else if (ag.status === "reviewing" && ag.currentTask && !ag.currentTask.includes(t.id)) {
+            ag.currentTask = `${ag.currentTask}, ${t.id}`;
+          }
+        }
+      }
     }
+  }
+
+  // Se ci sono task avviati, consegnati o integrati, la milestone corrente è effettivamente in corso
+  const haAttivita = inCorsoCount > 0 || completatiCount > 0 || tasks.some((t) => t.stato === "CONSEGNATO" || t.stato === "IN VERIFICA");
+  if (haAttivita && (/^pianificat/i.test(milestone.stato))) {
+    milestone.stato = "IN CORSO";
   }
 
   // Verifica attività recente del Coordinatore (ultimi 15 minuti)
   // Limitata a CURRENT_SPRINT.md e DECISIONS.md (file propri del coordinamento)
-  // e attiva solo se nessun esecutore è attualmente 'running'
+  // e attiva solo se nessun esecutore è attualmente 'running' o 'reviewing'
   const coordinatorAgent = agents.find((a) => a.name === coordinatorName);
-  const esecutoriAttivi = agents.some((a) => a.status === "running");
+  const esecutoriAttivi = agents.some((a) => a.status === "running" || a.status === "reviewing");
 
   if (coordinatorAgent && coordinatorAgent.status === "idle" && !esecutoriAttivi) {
     let ultimoTempoModifica = 0;
@@ -190,6 +294,37 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     }
   }
 
+  // Helper di decodifica universale per log (gestisce UTF-8, UTF-16LE da PowerShell redirect `>` e rimuove byte NUL)
+  function decodificaBufferLog(buf) {
+    if (!buf || buf.length === 0) return "";
+    let content = "";
+    if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) {
+      content = buf.subarray(2).toString("utf16le");
+    } else if (buf.length >= 4 && buf[1] === 0x00 && buf[3] === 0x00) {
+      content = buf.toString("utf16le");
+    } else if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
+      content = buf.subarray(3).toString("utf8");
+    } else {
+      content = buf.toString("utf8");
+    }
+    content = content.replace(/\u0000/g, "");
+    // Correzione automatica mojibake tipici da console Windows (CP437/CP850/CP1252)
+    return content
+      .replace(/├¿/g, "è")
+      .replace(/├®/g, "é")
+      .replace(/├á/g, "à")
+      .replace(/├í/g, "í")
+      .replace(/├│/g, "ó")
+      .replace(/├╣/g, "ù")
+      .replace(/ÔÇÖ/g, "’")
+      .replace(/â€™/g, "’")
+      .replace(/â€œ/g, "“")
+      .replace(/â€/g, "”")
+      .replace(/â€”/g, "—")
+      .replace(/â€“/g, "–")
+      .replace(/Â·/g, "·");
+  }
+
   // 4. Scansione dei log recenti da .coord/logs/ (file diretti o sottocartelle task, con limite a 64KB per file)
   const dirLogs = join(dirCoord, "logs");
   const logs = {};
@@ -202,16 +337,16 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
             const lPath = join(dirLogs, entry.name);
             const stat = statSync(lPath);
             const maxBytes = 64 * 1024;
-            let content = "";
+            let rawBuf = null;
             if (stat.size <= maxBytes) {
-              content = readFileSync(lPath, "utf8");
+              rawBuf = readFileSync(lPath);
             } else {
               const fd = openSync(lPath, "r");
-              const buf = Buffer.alloc(maxBytes);
-              readSync(fd, buf, 0, maxBytes, stat.size - maxBytes);
+              rawBuf = Buffer.alloc(maxBytes);
+              readSync(fd, rawBuf, 0, maxBytes, stat.size - maxBytes);
               closeSync(fd);
-              content = buf.toString("utf8");
             }
+            const content = decodificaBufferLog(rawBuf);
             const righe = content.split(/\r?\n/).filter(Boolean);
             const taskId = entry.name.replace(/\.(log|txt)$/, "");
             logs[taskId] = righe.slice(-40); // Ultime 40 righe
@@ -226,7 +361,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
                 const sp = join(subDir, sf);
                 const stat = statSync(sp);
                 if (stat.size <= 32 * 1024) {
-                  const sc = readFileSync(sp, "utf8");
+                  const rawSub = readFileSync(sp);
+                  const sc = decodificaBufferLog(rawSub);
                   subRighe.push(`--- [${sf}] ---`);
                   subRighe.push(...sc.split(/\r?\n/).filter(Boolean).slice(-20));
                 }
@@ -298,8 +434,12 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     } catch {}
   }
 
-  const projectName = basename(resolve(radice));
-  const coordRel = relative(radice, dirCoord) || coordNome;
+  const projectDir = isAbsolute(dirCoord) ? dirname(resolve(dirCoord)) : resolve(radice);
+  const projectName = basename(projectDir);
+  const coordRel = relative(projectDir, dirCoord) || coordNome;
+
+  const hookHealth = verificaSaluteHook(radice);
+  const mail = verificaPosta(dirCoord);
 
   const telemetry = {
     updatedAt: new Date().toISOString(),
@@ -310,6 +450,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     tasks,
     logs,
     quota,
+    hookHealth,
+    mail,
   };
 
   try {

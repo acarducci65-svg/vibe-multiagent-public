@@ -40,3 +40,13 @@ assert.ok(html.includes('id="headerCoordDir"'), "Deve esistere il badge per l'au
 assert.ok(html.includes("privacy-hint"), "Deve essere presente l'avviso di privacy/riservatezza sui dati locali");
 
 console.log("dashboard: 6 collaudi di sicurezza e markup superati con successo");
+
+// Componenti v2.1 e parit? della demo offline.
+for (const id of ["circuitBreaker", "breakerState", "breakerCounts", "mailbox", "mailUnread", "mailMessages", "memoryGraph", "graphContainer"]) {
+  assert.ok(html.includes(`id="${id}"`), `Container mancante: ${id}`);
+}
+for (const state of ["healthy", "steering", "constrained", "stopped"]) {
+  assert.ok(html.includes(`breaker-${state}`), `Colore mancante: ${state}`);
+}
+assert.ok(html.includes("escapeHtml(m.subject)") && html.includes("escapeHtml(node.label || node.id)"));
+assert.equal(readFileSync(join(__dirname, "../../demo/dashboard.html"), "utf8"), html);

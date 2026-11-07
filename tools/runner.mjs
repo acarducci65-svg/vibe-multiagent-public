@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Runner universale: incanala stdout/stderr su console e su .coord/logs/<ID_TASK>.log,
+// Runner universale v2.1: incanala stdout/stderr su console e su .coord/logs/<ID_TASK>.log,
 // aggiornando la telemetria in tempo reale per la Dashboard.
-// Include parser intelligente per formattare gli eventi NDJSON di Claude Code (--output-format stream-json).
+// Include parser per formattare gli eventi NDJSON di Claude Code (--output-format stream-json),
+// gestione worktree isolati, dispatchId, e Circuit Breaker meccanico contro runaway loops.
 import { spawn } from "node:child_process";
 import { createWriteStream, createReadStream, mkdirSync, existsSync } from "node:fs";
 import { join, resolve, isAbsolute } from "node:path";
@@ -10,21 +11,154 @@ import { constants } from "node:os";
 import { StringDecoder } from "node:string_decoder";
 import { raccogliTelemetria } from "./telemetry.mjs";
 
-export function formattaRigaNdjson(riga) {
+/**
+ * Circuit Breaker a 4 livelli (ispirato a Munder Difflin breaker.ts):
+ *
+ *   healthy -> steering -> constrained -> stopped
+ *
+ * Segnali monitorati (ciascuno produce un livello; lo stato è il massimo dei due
+ * ed è monotono crescente finché un esito positivo non lo ripristina):
+ *
+ * - Chiamate identiche consecutive (`consecutiveIdenticalCalls` = numero di RIPETIZIONI
+ *   della stessa chiamata `nome+input`; la prima chiamata vale 0):
+ *     1 ripetizione (2 chiamate identiche)  -> steering    (onSteer)
+ *     2 ripetizioni (3 chiamate identiche)  -> constrained (onConstrain)
+ *     >= maxConsecutiveIdenticalCalls (default 3, cioè 4 chiamate) -> stopped (trip/onTrip)
+ * - Errori consecutivi dei tool (`consecutiveErrors`):
+ *     1 errore  -> steering
+ *     2 errori  -> constrained
+ *     >= maxConsecutiveErrors (default 3) -> stopped
+ *
+ * Un esito positivo (`registraToolResult(false)`) azzera `consecutiveErrors` e riporta
+ * `steering`/`constrained` a `healthy`. `stopped` è terminale: non si ripristina.
+ */
+export const STATI_BREAKER = Object.freeze(["healthy", "steering", "constrained", "stopped"]);
+
+const LIVELLO = Object.freeze({ healthy: 0, steering: 1, constrained: 2, stopped: 3 });
+
+function sogliaValida(valore, predefinito) {
+  return Number.isInteger(valore) && valore >= 1 ? valore : predefinito;
+}
+
+export class CircuitBreaker {
+  constructor(opzioni = {}) {
+    this.maxConsecutiveErrors = sogliaValida(opzioni.maxConsecutiveErrors, 3);
+    this.maxConsecutiveIdenticalCalls = sogliaValida(opzioni.maxConsecutiveIdenticalCalls, 3);
+    this.state = "healthy";
+    this.consecutiveErrors = 0;
+    this.consecutiveIdenticalCalls = 0;
+    this.lastToolHash = null;
+    this.totalCalls = 0;
+    this.motivoArresto = null;
+    this.onTrip = typeof opzioni.onTrip === "function" ? opzioni.onTrip : () => {};
+    this.onSteer = typeof opzioni.onSteer === "function" ? opzioni.onSteer : () => {};
+    this.onConstrain = typeof opzioni.onConstrain === "function" ? opzioni.onConstrain : () => {};
+  }
+
+  /** Livello richiesto da un contatore: stopped ha priorità sulle soglie fisse 1/2. */
+  static livelloPer(contatore, soglia) {
+    if (contatore >= soglia) return "stopped";
+    if (contatore >= 2) return "constrained";
+    if (contatore >= 1) return "steering";
+    return "healthy";
+  }
+
+  registraToolCall(name, input) {
+    if (this.state === "stopped") return this.state;
+    this.totalCalls++;
+    let inputStr = "";
+    try {
+      inputStr = typeof input === "string" ? input : JSON.stringify(input);
+    } catch {
+      inputStr = String(input);
+    }
+    const hash = `${name}:${inputStr}`;
+
+    if (hash === this.lastToolHash) {
+      this.consecutiveIdenticalCalls++;
+    } else {
+      this.consecutiveIdenticalCalls = 0;
+      this.lastToolHash = hash;
+      return this.state;
+    }
+
+    const n = this.consecutiveIdenticalCalls;
+    const target = CircuitBreaker.livelloPer(n, this.maxConsecutiveIdenticalCalls);
+    const chiamate = n + 1;
+    if (target === "stopped") {
+      this.trip(`Rilevate ${chiamate} chiamate identiche consecutive al tool ${name} (${n} ripetizioni)`);
+    } else if (target === "constrained") {
+      this.constrain(`${chiamate} chiamate identiche consecutive al tool ${name}`);
+    } else if (target === "steering") {
+      this.steer(`chiamata ripetuta al tool ${name}`);
+    }
+    return this.state;
+  }
+
+  registraToolResult(isError, detail = "") {
+    if (this.state === "stopped") return this.state;
+    if (isError) {
+      this.consecutiveErrors++;
+      const n = this.consecutiveErrors;
+      const target = CircuitBreaker.livelloPer(n, this.maxConsecutiveErrors);
+      const dettaglio = String(detail ?? "").slice(0, 100);
+      if (target === "stopped") {
+        this.trip(`Raggiunto limite di ${n} errori consecutivi dei tool (${dettaglio})`);
+      } else if (target === "constrained") {
+        this.constrain(`${n} errori consecutivi nei tool`);
+      } else if (target === "steering") {
+        this.steer(`${n} errore nei tool`);
+      }
+    } else {
+      this.consecutiveErrors = 0;
+      if (this.state === "steering" || this.state === "constrained") {
+        this.state = "healthy";
+      }
+    }
+    return this.state;
+  }
+
+  /** Porta lo stato a `target` solo se è un'escalation; restituisce true se è transitato. */
+  _escala(target) {
+    if (LIVELLO[target] <= LIVELLO[this.state]) return false;
+    this.state = target;
+    return true;
+  }
+
+  steer(motivo) {
+    if (this._escala("steering")) this.onSteer(motivo);
+  }
+
+  constrain(motivo) {
+    if (this._escala("constrained")) this.onConstrain(motivo);
+  }
+
+  trip(motivo) {
+    if (this.state === "stopped") return;
+    this.state = "stopped";
+    this.motivoArresto = motivo;
+    this.onTrip(motivo);
+  }
+}
+
+export function parsaRigaNdjson(riga) {
   const rigaPulita = riga.replace(/\r$/, "");
   const trimmed = rigaPulita.trim();
   if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
-    return rigaPulita + "\n";
+    return null;
   }
-
-  let ev;
   try {
-    ev = JSON.parse(trimmed);
+    const ev = JSON.parse(trimmed);
+    return ev && typeof ev === "object" && ev.type ? ev : null;
   } catch {
-    return rigaPulita + "\n";
+    return null;
   }
+}
 
-  if (!ev || typeof ev !== "object" || !ev.type) {
+export function formattaRigaNdjson(riga) {
+  const rigaPulita = riga.replace(/\r$/, "");
+  const ev = parsaRigaNdjson(rigaPulita);
+  if (!ev) {
     return rigaPulita + "\n";
   }
 
@@ -99,6 +233,13 @@ export function formattaRigaNdjson(riga) {
   } else if (ev.type === "system") {
     if (ev.subtype === "init") {
       out.push(`${prefix} 🚀 Sessione avviata (modello: ${ev.model || "default"})`);
+    } else if (
+      ev.subtype === "thinking_tokens" ||
+      ev.subtype === "hook_started" ||
+      ev.subtype === "hook_response" ||
+      ev.subtype === "status"
+    ) {
+      return "";
     }
   }
 
@@ -112,7 +253,7 @@ export function formattaRigaNdjson(riga) {
   return out.join("\n") + "\n";
 }
 
-export function creaGestoreStream(suChunkFormattato) {
+export function creaGestoreStream(suChunkFormattato, onEvent = null) {
   const decoder = new StringDecoder("utf8");
   let buffer = "";
   return {
@@ -121,6 +262,10 @@ export function creaGestoreStream(suChunkFormattato) {
       const righe = buffer.split(/\r?\n/);
       buffer = righe.pop();
       for (const riga of righe) {
+        if (onEvent) {
+          const ev = parsaRigaNdjson(riga);
+          if (ev) onEvent(ev);
+        }
         const formattata = formattaRigaNdjson(riga);
         if (formattata) {
           suChunkFormattato(formattata);
@@ -133,6 +278,10 @@ export function creaGestoreStream(suChunkFormattato) {
         const righe = buffer.split(/\r?\n/);
         for (const riga of righe) {
           if (riga.trim()) {
+            if (onEvent) {
+              const ev = parsaRigaNdjson(riga);
+              if (ev) onEvent(ev);
+            }
             const formattata = formattaRigaNdjson(riga);
             if (formattata) {
               suChunkFormattato(formattata);
@@ -145,11 +294,32 @@ export function creaGestoreStream(suChunkFormattato) {
   };
 }
 
+/** Formato ammesso per `--dispatch-id`: alfanumerico iniziale, poi [A-Za-z0-9_.:-], max 64 caratteri. */
+export const REGEX_DISPATCH_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
+
+/** Errore di validazione degli argomenti CLI del runner. */
+export class ErroreArgomenti extends Error {
+  constructor(messaggio) {
+    super(messaggio);
+    this.name = "ErroreArgomenti";
+  }
+}
+
+function valoreOpzione(opzioni, i, nome) {
+  const v = opzioni[i];
+  if (v === undefined || v === "" || v.startsWith("-")) {
+    throw new ErroreArgomenti(`L'opzione ${nome} richiede un valore`);
+  }
+  return v;
+}
+
 export function analizzaArgomenti(argv) {
   let taskId = "generale";
   let dirCoord = process.env.DIR_COORD || ".coord";
   let cmd = "";
   let promptFile = null;
+  let worktree = null;
+  let dispatchId = null;
 
   const args = argv.slice(2);
   const doppioTrattino = args.indexOf("--");
@@ -165,13 +335,16 @@ export function analizzaArgomenti(argv) {
         }
         return tok;
       }
-      if (/[\s"'$`\\!&;*?~<>|^#]/.test(tok)) {
-        return `"${tok.replace(/(["\\$`])/g, "\\$1")}"`;
+      if (/[\s"'$`\!&;*?~<>|^#]/.test(tok)) {
+        return `"${tok.replace(/(["\$`])/g, "\$1")}"`;
       }
       return tok;
     };
     cmd = cmdTokens.map(quoteArg).join(" ");
   }
+
+  let agent = "claude";
+  let model = "";
 
   for (let i = 0; i < opzioni.length; i++) {
     const a = opzioni[i];
@@ -183,31 +356,85 @@ export function analizzaArgomenti(argv) {
       cmd = opzioni[++i] || cmd;
     } else if (a === "--prompt-file" || a === "-f") {
       promptFile = opzioni[++i] || promptFile;
+    } else if (a === "--agent" || a === "-a") {
+      agent = (opzioni[++i] || agent).toLowerCase();
+    } else if (a === "--model" || a === "-m") {
+      model = opzioni[++i] || model;
+    } else if (a === "--worktree" || a === "-w") {
+      worktree = valoreOpzione(opzioni, ++i, "--worktree");
+    } else if (a === "--dispatch-id" || a === "-d") {
+      dispatchId = valoreOpzione(opzioni, ++i, "--dispatch-id");
+      if (!REGEX_DISPATCH_ID.test(dispatchId)) {
+        throw new ErroreArgomenti(
+          `--dispatch-id non valido: "${dispatchId}" (ammessi [A-Za-z0-9_.:-], iniziale alfanumerica, max 64 caratteri)`
+        );
+      }
     }
   }
 
-  if (!cmd && promptFile) {
-    cmd = "claude -p - --output-format stream-json --verbose";
+  if (!cmd) {
+    if (agent === "codex") {
+      // Codex: default non interattivo anche senza --prompt-file (il prompt arriva su stdin "-").
+      const modelFlag = model ? ` -m ${model}` : "";
+      cmd = `codex exec${modelFlag} --dangerously-bypass-approvals-and-sandbox -`;
+    } else if (promptFile) {
+      if (agent === "agy") {
+        const modelFlag = model ? ` -m ${model}` : "";
+        cmd = `agy -p -${modelFlag}`;
+      } else {
+        const modelFlag = model ? ` --model ${model}` : "";
+        cmd = `claude -p - --output-format stream-json --verbose${modelFlag}`;
+      }
+    }
   }
 
-  return { taskId, dirCoord, cmd, promptFile };
+  return { taskId, dirCoord, cmd, promptFile, agent, model, worktree, dispatchId };
 }
 
+/** Variabili d'ambiente del processo figlio: TASK_ATTIVO sempre, DISPATCH_ID se fornito. */
+export function costruisciEnvFiglio(baseEnv, taskId, dispatchId) {
+  const env = { ...baseEnv, TASK_ATTIVO: taskId };
+  if (dispatchId) env.DISPATCH_ID = dispatchId;
+  return env;
+}
+
+/** Cartella di esecuzione del figlio: il worktree (risolto rispetto alla radice) o la radice stessa. */
+export function risolviCwdEsecuzione(radice, worktree) {
+  return worktree ? resolve(radice, worktree) : radice;
+}
+
+const USO = [
+  "Uso: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] [--worktree <PATH>] [--dispatch-id <ID>] [--prompt-file <FILE>] --cmd \"<COMANDO>\"",
+  "     oppure: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] --prompt-file <FILE> [--agent claude|codex|agy] [--model <MODELLO>]",
+  "     oppure: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] -- <COMANDO>",
+].join("\n") + "\n";
+
 export function eseguiRunner(argv = process.argv) {
-  const { taskId: rawTaskId, dirCoord: rawCoord, cmd, promptFile } = analizzaArgomenti(argv);
+  let argomenti;
+  try {
+    argomenti = analizzaArgomenti(argv);
+  } catch (err) {
+    if (!(err instanceof ErroreArgomenti)) throw err;
+    process.stderr.write(`Errore: ${err.message}\n${USO}`);
+    process.exit(1);
+  }
+  const { taskId: rawTaskId, dirCoord: rawCoord, cmd, promptFile, worktree, dispatchId } = argomenti;
 
   // Sanitizza taskId contro path traversal ed escape da .coord/logs/
   let safeTaskId = (rawTaskId || "generale").replace(/[^a-zA-Z0-9_-]/g, "");
   if (!safeTaskId) safeTaskId = "generale";
 
   if (!cmd || cmd.trim().length === 0) {
-    process.stderr.write("Uso: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] [--prompt-file <FILE>] --cmd \"<COMANDO>\"\n");
-    process.stderr.write("     oppure: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] --prompt-file <FILE>\n");
-    process.stderr.write("     oppure: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] -- <COMANDO>\n");
+    process.stderr.write(USO);
     process.exit(1);
   }
 
   const radice = process.cwd();
+  const executionCwd = risolviCwdEsecuzione(radice, worktree);
+  if (worktree && !existsSync(executionCwd)) {
+    process.stderr.write(`Errore: la cartella --worktree non esiste: ${executionCwd}\n`);
+    process.exit(1);
+  }
   const dirCoordAssoluta = isAbsolute(rawCoord) ? rawCoord : join(radice, rawCoord);
   const dirLogs = join(dirCoordAssoluta, "logs");
 
@@ -222,14 +449,15 @@ export function eseguiRunner(argv = process.argv) {
 
   const oraInizio = new Date().toISOString();
   streamLog.write(`\n=== [${oraInizio}] Inizio esecuzione task ${safeTaskId} ===\n`);
-  streamLog.write(`Comando: ${cmd}${promptFile ? ` (da file prompt: ${promptFile})` : ""}\n\n`);
+  streamLog.write(`Comando: ${cmd}${promptFile ? ` (da file prompt: ${promptFile})` : ""}\n`);
+  if (dispatchId) streamLog.write(`Dispatch ID: ${dispatchId}\n`);
+  if (worktree) streamLog.write(`Worktree: ${worktree} (cwd: ${executionCwd})\n`);
+  streamLog.write("\n");
 
-  // Telemetria iniziale
   try {
     raccogliTelemetria(radice, dirCoordAssoluta);
   } catch {}
 
-  // Timer periodico per aggiornare la telemetria durante l'esecuzione
   const timerTelemetria = setInterval(() => {
     try {
       raccogliTelemetria(radice, dirCoordAssoluta);
@@ -237,12 +465,58 @@ export function eseguiRunner(argv = process.argv) {
   }, 2000);
 
   const absPromptFile = promptFile ? (isAbsolute(promptFile) ? promptFile : join(radice, promptFile)) : null;
+  const envChild = costruisciEnvFiglio(process.env, safeTaskId, dispatchId);
 
-  const child = spawn(cmd, {
+  let child;
+  const breaker = new CircuitBreaker({
+    onTrip: (motivo) => {
+      const avviso = `\n[CircuitBreaker] 🛑 TRIP: ${motivo}. Arresto immediato del processo per protezione cantiere.\n`;
+      process.stderr.write(avviso);
+      streamLog.write(avviso);
+      try {
+        if (child) child.kill("SIGTERM");
+      } catch {}
+    },
+    onSteer: (motivo) => {
+      const avviso = `\n[CircuitBreaker] ⚠️ STEERING: ${motivo}.\n`;
+      process.stderr.write(avviso);
+      streamLog.write(avviso);
+    },
+    onConstrain: (motivo) => {
+      const avviso = `
+[CircuitBreaker] 🚧 CONSTRAINED: ${motivo}. Prossima anomalia = arresto.
+`;
+      process.stderr.write(avviso);
+      streamLog.write(avviso);
+    },
+  });
+
+  const onEvent = (ev) => {
+    if (ev.type === "assistant") {
+      const contents = ev.message?.content || [];
+      for (const item of contents) {
+        if (item.type === "tool_use") {
+          breaker.registraToolCall(item.name || "tool", item.input);
+        }
+      }
+    } else if (ev.type === "user") {
+      const contents = ev.message?.content || [];
+      for (const item of contents) {
+        if (item.type === "tool_result") {
+          breaker.registraToolResult(
+            Boolean(item.is_error),
+            typeof item.content === "string" ? item.content : JSON.stringify(item.content)
+          );
+        }
+      }
+    }
+  };
+
+  child = spawn(cmd, {
     shell: true,
     stdio: [absPromptFile ? "pipe" : (process.stdin.isTTY ? "inherit" : "ignore"), "pipe", "pipe"],
-    cwd: radice,
-    env: { ...process.env, TASK_ATTIVO: safeTaskId },
+    cwd: executionCwd,
+    env: envChild,
   });
 
   if (absPromptFile && existsSync(absPromptFile)) {
@@ -253,7 +527,7 @@ export function eseguiRunner(argv = process.argv) {
   const gestoreStdout = creaGestoreStream((testoFormattato) => {
     process.stdout.write(testoFormattato);
     streamLog.write(testoFormattato);
-  });
+  }, onEvent);
 
   const gestoreStderr = creaGestoreStream((testoFormattato) => {
     process.stderr.write(testoFormattato);
