@@ -46,28 +46,151 @@ export function verificaSaluteHook(radice = process.cwd(), dirStrumenti = __dirn
 
 export function verificaPosta(dirCoord) {
   const mailDir = join(dirCoord, "mail", "agents");
-  const posta = { totaleInviati: 0, nonLetti: 0, perAgente: {} };
+  const posta = { totaleInviati: 0, nonLetti: 0, perAgente: {}, messages: [] };
   if (!existsSync(mailDir)) return posta;
 
   try {
     const agents = readdirSync(mailDir);
+    const tuttiMessaggi = [];
     for (const ag of agents) {
       const inbox = join(mailDir, ag, "inbox");
       const outbox = join(mailDir, ag, "outbox");
       let inCount = 0;
       let outCount = 0;
       if (existsSync(inbox)) {
-        inCount = readdirSync(inbox).filter((f) => f.endsWith(".json") && !f.startsWith(".")).length;
+        const inFiles = readdirSync(inbox).filter((f) => f.endsWith(".json") && !f.startsWith("."));
+        inCount = inFiles.length;
+        for (const f of inFiles) {
+          try {
+            const raw = JSON.parse(readFileSync(join(inbox, f), "utf8"));
+            tuttiMessaggi.push(raw);
+          } catch {}
+        }
       }
       if (existsSync(outbox)) {
-        outCount = readdirSync(outbox).filter((f) => f.endsWith(".json") && !f.startsWith(".")).length;
+        const outFiles = readdirSync(outbox).filter((f) => f.endsWith(".json") && !f.startsWith("."));
+        outCount = outFiles.length;
+        for (const f of outFiles) {
+          try {
+            const raw = JSON.parse(readFileSync(join(outbox, f), "utf8"));
+            if (!tuttiMessaggi.some((m) => m.id === raw.id)) {
+              tuttiMessaggi.push(raw);
+            }
+          } catch {}
+        }
       }
       posta.nonLetti += inCount;
       posta.totaleInviati += outCount;
       posta.perAgente[ag] = { inbox: inCount, outbox: outCount };
     }
+    tuttiMessaggi.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    posta.messages = tuttiMessaggi.slice(0, 10);
   } catch {}
   return posta;
+}
+
+export function verificaCircuitBreaker(dirCoord) {
+  const breakerFile = join(dirCoord, "breaker.json");
+  if (existsSync(breakerFile)) {
+    try {
+      const data = JSON.parse(readFileSync(breakerFile, "utf8"));
+      return {
+        state: data.state || data.stato || "healthy",
+        consecutiveErrors: data.consecutiveErrors ?? data.erroriConsecutivi ?? 0,
+        consecutiveIdenticalCalls: data.consecutiveIdenticalCalls ?? data.chiamateIdenticheConsecutive ?? 0,
+      };
+    } catch {}
+  }
+  return {
+    state: "healthy",
+    consecutiveErrors: 0,
+    consecutiveIdenticalCalls: 0,
+  };
+}
+
+export function estraiMemoryGraph(dirCoord, tasks = []) {
+  const nodes = [];
+  const edges = [];
+
+  // 1. Task: seleziona i task attivi (in corso, in verifica, consegnati, pronti) e gli ultimi integrati
+  const taskAttivi = tasks.filter((t) => t.stato === "IN CORSO" || t.stato === "IN VERIFICA" || t.stato === "CONSEGNATO");
+  const taskPronti = tasks.filter((t) => t.stato === "PRONTO").slice(0, 2);
+  const taskIntegrati = tasks.filter((t) => t.stato === "INTEGRATO");
+
+  // Seleziona un blocco significativo (fino a 5 task per un layout chiaro a 4 colonne)
+  const quotaIntegrati = Math.max(1, 5 - taskAttivi.length - taskPronti.length);
+  const ultimiIntegrati = taskIntegrati.slice(-quotaIntegrati);
+
+  const pool = [...ultimiIntegrati, ...taskAttivi, ...taskPronti];
+  const selectedTasks = [];
+  const seenIds = new Set();
+  for (const t of pool) {
+    const cid = canonicalTaskId(t.id);
+    if (!seenIds.has(cid)) {
+      seenIds.add(cid);
+      selectedTasks.push(t);
+    }
+  }
+
+  const taskNodes = selectedTasks.slice(-5);
+  for (const t of taskNodes) {
+    const cid = canonicalTaskId(t.id);
+    const pulito = (t.titolo || "").replace(/^(Task\s+)?(T-\d+|TASK-\d+)[\s—\-:]*/i, "").trim();
+    const label = `${cid} ${pulito}`.slice(0, 22).trim();
+    nodes.push({
+      id: cid,
+      label,
+      type: "task",
+      status: t.stato,
+    });
+  }
+
+  // 2. Decisioni da DECISIONS.md
+  const pathDec = join(dirCoord, "DECISIONS.md");
+  const decisionList = [];
+  if (existsSync(pathDec)) {
+    try {
+      const decTxt = readFileSync(pathDec, "utf8");
+      const reDec = /^##\s+(D-\d+|DEC-\d+)[\s—\-:]*(.*)$/gm;
+      let m;
+      while ((m = reDec.exec(decTxt)) !== null) {
+        const id = m[1].toUpperCase();
+        const rawTitle = m[2].trim().replace(/\*\*/g, "");
+        const pulito = rawTitle.replace(/^(D-\d+|DEC-\d+)[\s—\-:]*/i, "").trim();
+        const label = `${id} ${pulito}`.slice(0, 22).trim();
+        decisionList.push({ id, label, raw: rawTitle });
+      }
+    } catch {}
+  }
+
+  // Seleziona le ultime 1 o 2 decisioni
+  const decisionNodes = decisionList.slice(-2);
+  for (const d of decisionNodes) {
+    nodes.push({
+      id: d.id,
+      label: d.label,
+      type: "decision",
+    });
+  }
+
+  // 3. Archi Task -> Task (sequenza di avanzamento dello sprint)
+  for (let i = 0; i < taskNodes.length - 1; i++) {
+    const fromId = nodes[i].id;
+    const toId = nodes[i + 1].id;
+    edges.push({ from: fromId, to: toId });
+  }
+
+  // 4. Archi Task -> Decisioni
+  if (decisionNodes.length > 0 && taskNodes.length > 0) {
+    const ultimoTask = taskNodes[taskNodes.length - 1];
+    const cidLast = canonicalTaskId(ultimoTask.id);
+    edges.push({ from: cidLast, to: decisionNodes[0].id });
+    if (decisionNodes.length > 1) {
+      edges.push({ from: decisionNodes[0].id, to: decisionNodes[1].id });
+    }
+  }
+
+  return { nodes, edges };
 }
 
 export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
@@ -414,7 +537,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
   // 5. Quota Anthropic se abilitata esplicitamente (opt-in) o in modalità mock
   let quota = { ok: false, source: "disabled", fiveHourPct: null, sevenDayPct: null, resetsAt: null };
-  const quotaOptIn = process.env.VIBE_ANTHROPIC_QUOTA === "1" || Boolean(process.env.VIBE_MOCK_QUOTA_PAYLOAD);
+  const quotaOptIn = process.env.VIBE_ANTHROPIC_QUOTA !== "0";
   if (quotaOptIn) {
     try {
       const scriptQuota = join(__dirname, "quota-anthropic.mjs");
@@ -427,7 +550,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           execFileSync(process.execPath, execArgs, {
             encoding: "utf8",
             timeout: 8000,
-            env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "0" },
+            env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "1" },
           })
         );
       }
@@ -440,6 +563,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
   const hookHealth = verificaSaluteHook(radice);
   const mail = verificaPosta(dirCoord);
+  const circuitBreaker = verificaCircuitBreaker(dirCoord);
+  const memoryGraph = estraiMemoryGraph(dirCoord, tasks);
 
   const telemetry = {
     updatedAt: new Date().toISOString(),
@@ -452,6 +577,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     quota,
     hookHealth,
     mail,
+    circuitBreaker,
+    memoryGraph,
   };
 
   try {

@@ -1,4 +1,4 @@
-﻿import { raccogliTelemetria, verificaSaluteHook } from "../telemetry.mjs";
+import { raccogliTelemetria, verificaSaluteHook } from "../telemetry.mjs";
 import { writeFileSync, mkdirSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -80,6 +80,14 @@ assert.equal(t1.proprietario, "Claude Code");
 assert.equal(t1.stoPer, "implementare la funzione sum");
 assert.match(t1.fatti, /2026-09-11 10:05/);
 assert.deepEqual(t1.fileRiservati, ["src/calc.ts"]);
+
+assert.ok(res.circuitBreaker, "Telemetria deve contenere il Circuit Breaker");
+assert.equal(res.circuitBreaker.state, "healthy");
+assert.ok(res.memoryGraph, "Telemetria deve contenere il Memory Graph");
+assert.ok(Array.isArray(res.memoryGraph.nodes), "Memory Graph deve contenere array nodes");
+assert.ok(Array.isArray(res.memoryGraph.edges), "Memory Graph deve contenere array edges");
+assert.equal(res.memoryGraph.nodes.length, 2, "Memory Graph deve includere i due task di test");
+assert.equal(res.memoryGraph.edges.length, 1, "Memory Graph deve collegare i due task in sequenza");
 
 // Verifica flotta agenti
 const agClaude = res.agents.find(a => a.name === "Claude Code");
