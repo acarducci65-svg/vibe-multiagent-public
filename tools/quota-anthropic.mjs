@@ -178,6 +178,7 @@ if (cache) {
         note: "Endpoint quota non raggiungibile (" + String(e.message) + ").",
       };
     }
+    try { writeFileSync(CACHE, JSON.stringify({ t: Date.now(), v })); } catch {}
   }
   out(v);
 }

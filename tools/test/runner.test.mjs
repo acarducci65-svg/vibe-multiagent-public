@@ -322,7 +322,7 @@ const argv = (...a) => ["node", "runner.mjs", ...a];
 }
 {
   const r = analizzaArgomenti(argv("--agent", "claude", "--prompt-file", "p.txt", "--model", "opus", "--worktree", "wt", "--dispatch-id", "D1"));
-  assert.equal(r.cmd, "claude -p - --output-format stream-json --verbose --model opus");
+  assert.equal(r.cmd, "claude -p - --dangerously-skip-permissions --output-format stream-json --verbose --model opus");
   assert.equal(r.worktree, "wt");
   assert.equal(r.dispatchId, "D1");
   const ra = analizzaArgomenti(argv("--agent", "AGY", "--prompt-file", "p.txt", "-m", "gemini-3.1-pro-high", "--dispatch-id", "D2"));

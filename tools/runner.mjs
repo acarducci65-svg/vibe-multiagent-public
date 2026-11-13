@@ -383,7 +383,7 @@ export function analizzaArgomenti(argv) {
         cmd = `agy -p -${modelFlag}`;
       } else {
         const modelFlag = model ? ` --model ${model}` : "";
-        cmd = `claude -p - --output-format stream-json --verbose${modelFlag}`;
+        cmd = `claude -p - --dangerously-skip-permissions --output-format stream-json --verbose${modelFlag}`;
       }
     }
   }
