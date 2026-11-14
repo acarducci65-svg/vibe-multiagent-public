@@ -106,4 +106,4 @@ npm run typecheck
 ## 10. Dichiarazioni di conformità
 - [x] Nessun segreto, token, password o dato personale inserito in questo file o committato.
 - [x] Nessuna modifica eseguita fuori dai file riservati autorizzati.
-- [x] **Ultima azione eseguita**: aggiornato lo stato in `{{DIR_COORD}}/tasks/{{ID_TASK}}.md` a `CONSEGNATO`.
+- [x] **Consegna registrata**: completati i deliverable e compilato l'handover (passaggio a CONSEGNATO registrato da runner o mailbox).

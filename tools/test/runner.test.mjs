@@ -8,7 +8,7 @@ import { strict as assert } from "node:assert";
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
 // 1. Test unitari di formattaRigaNdjson
-const { formattaRigaNdjson, creaGestoreStream, analizzaArgomenti } = await import("../runner.mjs");
+const { formattaRigaNdjson, creaGestoreStream, analizzaArgomenti, promuoviTaskAConsegnato } = await import("../runner.mjs");
 
 // Linea testo normale non JSON
 assert.equal(formattaRigaNdjson("testo normale\r"), "testo normale\n");
@@ -390,6 +390,26 @@ assert.match(rLoop.stderr, /\[CircuitBreaker\] 🚧 CONSTRAINED/, "Avviso constr
 assert.match(rLoop.stderr, /\[CircuitBreaker\] 🛑 TRIP: Rilevate 4 chiamate identiche/, "Trip su stderr");
 const logLoop = readFileSync(join(coordDir, "logs", "T-LOOP.log"), "utf8");
 assert.match(logLoop, /STEERING[\s\S]*CONSTRAINED[\s\S]*TRIP/, "Sequenza di avvisi nel log, in ordine");
+
+// 13. Promozione automatica del task a CONSEGNATO al termine dell'esecutore
+const tasksDir = join(coordDir, "tasks");
+mkdirSync(tasksDir, { recursive: true });
+const taskFile = join(tasksDir, "T-DELIV-adapter.md");
+writeFileSync(taskFile, "# Task T-DELIV\n- **Stato**: IN CORSO\nProprietario: Codex CLI\n");
+
+// Test funzione diretta
+assert.equal(promuoviTaskAConsegnato(coordDir, "T-DELIV"), true, "Deve promuovere task da IN CORSO a CONSEGNATO");
+assert.match(readFileSync(taskFile, "utf8"), /- \*\*Stato\*\*: CONSEGNATO/, "Il file deve contenere Stato: CONSEGNATO");
+assert.equal(promuoviTaskAConsegnato(coordDir, "T-DELIV"), false, "Non deve ri-promuovere un task già CONSEGNATO");
+
+// Test end-to-end con runner execution exitCode 0
+const taskE2E = join(tasksDir, "T-E2EDELIV.md");
+writeFileSync(taskE2E, "# Task T-E2EDELIV\nStato: IN CORSO\nProprietario: Claude Code\n");
+const rDeliv = spawnSync(process.execPath, [runnerScript, "--task", "T-E2EDELIV", "--coord", coordDir, "--cmd", "node -e \"process.exit(0)\""], { cwd: testDir, encoding: "utf8" });
+assert.equal(rDeliv.status, 0);
+assert.match(readFileSync(taskE2E, "utf8"), /Stato: CONSEGNATO/, "Runner deve promuovere il task a CONSEGNATO");
+const logDeliv = readFileSync(join(coordDir, "logs", "T-E2EDELIV.log"), "utf8");
+assert.match(logDeliv, /Transizione automatica: task T-E2EDELIV -> CONSEGNATO/);
 
 // Pulizia
 rmSync(testDir, { recursive: true, force: true });

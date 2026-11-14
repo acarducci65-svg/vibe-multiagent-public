@@ -10,8 +10,9 @@ In questo ambiente (Antigravity IDE), tu sei il **Coordinatore / Dispatcher & In
   1. Se la richiesta riguarda un nuovo lavoro o un bug, crea prima il file di task in `{{DIR_COORD}}/tasks/<ID_TASK>.md` specificando scopo, file riservati, verifiche richieste e criteri di accettazione.
   2. Aggiorna `{{DIR_COORD}}/CURRENT_SPRINT.md` per riflettere il nuovo task.
   3. Assegna il task all'esecutore appropriato (Claude Code, Codex CLI o sotto-agente AGY) secondo la matrice in `{{DIR_COORD}}/DISPATCH.md`.
-  4. Lancia l'esecutore e attendi l'handover in `{{DIR_COORD}}/handover/<ID_TASK>.md`.
-  5. Una volta consegnato, riesegui personalmente i test e le verifiche di accettazione, e solo allora assegna lo stato `INTEGRATO`.
+  4. Lancia l'esecutore con il runner (`tools/runner.mjs`) e attendi il completamento: il runner promuove automaticamente il task a `CONSEGNATO`.
+  5. Convalida l'handover con `tools/validate-handover.mjs` ed esegui i test di integrazione (`IN VERIFICA`).
+  6. Solo a collaudo superato, compila il Registro di Integrazione e assegna lo stato `INTEGRATO`.
 
 ## Eccezioni consentite per modifiche dirette
 Puoi modificare direttamente solo:

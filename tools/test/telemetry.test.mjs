@@ -238,6 +238,25 @@ assert.equal(agAgyPeer.status, "reviewing", "Antigravity AGY deve essere reviewi
 assert.ok(agAgyPeer.currentTask.includes("T-002"), "AGY deve avere T-002");
 rmSync(testDir4, { recursive: true, force: true });
 
+// Verifica Punto 6: Deduzione automatica stato CONSEGNATO da handover presente
+const testDir5 = join(tmpdir(), "vibe-test-telemetry-handover-" + Date.now());
+const coordDir5 = join(testDir5, ".coord");
+const tasksDir5 = join(coordDir5, "tasks");
+const handoverDir5 = join(coordDir5, "handover");
+mkdirSync(tasksDir5, { recursive: true });
+mkdirSync(handoverDir5, { recursive: true });
+writeFileSync(join(coordDir5, "CURRENT_SPRINT.md"), "# Sprint Test Handover\nStato: IN CORSO\n");
+// Task con Stato: IN CORSO nel markdown
+writeFileSync(join(tasksDir5, "T-050-adapter.md"), "# T-050\nStato: IN CORSO\nProprietario: Codex CLI\n");
+// Handover JSON generato dall'esecutore
+writeFileSync(join(handoverDir5, "T-050.json"), JSON.stringify({ schema_version: "2.1", task_id: "T-050", outcome: "COMPLETO" }));
+
+const resHandover = raccogliTelemetria(testDir5);
+const t50 = resHandover.tasks.find(t => t.id === "T-050-adapter");
+assert.equal(t50.stato, "CONSEGNATO", "Task con handover JSON presente deve essere dedotto come CONSEGNATO");
+
+rmSync(testDir5, { recursive: true, force: true });
+
 rmSync(testDir3, { recursive: true, force: true });
 
 rmSync(testDir2, { recursive: true, force: true });

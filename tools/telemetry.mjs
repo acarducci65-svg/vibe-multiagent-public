@@ -276,6 +276,17 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           const mMatchStato = statoRaw.match(/^(PRONTO|IN CORSO|CONSEGNATO|IN VERIFICA|INTEGRATO|COMPLETATO|SOSPESO|CHIUSO)\b/i);
           let stato = mMatchStato ? mMatchStato[1].toUpperCase() : (statoRaw ? "SCONOSCIUTO" : "PRONTO");
           if (stato === "COMPLETATO") stato = "INTEGRATO";
+
+          // Fallback resiliente: se nel file risulta ancora IN CORSO ma l'handover formale è presente, deduci CONSEGNATO
+          if (stato === "IN CORSO") {
+            const dirHandover = join(dirCoord, "handover");
+            const cId = canonicalTaskId(id);
+            const haHandoverJson = existsSync(join(dirHandover, `${id}.json`)) || (cId && existsSync(join(dirHandover, `${cId}.json`)));
+            const haHandoverMd = existsSync(join(dirHandover, f)) || existsSync(join(dirHandover, `${id}.md`)) || (cId && existsSync(join(dirHandover, `${cId}.md`)));
+            if (haHandoverJson || haHandoverMd) {
+              stato = "CONSEGNATO";
+            }
+          }
           const statoEsteso = statoRaw;
 
           if (stato === "INTEGRATO" || stato === "CHIUSO") completatiCount++;

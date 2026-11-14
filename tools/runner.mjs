@@ -4,12 +4,12 @@
 // Include parser per formattare gli eventi NDJSON di Claude Code (--output-format stream-json),
 // gestione worktree isolati, dispatchId, e Circuit Breaker meccanico contro runaway loops.
 import { spawn } from "node:child_process";
-import { createWriteStream, createReadStream, mkdirSync, existsSync } from "node:fs";
+import { createWriteStream, createReadStream, mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join, resolve, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { constants } from "node:os";
 import { StringDecoder } from "node:string_decoder";
-import { raccogliTelemetria } from "./telemetry.mjs";
+import { raccogliTelemetria, canonicalTaskId } from "./telemetry.mjs";
 
 /**
  * Circuit Breaker a 4 livelli (ispirato a Munder Difflin breaker.ts):
@@ -403,6 +403,36 @@ export function risolviCwdEsecuzione(radice, worktree) {
   return worktree ? resolve(radice, worktree) : radice;
 }
 
+/**
+ * Promuove deterministicamente lo stato del task a CONSEGNATO al termine con successo dell'esecutore.
+ * Cerca il file in .coord/tasks/<ID>.md (o con prefisso/suffisso canonico) e, se lo stato è IN CORSO o PRONTO,
+ * lo aggiorna a CONSEGNATO per allineare telemetria e dashboard.
+ */
+export function promuoviTaskAConsegnato(dirCoord, taskId) {
+  if (!dirCoord || !taskId || taskId === "generale") return false;
+  const dirTasks = join(dirCoord, "tasks");
+  if (!existsSync(dirTasks)) return false;
+
+  const targetId = canonicalTaskId(taskId);
+  try {
+    const files = readdirSync(dirTasks).filter((f) => f.endsWith(".md"));
+    for (const f of files) {
+      const stem = f.replace(/\.md$/, "");
+      if (canonicalTaskId(f) === targetId || stem === taskId || stem.startsWith(`${taskId}-`) || f.startsWith(`${taskId}.`)) {
+        const fullPath = join(dirTasks, f);
+        const content = readFileSync(fullPath, "utf8");
+        const regexStato = /^([\s*-]*\**Stato[\*:]*\s*:?\s*)(IN CORSO|PRONTO)(\b.*)$/im;
+        if (regexStato.test(content)) {
+          const updated = content.replace(regexStato, "$1CONSEGNATO$3");
+          writeFileSync(fullPath, updated, "utf8");
+          return true;
+        }
+      }
+    }
+  } catch {}
+  return false;
+}
+
 const USO = [
   "Uso: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] [--worktree <PATH>] [--dispatch-id <ID>] [--prompt-file <FILE>] --cmd \"<COMANDO>\"",
   "     oppure: node runner.mjs --task <ID_TASK> [--coord <DIR_COORD>] --prompt-file <FILE> [--agent claude|codex|agy] [--model <MODELLO>]",
@@ -572,6 +602,14 @@ export function eseguiRunner(argv = process.argv) {
       exitCode = sigNum ? 128 + sigNum : (signal ? 128 + 15 : 1);
     }
     streamLog.write(`\n=== [${oraFine}] Fine esecuzione task ${safeTaskId} (exit code: ${exitCode}${signal ? `, segnale: ${signal}` : ""}) ===\n`);
+    if (exitCode === 0 && safeTaskId !== "generale") {
+      try {
+        const promosso = promuoviTaskAConsegnato(dirCoordAssoluta, safeTaskId);
+        if (promosso) {
+          streamLog.write(`[Runner] Transizione automatica: task ${safeTaskId} -> CONSEGNATO\n`);
+        }
+      } catch {}
+    }
     streamLog.end(() => {
       try {
         raccogliTelemetria(radice, dirCoordAssoluta);
