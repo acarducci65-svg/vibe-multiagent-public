@@ -398,7 +398,7 @@ Ogni template ha una sola destinazione. `{{DIR_COORD}}` è il valore deciso in D
 | `apri-dashboard.cmd.template` | `{{DIR_COORD}}/apri-dashboard.cmd` | Su ambienti Windows: avviatore one-click che avvia il watcher in background e apre la Control Room. |
 | `DISPATCH.md.template` | `{{DIR_COORD}}/DISPATCH.md` | **Solo Ambiente B.** |
 | `hooks.json.template` | `.agents/hooks.json` nella radice del repository | **Solo Ambiente B.** Se il file esiste già, aggiungi la chiave `protocollo-multi-agente` senza toccare le altre: gli hook con nomi diversi si fondono. |
-| `multiagent-rule.md.template` | `.agents/rules/multiagent-coordinator.md` nella radice del repository | **Solo Ambiente B.** Regola permanente di workspace che mantiene il modello nel ruolo di Coordinatore/Integratore ad ogni interazione. |
+| `multiagent-rule.md.template` | `.agents/rules/multiagent-coordinator.md` nella radice del repository | **Solo Ambiente B.** Regola permanente di workspace (Markdown puro senza frontmatter YAML) che mantiene il modello nel ruolo di Coordinatore/Integratore ad ogni interazione. Non usare frontmatter con `globs: [...]` per evitare errori di unmarshaling YAML in Antigravity. |
 | `GEMINI.md.template` | `GEMINI.md` nella radice del repository | **Solo Ambiente B.** Istruzione permanente nativa di Antigravity per divieto di self-coding e deroga su ordine del Direttore. |
 
 Per il passaggio di consegne fra sessioni diverse dello stesso modello (invece che fra agenti distinti su un task specifico), usa una procedura di handoff dedicata. `HANDOVER.md.template` copre la consegna e verifica di un task formale dentro questo protocollo.
@@ -454,7 +454,7 @@ Dopo l'approvazione:
 5. Scomponi prima di creare task: se la milestone tocca più di cinque file di produzione, o più di un dominio applicativo, o non ha un criterio di accettazione verificabile con un comando, proponi la scomposizione e fatti approvare le parti prima di generare `tasks/`.
 6. **Solo Ambiente B**:
    - Genera `.agents/hooks.json` dal template, sostituendo `{{DIR_SKILL}}` con il percorso assoluto di questa skill. Se `.agents/hooks.json` esiste già, fondi la chiave `protocollo-multi-agente` con le chiavi esistenti.
-   - Genera `.agents/rules/multiagent-coordinator.md` dal template `multiagent-rule.md.template`.
+   - Genera `.agents/rules/multiagent-coordinator.md` dal template `multiagent-rule.md.template` (tassativamente come Markdown puro, senza frontmatter YAML, per piena compatibilità con l'unmarshaler di Antigravity).
    - Genera `{{DIR_COORD}}/DISPATCH.md` dal template.
 7. Integra `.gitignore` nella radice del repository (crealo se non esiste) aggiungendo le righe per escludere i dati volatili di telemetria e i log:
    ```gitignore
