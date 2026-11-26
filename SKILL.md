@@ -12,7 +12,7 @@ Questa skill è universale: genera configurazioni nel progetto scelto, ma non co
 
 ## Regole v3.0 da applicare sempre
 
-- **Permessi**: nessun `--dangerously-*` nei dispatch ordinari. Si usano i profili `read-only` / `workspace-write` del runner; per Claude il runner scrive l'allowlist scoped in `.claude/settings.local.json`. Il bypass (`--director-override`) è ammesso solo con un `DIRECTOR_OVERRIDE` firmato dal Direttore in `.coord/DECISIONS.md`.
+- **Permessi**: nessun `--dangerously-*` nei dispatch ordinari. Si usano i profili `read-only` / `workspace-write` / `host-tools` del runner: per Claude il runner applica in merge l'allowlist scoped + `deny` guardrails in `.claude/settings.local.json`; per Codex, `host-tools` (quando subentra su task con eseguibili Windows/browser/rete come `msedge.exe`, Playwright, `nlm`) usa `--sandbox danger-full-access` protetto dal guardrail `PreToolUse` `tools/codex-gate.mjs` (`.codex/hooks.json`) e dal monitor streaming attivo del runner. Il bypass (`--director-override`) è ammesso solo con un `DIRECTOR_OVERRIDE` firmato dal Direttore in `.coord/DECISIONS.md`.
 - **Comandi nativi generati dal runner**: `claude -p --output-format stream-json --verbose --permission-mode <plan|acceptEdits>`; `codex exec --json --sandbox <profile> -` (prompt via stdin, indispensabile su Windows; `-C <repo>` e `--skip-git-repo-check` solo fuori da un repository Git); `agy -p --output-format stream-json`.
 - **Resume nativo cross-provider**: `--resume` riprende la sessione registrata in `.coord/state/sessions.json` solo se provider, cwd e profilo coincidono.
 - **Preflight**: `node tools/preflight.mjs [--json]` prima del primo dispatch (Claude Code `2.1.318+`, Codex `0.171.0+`, AGY `1.5.16+`).

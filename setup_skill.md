@@ -191,12 +191,15 @@ Dalla v3.0 il modo canonico di lanciare un esecutore è il runner multi-provider
 ```bash
 node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" \
   --agent claude|codex|agy [--model <MODELLO>] \
-  --profile read-only|workspace-write \
+  --profile read-only|workspace-write|host-tools \
   --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" [--resume [SESSION_ID]] [--timeout-ms <MS>]
 ```
 
-- **Profili**: `read-only` (analisi, review, nessuna scrittura) e `workspace-write` (default: scrittura limitata al repository). Nessun profilo concede bypass totali.
-- **Allowlist scoped Claude**: con `--agent claude` il runner scrive in modo atomico `.claude/settings.local.json` del progetto con la sola allowlist del profilo (`Read(./**)`, più `Edit(./**)` in `workspace-write`; `defaultMode` `plan` o `acceptEdits`) e lancia `claude -p --output-format stream-json --verbose --permission-mode <plan|acceptEdits>`.
+- **Profili**:
+  - `read-only`: analisi, review, nessuna scrittura.
+  - `workspace-write` (default): scrittura limitata al repository (su Codex attiva la sandbox OS senza rete/IPC browser).
+  - `host-tools`: per task che richiedono eseguibili host Windows con IPC/browser o CLI di rete (`msedge.exe`, Playwright, `nlm`/NotebookLM, `curl`), ad es. quando **Codex subentra a Claude per esaurimento quota**. Su Codex mappa a `--sandbox danger-full-access` **protetto a due livelli**: guardrail preventivo `PreToolUse` (`tools/codex-gate.mjs` auto-registrato in `.codex/hooks.json`) + monitor streaming attivo nel runner (TRIP immediato su `git push`, `publish`, `deploy`, migrazioni, `--dangerously-*`). Su Claude e AGY equivale a `workspace-write`.
+- **Allowlist scoped Claude**: con `--agent claude` il runner aggiorna in modo atomico `.claude/settings.local.json` in **merge** (preservando eventuali regole custom in `workspace-write`/`host-tools`) abilitando i tool di lavoro (`Read`, `Edit`, `Write`, `Glob`, `Grep`, `Skill`, `WebFetch`, `WebSearch`, `Bash`, `PowerShell`) con `permissions.deny` esplicito su `git push`, `publish` e `--dangerously-*`, e lancia `claude -p --output-format stream-json --verbose --permission-mode <plan|acceptEdits>`.
 - **Bypass solo con `DIRECTOR_OVERRIDE` firmato**: `--director-override` (che per Claude diventa `--dangerously-skip-permissions`) è ammesso **solo** se il Direttore ha registrato in `{{DIR_COORD}}/DECISIONS.md` una voce `DIRECTOR_OVERRIDE` firmata (nome, data, task, motivo, durata). Senza quella voce, nessun agente lo usa.
 - **Resume nativo cross-provider**: a ogni esecuzione il runner registra la sessione del provider in `{{DIR_COORD}}/state/sessions.json` (`provider`, `cwd`, `profile`, `sessionId`, `updatedAt`). `--resume` riprende l'ultima sessione del task (`claude --resume`, `codex exec resume`, `agy --conversation`) e rifiuta il resume se provider, cwd o profilo non coincidono.
 
