@@ -24,14 +24,17 @@ if (p === null || typeof p !== "object" || Array.isArray(p) || p.toolCall === nu
 const nome = p?.toolCall?.name ?? "";
 
 // 1. Intercettazione modifiche file sorgente (No Self-Coding senza autorizzazione del Direttore)
+// Antigravity 2.0 introduce write_file / edit_file (args.Path); i nomi legacy restano supportati.
 const STRUMENTI_SCRITTURA = new Set([
+  "write_file",
+  "edit_file",
   "write_to_file",
   "replace_file_content",
   "multi_replace_file_content",
 ]);
 
 if (STRUMENTI_SCRITTURA.has(nome)) {
-  const targetFile = p?.toolCall?.args?.TargetFile ?? p?.toolCall?.args?.targetFile ?? "";
+  const targetFile = p?.toolCall?.args?.Path ?? p?.toolCall?.args?.path ?? p?.toolCall?.args?.TargetFile ?? p?.toolCall?.args?.targetFile ?? "";
   if (targetFile) {
     const normTarget = String(targetFile).replace(/\\/g, "/");
 

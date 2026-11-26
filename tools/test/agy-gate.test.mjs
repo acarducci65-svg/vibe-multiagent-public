@@ -41,10 +41,21 @@ const casi = [
   [{ name: "write_to_file", args: { TargetFile: "/home/runner/work/project/.coord/tasks/T-001.md" } }, "allow", ["/home/runner/work/project"]],
   [{ name: "replace_file_content", args: { TargetFile: "/home/runner/work/project/GEMINI.md" } }, "allow", ["/home/runner/work/project"]],
   [{ name: "write_to_file", args: { TargetFile: "/home/runner/work/project/src/index.ts" } }, "force_ask", ["/home/runner/work/project"]],
+  // Antigravity 2.0: write_file / edit_file con args.Path (e args.path)
+  [{ name: "write_file", args: { Path: "C:/dev/progetto/src/app/page.tsx" } }, "force_ask"],
+  [{ name: "edit_file", args: { Path: "C:/dev/progetto/src/lib/util.ts" } }, "force_ask"],
+  [{ name: "write_file", args: { Path: "C:/dev/progetto/.coord/tasks/T-301.md" } }, "allow"],
+  [{ name: "edit_file", args: { Path: "C:/dev/progetto/.coord/handover/T-301.md" } }, "allow"],
+  [{ name: "write_file", args: { Path: "C:/dev/progetto/.env" } }, "force_ask"],
+  [{ name: "edit_file", args: { Path: "C:/dev/progetto/.env" } }, "force_ask"],
+  [{ name: "write_file", args: { Path: "C:/dev/progetto/.github/workflows/ci.yml" } }, "force_ask"],
+  [{ name: "edit_file", args: { Path: "C:/dev/progetto/.github/workflows/ci.yml" } }, "force_ask"],
+  [{ name: "edit_file", args: { path: "/home/runner/work/project/src/index.ts" } }, "force_ask", ["/home/runner/work/project"]],
+  [{ name: "write_file", args: { path: "/home/runner/work/project/.coord/state.json" } }, "allow", ["/home/runner/work/project"]],
 ];
 for (const [tc, atteso, ws] of casi) {
   const r = ws ? gate(tc, ws) : gate(tc);
-  assert.equal(r.decision, atteso, `${tc.args?.CommandLine ?? tc.args?.TargetFile ?? tc.name} â†’ atteso ${atteso}, ottenuto ${r.decision} (${r.reason})`);
+  assert.equal(r.decision, atteso, `${tc.name}: ${tc.args?.CommandLine ?? tc.args?.Path ?? tc.args?.path ?? tc.args?.TargetFile ?? ""} â†’ atteso ${atteso}, ottenuto ${r.decision} (${r.reason})`);
 }
 
 // Collaudo override di emergenza autorizzato dal Direttore

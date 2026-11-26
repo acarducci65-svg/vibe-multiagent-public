@@ -1,11 +1,15 @@
-import { execFileSync, spawnSync } from "node:child_process";
-import { writeFileSync, mkdirSync, rmSync, readFileSync, existsSync, realpathSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { spawnSync as spawnSyncNode } from "node:child_process";
+import { chmodSync, closeSync, openSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, readFileSync, existsSync, realpathSync } from "node:fs";
+import { delimiter, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { strict as assert } from "node:assert";
+import * as claude from "../adapters/claude.mjs";
+import * as codex from "../adapters/codex.mjs";
+import * as agy from "../adapters/agy.mjs";
 
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
+process.env.VIBE_ANTHROPIC_QUOTA = "0"; // Spegne il probe di rete della telemetria anche con pipe disponibili.
 
 // 1. Test unitari di formattaRigaNdjson
 const { formattaRigaNdjson, creaGestoreStream, analizzaArgomenti, promuoviTaskAConsegnato } = await import("../runner.mjs");
@@ -69,9 +73,24 @@ assert.match(catturato, /\[Claude\] 🔧 Tool: Bash -> npm test/);
 gestore.chiudi();
 
 // 2. Collaudo end-to-end con runnerScript
-const testDir = join(tmpdir(), "runner-test-" + Date.now());
+const testDir = mkdtempSync(join(tmpdir(), "runner-test-"));
+process.on("exit", () => rmSync(testDir, { recursive: true, force: true }));
 const coordDir = join(testDir, ".coord");
 mkdirSync(coordDir, { recursive: true });
+
+function spawnSync(exe, args, options) {
+  const result = spawnSyncNode(exe, args, options);
+  if (process.platform !== "win32" || result.error?.code !== "EPERM") return result;
+  const paths = ["stdout", "stderr"].map(name => join(testDir, name));
+  const fds = paths.map(path => openSync(path, "w"));
+  try {
+    const captured = spawnSyncNode(exe, args, { ...options, stdio: ["ignore", ...fds] });
+    const [stdout, stderr] = paths.map(path => readFileSync(path, "utf8"));
+    return { ...captured, stdout, stderr };
+  } finally {
+    for (const fd of fds) closeSync(fd);
+  }
+}
 
 const runnerScript = join(__dirname, "..", "runner.mjs");
 const cmdSuccess = process.platform === "win32"
@@ -172,7 +191,10 @@ const rCust = formattaRigaNdjson('{"type":"custom_ping","payload":"pong"}');
 assert.match(rCust, /ℹ️ \[custom_ping\] pong/, "Eventi sconosciuti non devono essere persi");
 
 // 9. Collaudo CircuitBreaker — macchina a stati a 4 livelli
-const { CircuitBreaker, STATI_BREAKER, ErroreArgomenti, costruisciEnvFiglio, risolviCwdEsecuzione } = await import("../runner.mjs");
+const {
+  CircuitBreaker, STATI_BREAKER, ErroreArgomenti, costruisciEnvFiglio, risolviCwdEsecuzione,
+  risolviSessione,
+} = await import("../runner.mjs");
 
 assert.deepEqual([...STATI_BREAKER], ["healthy", "steering", "constrained", "stopped"], "Stati ammessi nell'ordine canonico");
 
@@ -310,9 +332,9 @@ const argv = (...a) => ["node", "runner.mjs", ...a];
 }
 {
   const r = analizzaArgomenti(argv("--task", "T-1", "--agent", "codex"));
-  assert.equal(r.cmd, "codex exec --dangerously-bypass-approvals-and-sandbox -", "Codex: default non interattivo anche senza --prompt-file");
+  assert.equal(r.cmd, "codex exec --json --sandbox workspace-write -");
   const rm = analizzaArgomenti(argv("--agent", "codex", "--model", "gpt-6-astra", "--prompt-file", "p.txt", "-w", "../wt", "-d", "DISP-024-A"));
-  assert.equal(rm.cmd, "codex exec -m gpt-6-astra --dangerously-bypass-approvals-and-sandbox -");
+  assert.equal(rm.cmd, "codex exec --json --sandbox workspace-write --model gpt-6-astra -");
   assert.equal(rm.worktree, "../wt");
   assert.equal(rm.dispatchId, "DISP-024-A");
   const rc = analizzaArgomenti(argv("--agent", "codex", "--cmd", "codex exec --sandbox read-only -"));
@@ -322,12 +344,12 @@ const argv = (...a) => ["node", "runner.mjs", ...a];
 }
 {
   const r = analizzaArgomenti(argv("--agent", "claude", "--prompt-file", "p.txt", "--model", "opus", "--worktree", "wt", "--dispatch-id", "D1"));
-  assert.equal(r.cmd, "claude -p - --dangerously-skip-permissions --output-format stream-json --verbose --model opus");
+  assert.equal(r.cmd, "claude -p --output-format stream-json --verbose --permission-mode acceptEdits --model opus");
   assert.equal(r.worktree, "wt");
   assert.equal(r.dispatchId, "D1");
   const ra = analizzaArgomenti(argv("--agent", "AGY", "--prompt-file", "p.txt", "-m", "gemini-3.1-pro-high", "--dispatch-id", "D2"));
   assert.equal(ra.agent, "agy");
-  assert.equal(ra.cmd, "agy -p - -m gemini-3.1-pro-high");
+  assert.equal(ra.cmd, "agy -p --output-format stream-json --model gemini-3.1-pro-high");
   assert.equal(ra.dispatchId, "D2");
   assert.equal(analizzaArgomenti(argv("--agent", "claude")).cmd, "", "Claude senza prompt-file né --cmd: nessun default (uso)");
   assert.equal(analizzaArgomenti(argv("--task", "T")).worktree, null, "Senza --worktree: null");
@@ -350,14 +372,13 @@ assert.throws(() => analizzaArgomenti(argv("--dispatch-id", "x".repeat(65))), Er
 }
 
 // 11. End-to-end: --worktree imposta il cwd del figlio, DISPATCH_ID e TASK_ATTIVO propagati
-const wtDir = join(testDir, "wt-e2e");
-mkdirSync(wtDir, { recursive: true });
+const wtDir = realpathSync(join(__dirname, "..", ".."));
 const cmdEnv = "node -e \"console.log('CWD=' + process.cwd() + '|DISP=' + process.env.DISPATCH_ID + '|TASK=' + process.env.TASK_ATTIVO)\"";
 const rWt = spawnSync(process.execPath, [
   runnerScript,
   "--task", "T-WT",
   "--coord", coordDir,
-  "--worktree", "wt-e2e",
+  "--worktree", wtDir,
   "--dispatch-id", "DISP-E2E",
   "--cmd", cmdEnv
 ], { cwd: testDir, encoding: "utf8" });
@@ -369,7 +390,14 @@ assert.equal(outWt[2].trim(), "DISP-E2E", "DISPATCH_ID propagato");
 assert.equal(outWt[3].trim(), "T-WT", "TASK_ATTIVO propagato");
 const logWt = readFileSync(join(coordDir, "logs", "T-WT.log"), "utf8");
 assert.match(logWt, /Dispatch ID: DISP-E2E/);
-assert.match(logWt, /Worktree: wt-e2e \(cwd: /);
+assert.match(logWt, /Worktree: .* \(cwd: /);
+for (const worktree of [testDir, __dirname]) {
+  const result = spawnSync(process.execPath, [
+    runnerScript, "--coord", coordDir, "--worktree", worktree, "--", process.execPath, "-v",
+  ], { cwd: testDir, encoding: "utf8" });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--worktree.*radice Git/);
+}
 
 // Worktree inesistente e dispatch-id non valido: uscita 1 con messaggio
 const rWtMissing = spawnSync(process.execPath, [runnerScript, "--task", "T-WT2", "--coord", coordDir, "--worktree", "non-esiste", "--cmd", "node -v"], { cwd: testDir, encoding: "utf8" });
@@ -391,13 +419,22 @@ assert.match(rLoop.stderr, /\[CircuitBreaker\] 🛑 TRIP: Rilevate 4 chiamate id
 const logLoop = readFileSync(join(coordDir, "logs", "T-LOOP.log"), "utf8");
 assert.match(logLoop, /STEERING[\s\S]*CONSTRAINED[\s\S]*TRIP/, "Sequenza di avvisi nel log, in ordine");
 
-// 13. Promozione automatica del task a CONSEGNATO al termine dell'esecutore
+// 13. Promozione consentita da un handover valido del task
 const tasksDir = join(coordDir, "tasks");
 mkdirSync(tasksDir, { recursive: true });
 const taskFile = join(tasksDir, "T-DELIV-adapter.md");
 writeFileSync(taskFile, "# Task T-DELIV\n- **Stato**: IN CORSO\nProprietario: Codex CLI\n");
 
-// Test funzione diretta
+const handoverDir = join(coordDir, "handover");
+mkdirSync(handoverDir);
+function handover(taskId) {
+  return JSON.stringify({
+    schema_version: "2.1", task_id: taskId, dispatch_id: "", outcome: "COMPLETO",
+    base_sha: "", head_sha: "", acceptance_criteria: [], checks: [],
+  });
+}
+assert.equal(promuoviTaskAConsegnato(coordDir, "T-DELIV"), false);
+writeFileSync(join(handoverDir, "T-DELIV.md"), handover("T-DELIV"));
 assert.equal(promuoviTaskAConsegnato(coordDir, "T-DELIV"), true, "Deve promuovere task da IN CORSO a CONSEGNATO");
 assert.match(readFileSync(taskFile, "utf8"), /- \*\*Stato\*\*: CONSEGNATO/, "Il file deve contenere Stato: CONSEGNATO");
 assert.equal(promuoviTaskAConsegnato(coordDir, "T-DELIV"), false, "Non deve ri-promuovere un task già CONSEGNATO");
@@ -405,12 +442,211 @@ assert.equal(promuoviTaskAConsegnato(coordDir, "T-DELIV"), false, "Non deve ri-p
 // Test end-to-end con runner execution exitCode 0
 const taskE2E = join(tasksDir, "T-E2EDELIV.md");
 writeFileSync(taskE2E, "# Task T-E2EDELIV\nStato: IN CORSO\nProprietario: Claude Code\n");
-const rDeliv = spawnSync(process.execPath, [runnerScript, "--task", "T-E2EDELIV", "--coord", coordDir, "--cmd", "node -e \"process.exit(0)\""], { cwd: testDir, encoding: "utf8" });
+function eseguiFixture(task, ...opzioni) {
+  return spawnSync(process.execPath, [
+    runnerScript, "--task", task, "--coord", coordDir, ...opzioni, "--", process.execPath, "-e", "process.exit(0)",
+  ], { cwd: testDir, encoding: "utf8", timeout: 20000 });
+}
+const handoverE2E = join(handoverDir, "T-E2EDELIV.md");
+for (const invalido of [null, "{}", handover("T-ALTRO")]) {
+  if (invalido !== null) writeFileSync(handoverE2E, invalido);
+  assert.equal(eseguiFixture("T-E2EDELIV").status, 0);
+  assert.match(readFileSync(taskE2E, "utf8"), /Stato: IN CORSO/);
+}
+assert.match(readFileSync(join(coordDir, "logs", "T-E2EDELIV.log"), "utf8"), /CONSEGNA_INCOMPLETA/);
+writeFileSync(handoverE2E, handover("T-E2EDELIV"));
+const rDeliv = eseguiFixture("T-E2EDELIV");
 assert.equal(rDeliv.status, 0);
 assert.match(readFileSync(taskE2E, "utf8"), /Stato: CONSEGNATO/, "Runner deve promuovere il task a CONSEGNATO");
 const logDeliv = readFileSync(join(coordDir, "logs", "T-E2EDELIV.log"), "utf8");
 assert.match(logDeliv, /Transizione automatica: task T-E2EDELIV -> CONSEGNATO/);
 
-// Pulizia
-rmSync(testDir, { recursive: true, force: true });
+// 14. Gli adapter operano anche con JSONL frammentato e UTF-8 multibyte.
+const fixtures = [
+  ["claude", claude, [
+    { type: "system", subtype: "init", session_id: "session-claude" },
+    { type: "assistant", message: { content: [{ type: "text", text: "già" }, { type: "tool_use", name: "Read", input: { file_path: "a" } }] } },
+    { type: "user", message: { content: [{ type: "tool_result", is_error: true, content: "ko" }] } },
+    { type: "result", result: "fine" },
+  ]],
+  ["codex", codex, [
+    { type: "thread.started", thread_id: "session-codex" },
+    { type: "item.completed", item: { type: "agent_message", text: "già" } },
+    { type: "item.started", item: { type: "command_execution", command: "test" } },
+    { type: "item.completed", item: { type: "command_execution", command: "test", status: "failed", exit_code: 1 } },
+    { type: "turn.completed" },
+  ]],
+  ["agy", agy, [
+    { type: "init", session_id: "session-agy" },
+    { type: "message", role: "assistant", content: "già", delta: true },
+    { type: "tool_use", tool_name: "read_file", parameters: { path: "a" } },
+    { type: "tool_result", status: "error", error: { message: "ko" } },
+    { type: "result", status: "success" },
+  ]],
+];
+
+for (const [provider, adapter, records] of fixtures) {
+  const lines = records.map(record => JSON.stringify(record));
+  const bytes = Buffer.from(lines.join("\r\n"));
+  const events = [];
+  const parser = creaGestoreStream(() => {}, ev => events.push(ev), { parse: adapter.parseEvent });
+  for (const byte of bytes) parser.scrivi(Buffer.of(byte));
+  parser.chiudi();
+  assert.deepEqual(events.map(ev => ev.type), ["session", "text", "tool_call", "tool_result", "done"]);
+  assert.ok(events.every(ev => ev.provider === provider));
+  assert.equal(events[1].text, "già");
+  assert.equal(events[3].isError, true);
+  assert.deepEqual(adapter.parseEvent("{"), []);
+
+  const task = `T-SESSION-${provider}`;
+  const result = spawnSync(process.execPath, [
+    runnerScript, "--task", task, "--coord", coordDir, "--agent", provider, "--profile", "read-only",
+    "--", process.execPath, "-e", `process.stdout.write(${JSON.stringify(lines.join("\n"))});`,
+  ], { cwd: testDir, encoding: "utf8", timeout: 20000 });
+  assert.equal(result.status, 0, result.stderr);
+  const readable = { claude: "Claude", codex: "Codex", agy: "AGY" }[provider];
+  assert.ok(result.stdout.includes(`[${readable}] 💬 già`));
+  const raw = readFileSync(join(coordDir, "logs", `${task}.jsonl`), "utf8");
+  assert.deepEqual(raw.trimEnd().split("\n"), lines);
+  const sessionId = `session-${provider}`;
+  const context = { cwd: realpathSync(testDir), provider, profile: "read-only" };
+  const sessions = JSON.parse(readFileSync(join(coordDir, "state", "sessions.json"), "utf8"));
+  assert.deepEqual(sessions[task], { ...context, sessionId, updatedAt: sessions[task].updatedAt });
+  assert.ok(Number.isFinite(Date.parse(sessions[task].updatedAt)));
+  assert.equal(risolviSessione(coordDir, task, true, context), sessionId);
+  assert.equal(risolviSessione(coordDir, task, sessionId, context), sessionId);
+  assert.throws(() => risolviSessione(coordDir, task, "wrong", context), /sessionId/);
+  assert.throws(() => risolviSessione(coordDir, task, true, { ...context, cwd: wtDir }), /cwd/);
+  assert.throws(() => risolviSessione(coordDir, task, true, { ...context, profile: "workspace-write" }), /profile/);
+  assert.throws(() => risolviSessione(coordDir, task, true, { ...context, provider: "altro" }), /provider/);
+  assert.throws(() => risolviSessione(coordDir, "T-ASSENTE", true, context), /sessione/);
+
+  if (provider === "claude") continue;
+  for (const [event, count, reason] of [[records[2], 4, /chiamate identiche/], [records[3], 3, /errori consecutivi/]]) {
+    const script = `const line = ${JSON.stringify(JSON.stringify(event))}; for (let i = 0; i < ${count}; i++) console.log(line); setInterval(() => {}, 1000);`;
+    const loop = spawnSync(process.execPath, [
+      runnerScript, "--task", `T-LOOP-${provider}`, "--coord", coordDir, "--agent", provider,
+      "--", process.execPath, "-e", script,
+    ], { cwd: testDir, encoding: "utf8", timeout: 20000 });
+    assert.ok(loop.status > 0, loop.stderr);
+    assert.match(loop.stderr, /\[CircuitBreaker\].*STEERING[\s\S]*CONSTRAINED[\s\S]*TRIP/);
+    assert.match(loop.stderr, reason);
+  }
+}
+
+// 15. Permessi predefiniti, opt-in esplicito e argomenti di resume.
+const allowlistPath = claude.assicuraAllowlistClaude(testDir, "workspace-write");
+assert.equal(allowlistPath, join(testDir, ".claude", "settings.local.json"));
+let local = JSON.parse(readFileSync(allowlistPath, "utf8"));
+assert.deepEqual(local.permissions.allow, ["Read(./**)", "Edit(./**)"]);
+local.env = { TEST: "preservato" };
+local.permissions.deny = ["Read(./privato/**)"];
+writeFileSync(allowlistPath, JSON.stringify(local));
+claude.assicuraAllowlistClaude(testDir, "read-only");
+local = JSON.parse(readFileSync(allowlistPath, "utf8"));
+assert.deepEqual(local.permissions.allow, ["Read(./**)"]);
+assert.deepEqual(local.env, { TEST: "preservato" });
+assert.ok(local.permissions.deny.includes("Read(./privato/**)"));
+assert.equal(local.permissions.defaultMode, "plan");
+assert.deepEqual(claude.buildCommand({ profile: "read-only", resumeId: "s" }).args, [
+  "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--resume", "s",
+]);
+for (const adapter of [claude, codex, agy]) {
+  assert.ok(adapter.buildCommand({ directorOverride: "true" }).args.every(arg => !arg.startsWith("--dangerously-")));
+}
+assert.ok(claude.buildCommand({ directorOverride: true }).args.includes("--dangerously-skip-permissions"));
+assert.deepEqual(codex.buildCommand({ prompt: "a\nb", profile: "read-only", resumeId: "s" }), {
+  exe: "codex", args: ["exec", "resume", "s", "--json", "--sandbox", "read-only", "-"], stdinText: "a\nb",
+});
+assert.deepEqual(agy.buildCommand({ prompt: "a\nb", model: "m", resumeId: "s" }).args, [
+  "-p", "a\nb", "--output-format", "stream-json", "-r", "s", "--model", "m",
+]);
+assert.equal(analizzaArgomenti(argv("--resume", "--profile", "read-only")).resume, true);
+assert.equal(analizzaArgomenti(argv("--resume", "s")).resume, "s");
+assert.throws(() => analizzaArgomenti(argv("--profile", "full")), /profile non valido/);
+
+// 16. Formato AGY effettivo: il record DONE conta una sola volta per invocazione.
+const agyInit = { event: "init", conversation_id: "session-agy-docs", init: { cwd: testDir } };
+const agyStep = {
+  event: "step_update",
+  step_update: {
+    step_index: 4, step_type: "tool", state: "DONE", tool_name: "run_command",
+    tool_info: { parameters: { CommandLine: "test" }, error: { message: "ko" } },
+  },
+};
+assert.deepEqual(agy.parseEvent(JSON.stringify(agyInit)), [
+  { provider: "agy", type: "session", sessionId: "session-agy-docs" },
+]);
+assert.deepEqual(agy.parseEvent(JSON.stringify({ ...agyStep, step_update: { ...agyStep.step_update, state: "ACTIVE" } })), []);
+assert.deepEqual(agy.parseEvent(JSON.stringify(agyStep)), [
+  { provider: "agy", type: "tool_call", name: "run_command", input: { CommandLine: "test" } },
+  { provider: "agy", type: "tool_result", name: "run_command", isError: true, detail: "ko" },
+]);
+assert.deepEqual(agy.parseEvent(JSON.stringify({ event: "result", result: { status: "ERROR", error: "ko" } })), [
+  { provider: "agy", type: "error", detail: "ko" },
+]);
+
+// 17. Percorso di lancio nativo e resume con eseguibili di test, senza provider esterni.
+const providerBin = join(testDir, "fixture-bin");
+mkdirSync(providerBin);
+for (const [provider, , records] of fixtures) {
+  const isWindows = process.platform === "win32";
+  const executable = join(providerBin, provider + (isWindows ? ".js" : ""));
+  writeFileSync(executable, `#!/usr/bin/env node
+    const fs = require("node:fs");
+    const args = process.argv.slice(2);
+    const settings = process.env.TASK_ATTIVO.endsWith("claude")
+      ? JSON.parse(fs.readFileSync(".claude/settings.local.json", "utf8")).permissions : null;
+    const input = args[0]?.startsWith("--print=") ? args[0].slice(8) : fs.readFileSync(0, "utf8");
+    process.stdout.write(${JSON.stringify(JSON.stringify(provider === "agy" ? agyInit : records[0]))} + "\\n");
+    process.stdout.write("FIXTURE " + JSON.stringify({ args, input, settings }) + "\\n");
+  `);
+  if (isWindows) writeFileSync(join(providerBin, provider + ".cmd"), `"%_prog%" "%dp0%\\${provider}.js" %*\r\n`);
+  else chmodSync(executable, 0o700);
+
+  const fixtureOptions = {
+    cwd: testDir, encoding: "utf8", timeout: 20000,
+    env: { ...process.env, PATH: providerBin + delimiter + process.env.PATH },
+  };
+  const runnerArgs = [
+    runnerScript, "--task", `T-SESSION-${provider}`, "--coord", coordDir, "--agent", provider,
+    "--prompt-file", promptTestFile,
+  ];
+  const mismatch = spawnSync(process.execPath, [...runnerArgs, "--resume"], fixtureOptions);
+  assert.equal(mismatch.status, 1);
+  assert.match(mismatch.stderr, /profile diverso/);
+  const resumed = spawnSync(process.execPath, [...runnerArgs, "--profile", "read-only", "--resume", `session-${provider}`], fixtureOptions);
+  assert.equal(resumed.status, 0, resumed.stderr);
+  const { args, input, settings } = JSON.parse(resumed.stdout.match(/^FIXTURE (.+)$/m)[1]);
+  assert.equal(input, "testo prompt da file");
+  assert.ok(!args.some(arg => arg.startsWith("--dangerously-")));
+  if (provider === "claude") {
+    assert.deepEqual(args.slice(-2), ["--resume", "session-claude"]);
+    assert.deepEqual(settings.allow, ["Read(./**)"]);
+  } else if (provider === "codex") {
+    assert.deepEqual(args, ["exec", "--json", "--sandbox", "read-only", "resume", "session-codex", "-"]);
+  } else {
+    assert.deepEqual(args.slice(-4), ["--conversation", "session-agy", "--mode", "plan"]);
+    const raw = readFileSync(join(coordDir, "logs", "T-SESSION-agy.jsonl"), "utf8");
+    assert.deepEqual(JSON.parse(raw.trimEnd().split("\n").at(-1)), agyInit);
+  }
+}
+
+// 18. Timeout ricorsivo: il discendente parte e viene fermato insieme al figlio.
+const sopravvissuto = join(testDir, "discendente-sopravvissuto");
+const scriptDiscendente = `console.log("DISCENDENTE PRONTO");
+  setTimeout(() => require("node:fs").writeFileSync(${JSON.stringify(sopravvissuto)}, "vivo"), 1100);`;
+const albero = `require("node:child_process").spawn(process.execPath,
+  ["-e", ${JSON.stringify(scriptDiscendente)}], { stdio: "inherit" });
+  setInterval(() => {}, 1000);`;
+const timeout = spawnSync(process.execPath, [
+  runnerScript, "--coord", coordDir, "--timeout-ms", "600",
+  "--", process.execPath, "-e", albero,
+], { cwd: testDir, encoding: "utf8", timeout: 20000 });
+assert.equal(timeout.status, 124, timeout.stderr);
+assert.match(timeout.stderr, /TIMEOUT/);
+assert.match(timeout.stdout, /DISCENDENTE PRONTO/);
+await new Promise(resolve => setTimeout(resolve, 1150));
+assert.ok(!existsSync(sopravvissuto), "Il discendente deve fermarsi prima di scrivere il marker");
+
 console.log("runner: collaudi superati con successo");

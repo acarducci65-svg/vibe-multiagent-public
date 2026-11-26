@@ -1,8 +1,8 @@
 {
   "name": "vibe-multiagent-mod",
   "displayName": "Vibe Multiagent Mod",
-  "version": "2.0.0",
-  "description": "In-process mechanical guardrails, auto-checkpoint and terminal status band for Claude Code in multi-agent workflows",
+  "version": "3.0.0",
+  "description": "In-process mechanical guardrails (Bash/PowerShell/PreSkillShellCommand), post-execution auto-checkpoint, PreCompact marker, worktree lifecycle tracking and cached terminal status band for Claude Code in multi-agent workflows",
   "author": {
     "name": "Alessandro Carducci"
   },
