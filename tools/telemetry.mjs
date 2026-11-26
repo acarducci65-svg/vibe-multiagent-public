@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join, resolve, isAbsolute, dirname, basename, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validaHandover } from "./validate-handover.mjs";
 
 const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
 
@@ -14,6 +15,28 @@ export function canonicalTaskId(stem) {
   return m ? m[1].toUpperCase() : stem.toUpperCase();
 }
 
+function leggiJsonOpzionale(file) {
+  try {
+    return JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function verificaConsegna(dirCoord, id) {
+  const canonico = canonicalTaskId(id);
+  const dir = join(dirCoord, "handover");
+  for (const ext of ["md", "json"]) {
+    for (const nome of new Set([id, canonico])) {
+      const file = join(dir, `${nome}.${ext}`);
+      if (!existsSync(file)) continue;
+      const contratto = leggiJsonOpzionale(file);
+      return validaHandover(contratto).valido &&
+        [id.toUpperCase(), canonico].includes(contratto.task_id.toUpperCase());
+    }
+  }
+  return undefined;
+}
 
 /**
  * S-3: stato di salute degli hook meccanici (agy-gate, claude-mod) incluso nel battito di telemetria.
@@ -277,16 +300,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           let stato = mMatchStato ? mMatchStato[1].toUpperCase() : (statoRaw ? "SCONOSCIUTO" : "PRONTO");
           if (stato === "COMPLETATO") stato = "INTEGRATO";
 
-          // Fallback resiliente: se nel file risulta ancora IN CORSO ma l'handover formale è presente, deduci CONSEGNATO
-          if (stato === "IN CORSO") {
-            const dirHandover = join(dirCoord, "handover");
-            const cId = canonicalTaskId(id);
-            const haHandoverJson = existsSync(join(dirHandover, `${id}.json`)) || (cId && existsSync(join(dirHandover, `${cId}.json`)));
-            const haHandoverMd = existsSync(join(dirHandover, f)) || existsSync(join(dirHandover, `${id}.md`)) || (cId && existsSync(join(dirHandover, `${cId}.md`)));
-            if (haHandoverJson || haHandoverMd) {
-              stato = "CONSEGNATO";
-            }
-          }
+          const handoverValido = stato === "IN CORSO" ? verificaConsegna(dirCoord, id) : undefined;
+          if (handoverValido) stato = "CONSEGNATO";
           const statoEsteso = statoRaw;
 
           if (stato === "INTEGRATO" || stato === "CHIUSO") completatiCount++;
@@ -319,6 +334,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
             id,
             titolo: mTitolo ? mTitolo[1].trim() : id,
             stato,
+            ...(handoverValido === undefined ? {} : { handoverValido }),
             statoEsteso,
             proprietario,
             revisore,
@@ -581,8 +597,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
 
   // 5. Quota Anthropic se abilitata esplicitamente (opt-in) o in modalità mock
   let quota = { ok: false, source: "disabled", fiveHourPct: null, sevenDayPct: null, resetsAt: null };
-  const quotaOptIn = process.env.VIBE_ANTHROPIC_QUOTA !== "0";
-  if (quotaOptIn) {
+  const quotaOptIn = process.env.VIBE_QUOTA_PROBE === "1" || process.env.VIBE_ANTHROPIC_QUOTA === "1";
+  if (quotaOptIn || process.env.VIBE_MOCK_QUOTA_PAYLOAD) {
     try {
       const scriptQuota = join(__dirname, "quota-anthropic.mjs");
       if (existsSync(scriptQuota)) {
@@ -594,7 +610,7 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
           execFileSync(process.execPath, execArgs, {
             encoding: "utf8",
             timeout: 8000,
-            env: { ...process.env, VIBE_ANTHROPIC_QUOTA: process.env.VIBE_ANTHROPIC_QUOTA || "1" },
+            env: { ...process.env, VIBE_ANTHROPIC_QUOTA: quotaOptIn ? "1" : "0" },
           })
         );
       }
@@ -609,6 +625,8 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
   const mail = verificaPosta(dirCoord, tasks);
   const circuitBreaker = verificaCircuitBreaker(dirCoord);
   const memoryGraph = estraiMemoryGraph(dirCoord, tasks);
+  const registroSessioni = leggiJsonOpzionale(join(dirCoord, "state", "sessions.json"));
+  const registroWorktree = leggiJsonOpzionale(join(dirCoord, "state", "worktrees.json"));
 
   const telemetry = {
     updatedAt: new Date().toISOString(),
@@ -623,6 +641,9 @@ export function raccogliTelemetria(radice = process.cwd(), customCoord = null) {
     mail,
     circuitBreaker,
     memoryGraph,
+    sessions: registroSessioni && typeof registroSessioni === "object" && !Array.isArray(registroSessioni)
+      ? registroSessioni : {},
+    worktrees: Array.isArray(registroWorktree?.worktrees) ? registroWorktree.worktrees : [],
   };
 
   try {
@@ -688,6 +709,8 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import
     } catch {
       const tasksDir = join(dirCoordAssoluta, "tasks");
       if (existsSync(tasksDir)) watch(tasksDir, onChange);
+      const stateDir = join(dirCoordAssoluta, "state");
+      if (existsSync(stateDir)) watch(stateDir, onChange);
       watch(dirCoordAssoluta, onChange);
     }
   }

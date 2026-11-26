@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "vibe-control-room": {
+      "command": "node",
+      "args": ["tools/mcp-control-room.mjs"],
+      "env": {}
+    }
+  }
+}

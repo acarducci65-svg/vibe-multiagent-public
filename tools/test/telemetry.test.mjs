@@ -48,6 +48,8 @@ Riga log 3
 // Esegui telemetria
 const res = raccogliTelemetria(testDir);
 
+assert.deepEqual(res.sessions, {});
+assert.deepEqual(res.worktrees, []);
 assert.ok(res, "Telemetria deve restituire un oggetto");
 assert.ok(res.projectName, "Telemetria deve contenere projectName");
 assert.equal(res.coordDir, ".coord");
@@ -248,12 +250,55 @@ mkdirSync(handoverDir5, { recursive: true });
 writeFileSync(join(coordDir5, "CURRENT_SPRINT.md"), "# Sprint Test Handover\nStato: IN CORSO\n");
 // Task con Stato: IN CORSO nel markdown
 writeFileSync(join(tasksDir5, "T-050-adapter.md"), "# T-050\nStato: IN CORSO\nProprietario: Codex CLI\n");
-// Handover JSON generato dall'esecutore
-writeFileSync(join(handoverDir5, "T-050.json"), JSON.stringify({ schema_version: "2.1", task_id: "T-050", outcome: "COMPLETO" }));
+const contratto = {
+  schema_version: "2.1", task_id: "T-050", dispatch_id: "", outcome: "COMPLETO",
+  base_sha: "", head_sha: "", acceptance_criteria: [], checks: [],
+};
+writeFileSync(join(handoverDir5, "T-050.json"), JSON.stringify(contratto));
+for (const id of ["T-051", "T-052", "T-053", "T-054"]) {
+  writeFileSync(join(tasksDir5, id + ".md"), `# ${id}\nStato: IN CORSO\n`);
+}
+writeFileSync(join(handoverDir5, "T-051.md"), JSON.stringify({ ...contratto, task_id: "T-051" }));
+writeFileSync(join(handoverDir5, "T-052.md"), "{incompleto");
+writeFileSync(join(handoverDir5, "T-052.json"), JSON.stringify({ ...contratto, task_id: "T-052" }));
+writeFileSync(join(handoverDir5, "T-053.md"), JSON.stringify(contratto));
+writeFileSync(join(handoverDir5, "T-054.json"), JSON.stringify({ task_id: "T-054" }));
+
+const registro = join(coordDir5, "state");
+mkdirSync(registro);
+const sessions = { "T-050": { provider: "codex", sessionId: "fixture" } };
+const worktrees = [{ name: "fixture", path: "sandbox", branch: "fixture" }];
+writeFileSync(join(registro, "sessions.json"), JSON.stringify(sessions));
+writeFileSync(join(registro, "worktrees.json"), JSON.stringify({ worktrees }));
 
 const resHandover = raccogliTelemetria(testDir5);
 const t50 = resHandover.tasks.find(t => t.id === "T-050-adapter");
 assert.equal(t50.stato, "CONSEGNATO", "Task con handover JSON presente deve essere dedotto come CONSEGNATO");
+assert.equal(resHandover.tasks.find(t => t.id === "T-051").stato, "CONSEGNATO");
+for (const id of ["T-052", "T-053", "T-054"]) {
+  const task = resHandover.tasks.find(t => t.id === id);
+  assert.equal(task.stato, "IN CORSO", id);
+  assert.equal(task.handoverValido, false, id);
+}
+assert.deepEqual(resHandover.sessions, sessions);
+assert.deepEqual(resHandover.worktrees, worktrees);
+writeFileSync(join(registro, "sessions.json"), "{incompleto");
+writeFileSync(join(registro, "worktrees.json"), '{"worktrees":42}');
+
+const quotaVars = ["VIBE_QUOTA_PROBE", "VIBE_ANTHROPIC_QUOTA", "VIBE_MOCK_QUOTA_PAYLOAD"];
+const quotaEnv = quotaVars.map(key => process.env[key]);
+try {
+  for (const key of quotaVars) delete process.env[key];
+  const senzaProbe = raccogliTelemetria(testDir5);
+  assert.deepEqual(senzaProbe.sessions, {});
+  assert.deepEqual(senzaProbe.worktrees, []);
+  assert.equal(senzaProbe.quota.source, "disabled");
+} finally {
+  for (const [i, key] of quotaVars.entries()) {
+    if (quotaEnv[i] === undefined) delete process.env[key];
+    else process.env[key] = quotaEnv[i];
+  }
+}
 
 rmSync(testDir5, { recursive: true, force: true });
 

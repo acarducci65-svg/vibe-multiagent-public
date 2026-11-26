@@ -23,6 +23,20 @@
 
 ---
 
+## 🚀 What's new in v3.0.0
+
+- **Multi-provider runner with explicit permissions**: `--agent claude|codex|agy` and `--profile read-only|workspace-write`. For Claude the runner writes a scoped allowlist to `.claude/settings.local.json`; `--dangerously-*` flags are gone from ordinary dispatches (bypass only via `--director-override` backed by a signed `DIRECTOR_OVERRIDE` entry in `DECISIONS.md`). Native commands: `claude -p --output-format stream-json --verbose`, `codex exec --json --sandbox <profile> -` (prompt via stdin), `agy -p --output-format stream-json`.
+- **Native cross-provider resume**: `--resume` picks up the session recorded in `.coord/state/sessions.json`, only when provider, cwd and profile match.
+- **CLI preflight** (`tools/preflight.mjs`, also `--json`): minimum versions (`claude >= 2.1.318`, `codex >= 0.171.0`, `agy >= 1.5.16`), credential expiry, `.gitattributes`, `.agent/` vs `.agents/`, `ELECTRON_RUN_AS_NODE`.
+- **Claude Mod v3** (Claude Code `2.1.318+`): gate on `Bash`, `PowerShell` and `PreSkillShellCommand`; checkpoint after successful execution; `PreCompact` and `WorktreeCreate` / `WorktreeRemove` hooks (`.coord/state/worktrees.json`).
+- **AGY 2.0 guardrails**: `agy-gate.mjs` and `hooks.json` also cover `write_file` / `edit_file`.
+- **Control Room as an MCP App**: `mcp.json` registers the `vibe-control-room` STDIO server (`tools/mcp-control-room.mjs`, zero dependencies) with the `ui://vibe-multiagent/control-room.html` resource and the `open_control_room` (Antigravity `aux_pane` / global entrypoints) and `get_fleet_state` tools. The dashboard adds a **Resume Sessions & Active Worktrees** panel.
+- **Models**: Gemini 4 (`Neon`, `Hydrogen`, `Carbon`, `Orchestrator`, verify with `agy models`), Codex `gpt-6.2-sol`, Claude Code `2.1.318+`.
+- **Global cross-tool discovery**: `~/.agents/skills/vibe-multiagent` is picked up by Claude Code, Codex and AGY. `.agents/` (plural) is the canonical convention.
+- **12-module** deterministic, 100% offline test suite (`npm test`).
+
+---
+
 ## 🎯 Key Objectives
 
 1. **Multi-Environment Architecture**: Seamlessly operate inside **VS Code**, inside **Google Antigravity IDE**, or across **Independent Terminals**.
@@ -285,7 +299,7 @@ This protocol directly incorporates empirical lessons learned from complex multi
    - **Sandbox & Vitest**: Codex sandbox lacks network access (`npm install` is disabled) and restricts child processes. To execute Vitest cleanly without `spawn EPERM`, use `npx vitest run --configLoader runner <file>`.
 3. **AGY CLI Robustness**:
    - **Dynamic Shell Command Limits**: Exact character matching in `command(...)` makes pre-authorizing shell commands difficult due to formatting variations (slashes, stdout redirection). Prioritize headless AGY CLI for tasks with static input files already on disk (`read_file`) or pre-approved deterministic commands.
-   - **Real Model Names (`agy models`)**: Always query supported models with `agy models` (e.g. `gemini-3.1-pro-high`, `gemini-3.8-flash-*`) before forcing `--model`.
+   - **Real Model Names (`agy models`)**: Always query supported models with `agy models` (Gemini 4 family: `Neon`, `Hydrogen`, `Carbon`, `Orchestrator`) before forcing `--model`.
    - **Out-of-Scope Command Guardrail**: Explicitly forbid running full repository test suites or heavy unrelated commands inside task prompts to prevent timeouts.
    - **Mandatory Handover**: Mandate that writing the handover report is the final tool call before ending the session.
    - **Diagnosis via Transcript**: If an execution stalls with `"jetski: no output produced"`, inspecting `transcript.jsonl` under `PLANNER_RESPONSE` pinpointed the blocked command within 60 seconds.
@@ -374,16 +388,17 @@ vibe-multiagent/
 │       └── ci.yml                # Cross-platform CI pipeline (Ubuntu, Windows, macOS)
 ├── .gitattributes                # Cross-platform LF line-ending normalization
 ├── .gitignore                    # Git ignore rules for telemetry and temp files
-├── package.json                  # Package definition (v2.1.0) and npm test scripts
-├── plugin.json                   # Antigravity IDE plugin manifest (v2.1.0)
+├── package.json                  # Package definition (v3.0.0) and npm test scripts
+├── plugin.json                   # Antigravity IDE plugin manifest (v3.0.0)
+├── mcp.json                      # vibe-control-room MCP App server registration (v3.0)
 ├── LICENSE                       # MIT License (Alessandro Carducci)
 ├── SECURITY.md                   # Security policy and quota transparency disclosures
 ├── CONTRIBUTING.md               # External contributor workflow and standards
 ├── CODE_OF_CONDUCT.md            # Contributor Covenant v2.1 code of conduct
-├── README.md                     # Comprehensive Italian documentation (v2.1.0)
-├── README.en.md                  # Comprehensive English documentation (v2.1.0)
-├── SKILL.md                      # Primary entry point for Claude Code (v2.1)
-├── setup_skill.md                # Full 12-question interview & setup protocol (v2.1)
+├── README.md                     # Comprehensive Italian documentation (v3.0.0)
+├── README.en.md                  # Comprehensive English documentation (v3.0.0)
+├── SKILL.md                      # Primary entry point for Claude Code (v3.0)
+├── setup_skill.md                # Full 12-question interview & setup protocol (v3.0)
 ├── demo/                         # Standalone interactive Control Room sandbox
 │   ├── apri-demo.cmd             # Windows 1-click launcher
 │   ├── dashboard.html            # Offline interactive sandbox dashboard (with Memory Graph SVG)
@@ -410,7 +425,7 @@ vibe-multiagent/
 │       ├── smoketest.ps1.template          # Fast PowerShell smoke test for Windows
 │       └── service-controller.bat.template # Background service lifecycle script
 └── tools/                        # Antigravity hooks, Claude Mod, runner, mailbox & validators
-    ├── claude-mod/               # In-process Claude Mod (Claude Code v2.1.287+)
+    ├── claude-mod/               # In-process Claude Mod (Claude Code 2.1.318+)
     │   ├── .claude-plugin/plugin.json
     │   └── hooks/
     │       ├── hooks.json
@@ -419,7 +434,9 @@ vibe-multiagent/
     ├── agy-checkpoint.mjs        # PostToolUse on-disk fact checkpointing
     ├── agy-quota-banner.mjs      # PreInvocation banner & unyielding role reminder
     ├── quota-anthropic.mjs       # Claude quota sensor (opt-in VIBE_ANTHROPIC_QUOTA=1)
-    ├── runner.mjs                # Process runner with 4-level Circuit Breaker & worktree support
+    ├── runner.mjs                # Multi-provider runner: profiles, resume, 4-level Circuit Breaker, worktrees
+    ├── preflight.mjs             # CLI & workspace preflight (v3.0)
+    ├── mcp-control-room.mjs      # Control Room MCP App server (v3.0)
     ├── mail-router.mjs           # FIPA-lite async messaging router & single-writer concurrency
     ├── validate-handover.mjs     # Deterministic offline validator for HANDOVER v2
     ├── schemas/                  # Formal machine-readable JSON schemas

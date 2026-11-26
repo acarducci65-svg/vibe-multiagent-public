@@ -31,19 +31,23 @@ Dal terminale di Antigravity, con `run_command` impostando:
 - **`BypassSandbox: true` (TASSATIVO su Windows per Claude e Codex)**: la sandbox predefinita di Antigravity isola il processo bloccando l'accesso ai file di configurazione e token utente (`~/.claude/`, `~/.codex/config.toml`) e disattiva la rete. Con `BypassSandbox: true` le CLI accedono alle credenziali dell'utente e alle API esterne regolarmente.
 Poi lo segui con `manage_task`.
 
-### Il metodo standard: Prompt-File + Runner Universale
+### Prima del primo dispatch: preflight
+
+Esegui `node "{{DIR_SKILL}}/tools/preflight.mjs"` (o `--json`): verifica `claude >= 2.1.318`, `codex >= 0.171.0`, `agy >= 1.5.16`, scadenza credenziali Claude, `.gitattributes`, `{{DIR_COORD}}/`, `.agent/` vs `.agents/` e `ELECTRON_RUN_AS_NODE`. Un `MISSING` può essere un PATH stantio: controlla il percorso di installazione prima di escludere l'agente.
+
+### Il metodo standard: Prompt-File + Runner Universale v3.0
 Per prevenire **qualsiasi errore di quoting, apici o caratteri speciali su Windows** e garantire al contempo streaming in tempo reale sulla **Control Room Visiva (`{{DIR_COORD}}/dashboard.html`)**:
 1. Scrivi sempre il prompt dell'agente nel file dedicato: `{{DIR_COORD}}/prompts/<ID>.txt`.
 2. Incanala l'esecuzione con il runner tramite `--prompt-file`:
 
 | Esecutore | Comando standard (con `BypassSandbox: true`) | Quota consumata | Note operative essenziali |
 |---|---|---|---|
-| Claude Code | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent claude` | Anthropic | Streaming real-time eventi NDJSON, deliverable su file e log in `{{DIR_COORD}}/logs/<ID>.log` |
-| Codex CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent codex --model <MODELLO>` | OpenAI | Inoltra prompt su stdin a `codex exec -m ... --dangerously-bypass-approvals-and-sandbox -` senza blocchi interattivi. In Ambiente B su Windows il bypass consente sottoprocessi e test senza blocchi `EPERM` della sandbox standard (DEC-003). |
-| AGY CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent agy` | Google | Pre-approvare i comandi esatti in `settings.json` (modello verificabile con `agy models`) |
+| Claude Code | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent claude --profile workspace-write` | Anthropic | Il runner scrive l'allowlist scoped in `.claude/settings.local.json` e lancia `claude -p --output-format stream-json --verbose --permission-mode acceptEdits` (`plan` con `read-only`). Log in `{{DIR_COORD}}/logs/<ID>.log`. |
+| Codex CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent codex --model gpt-6.2-sol --profile workspace-write` | OpenAI | Prompt via stdin a `codex exec --json --sandbox <profilo> --model ... -` (niente quoting su Windows). A mano: aggiungi `-C <repo>` e, solo fuori da un repository Git, `--skip-git-repo-check`. |
+| AGY CLI | `node "{{DIR_SKILL}}/tools/runner.mjs" --task <ID> --coord "{{DIR_COORD}}" --prompt-file "{{DIR_COORD}}/prompts/<ID>.txt" --agent agy --profile workspace-write` | Google | `agy -p --output-format stream-json`. Pre-approvare i comandi esatti in `settings.json`; modelli Gemini 4 (`Neon`, `Hydrogen`, `Carbon`, `Orchestrator`) solo con i nomi restituiti da `agy models`. |
 | Sotto-agente AGY | `invoke_subagent` con `TypeName: self` | Google | Gestito internamente |
 
-Il runner accetta `--task` (`-t`), `--coord` (`-c`, default `DIR_COORD` o `.coord`), `--prompt-file` (`-f`), `--agent` (`-a`, default `claude`), `--model` (`-m`), `--worktree` (`-w`) e `--dispatch-id` (`-d`); supporta anche `--cmd` o il comando dopo `--`. Il worktree imposta la cartella del processo figlio ed è registrato nel log; il dispatch ID è registrato nel log e passato al figlio come `DISPATCH_ID`. Il prompt file e la cartella di coordinamento relativi sono risolti dalla cartella di avvio del runner.
+Il runner accetta `--task` (`-t`), `--coord` (`-c`, default `DIR_COORD` o `.coord`), `--prompt-file` (`-f`), `--agent` (`-a`, default `claude`), `--model` (`-m`), `--worktree` (`-w`), `--dispatch-id` (`-d`), `--profile read-only|workspace-write` (default `workspace-write`), `--resume [SESSION_ID]`, `--timeout-ms <MS>` e `--director-override`; supporta anche `--cmd` o il comando dopo `--`. Il worktree imposta la cartella del processo figlio ed è registrato nel log; il dispatch ID è registrato nel log e passato al figlio come `DISPATCH_ID`. Il prompt file e la cartella di coordinamento relativi sono risolti dalla cartella di avvio del runner.
 
 Il circuit breaker passa da `healthy` a `steering` al primo errore o alla prima ripetizione di una chiamata identica, a `constrained` al secondo errore o alla seconda ripetizione e a `stopped` al terzo errore o alla terza ripetizione: per le chiamate identiche significa arresto alla quarta chiamata (DEC-002). Un risultato positivo ripristina `healthy` da `steering` o `constrained`; `stopped` è terminale. Gli eventi del breaker sono ricavati dallo stream NDJSON Claude.
 
@@ -51,7 +55,9 @@ Il circuit breaker passa da `healthy` a `steering` al primo errore o alla prima 
 
 Il sistema ti notifica automaticamente al completamento di ogni task in background. Per verificare lo stato intermedio, usa `manage_task` con `status`. Per interrompere un esecutore bloccato, usa `manage_task` con `kill`.
 
-Non usare `--dangerously-skip-permissions`. Il default Codex del runner usa `--dangerously-bypass-approvals-and-sandbox` per la motivazione Windows indicata sopra (DEC-003).
+**Permessi (v3.0)**: nessun flag `--dangerously-*` nei dispatch ordinari, per nessun esecutore. Scegli il profilo: `read-only` per analisi e review, `workspace-write` per l'implementazione. `--director-override` (bypass totale) è ammesso **solo** se in `{{DIR_COORD}}/DECISIONS.md` esiste una voce `DIRECTOR_OVERRIDE` firmata dal Direttore (nome, data, task, motivo, durata) per quel task; citala nel prompt. Questa regola sostituisce il bypass Codex predefinito delle versioni precedenti.
+
+**Resume nativo**: il runner registra la sessione di ogni esecutore in `{{DIR_COORD}}/state/sessions.json`. Per riprendere un task interrotto (quota, timeout, `PreCompact`) rilancia con `--resume`: il runner rifiuta il resume se provider, cwd o profilo non coincidono. Riprendere una sessione è preferibile a rilanciarla da zero (Regola Anti-Thrashing).
 
 Un task ha **un solo** proprietario. Non lanciare due esecutori sullo stesso insieme di file riservati, neanche in momenti diversi, finché il primo non ha consegnato. Se devono lavorare davvero in parallelo, servono worktree distinti: la sede è condivisa e il working tree è uno solo.
 
@@ -63,7 +69,10 @@ Tutto il lavoro della flotta è visibile in tempo reale aprendo `{{DIR_COORD}}/d
 - **Sprint Kanban**: panoramica a schede dello stato dei task (`PRONTO`, `IN CORSO`, `CONSEGNATO`, `INTEGRATO`, `SOSPESO`) con indicazione di `Sto per:` e `Fatti:`.
 - **Quota & Fornitori**: indicatore visivo delle quote residue con semafori di avviso.
 
+- **Sessioni Resume & Worktree** (v3.0): sessioni registrate in `{{DIR_COORD}}/state/sessions.json` e worktree attivi in `{{DIR_COORD}}/state/worktrees.json`.
+
 Come consultare la dashboard:
+- Come **MCP App** (v3.0): registra `mcp.json` della skill (server `vibe-control-room`) e invoca il tool `open_control_room`: in Antigravity si apre nell'`aux_pane` o come vista globale. `get_fleet_state` restituisce lo stato aggiornato al modello e all'app.
 - In **VS Code**: apri con estensione *Live Server* oppure tramite comando `Simple Browser: Show` puntando a `{{DIR_COORD}}/dashboard.html`.
 - In **Antigravity IDE**: apri la preview interna o qualsiasi browser locale. Se aperto via `file://`, la dashboard supporta anche il drag & drop diretto di `{{DIR_COORD}}/state.json`.
 
@@ -120,12 +129,12 @@ Non fidarti del solo codice di uscita (lezione da casi reali sul campo):
 
 ### Specifiche per Codex CLI
 - **Modalità headless esplicita**: dichiara sempre nel prompt che l'agente è in modalità non-interattiva per evitare che si fermi a chiedere "Posso procedere?".
-- **Modello esplicito (`-m`)**: specifica sempre `-m <modello>` (es. `-m gpt-6-astra` o `-m gpt-5.6-terra`) per evitare che modifiche silenti a `~/.codex/config.toml` blocchino l'avvio. Riprova i modelli più recenti dopo gli aggiornamenti del CLI (`codex --version`).
+- **Modello esplicito (`--model`)**: specifica sempre il modello (default consigliato `gpt-6.2-sol`) per evitare che modifiche silenti a `~/.codex/config.toml` blocchino l'avvio. Riprova i modelli più recenti dopo gli aggiornamenti del CLI (`codex --version`).
 - **Vitest in sandbox**: se il task include test con Vitest, indicare di eseguire `npx vitest run --configLoader runner <file>` per evitare blocchi `spawn EPERM`.
 - **Nessun `npm install` o migrazione complessa**: la sandbox di Codex non ha accesso di rete per installare nuovi pacchetti npm né permessi per `drizzle-kit generate` / `esbuild`.
 
 ### Specifiche per AGY CLI
-- **Nomi modello reali (`agy models`)**: se devi forzare `--model`, non usare nomi teorici da fonti terze: verifica l'elenco esatto supportato dal client locale eseguendo `agy models` (es. `gemini-3.1-pro-high`, `gemini-3.8-flash-*`).
+- **Nomi modello reali (`agy models`)**: se devi forzare `--model`, non usare nomi teorici da fonti terze: verifica l'elenco esatto supportato dal client locale eseguendo `agy models` (famiglia Gemini 4: `Neon`, `Hydrogen`, `Carbon` e il profilo `Orchestrator`; usa il nome esatto restituito).
 - **Limite strutturale su comandi shell dinamici**: non delegare ad AGY CLI headless compiti che richiedono tool o comandi shell dinamici a formattazione libera (slash vs backslash, stdout vs file, flag opzionali). Poiché `command(...)` esige corrispondenza esatta, le varianti sintattiche generano un attrito di permessi superiore al valore del task. Usa AGY CLI headless solo per compiti i cui input sono file statici già sul disco (`read_file`) o comandi di verifica fissi e pre-approvati.
 - **Divieto di azioni fuori perimetro**: ribadisci nel prompt di non eseguire comandi shell o test non richiesti dal task (es. lanciare l'intera test suite `vitest` su un task di sola ricerca/documentazione causa timeout ingiustificati).
 - **Corrispondenza esatta dei permessi**: `command(...)` in `settings.json` richiede la corrispondenza esatta carattere per carattere del comando (nessuna regex o wildcard di coda parziale). Pre-approva i comandi delle verifiche del task prima del dispatch.
@@ -137,6 +146,7 @@ Non fidarti del solo codice di uscita (lezione da casi reali sul campo):
 ### Specifiche per Claude Code CLI
 - **Deliverable tassativamente su disco (File-First)**: non chiedere mai a Claude Code headless di "rispondere in markdown a video" o di emettere il report finale solo su stdout. `claude -p` emette il payload su stdout solo al termine dell'intera sequenza di tool call. Se la sessione viene interrotta o scade, l'intero lavoro di esplorazione va perso e i token sono bruciati a vuoto. Imponi sempre nel prompt di scrivere i risultati direttamente nei file riservati o in `{{DIR_COORD}}/handover/<ID>.md`.
 - **Timeout e tempi di esecuzione realistici**: un task di analisi complessa, RAG o refactoring richiede fisiologicamente 15-30 tool call (Bash, lettura, editing) e necessita di 3-8 minuti. È vietato interrompere prematuramente la sessione (`kill` a 90-120 secondi) se il processo è attivo e sta lavorando.
+- **Versione minima e presidi**: Claude Code `2.1.318+`. Il Claude Mod v3 blocca le azioni pericolose anche via `PowerShell` e `PreSkillShellCommand`, registra il checkpoint solo dopo un tool riuscito e, su `PreCompact`, salva un marker nel *Punto di ripresa* del task `IN CORSO`.
 - **Incanalamento nel Runner e ispezione live**: lancia sempre Claude tramite `runner.mjs`. Questo genera `{{DIR_COORD}}/logs/<ID>.log` in tempo reale: prima di qualsiasi decisione di `kill`, ispeziona le ultime righe del file di log per verificare se Claude sta procedendo.
 
 ### Regola Anti-Thrashing (Divieto di Retry a Raffica)

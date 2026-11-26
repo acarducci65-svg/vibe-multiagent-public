@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Router di posta asincrona FIPA-lite per Vibe Multiagent (v2.1)
+ * Router di posta asincrona FIPA-lite per Vibe Multiagent (v3.0.0)
  * Pattern ispirato a Munder Difflin / Actor Model:
  * - Single-Writer-Per-File: ogni agente scrive solo nella propria cartella outbox/
  * - Atomic write: scrittura su file temporaneo (.tmp-<rand>) + rename
@@ -15,11 +15,17 @@ import {
   writeFileSync,
   renameSync,
   readdirSync,
-  unlinkSync
+  unlinkSync,
+  statSync,
+  rmdirSync
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
+
+const ATTESA_RENAME = new Int32Array(new SharedArrayBuffer(4));
+const TTL_LOCK_DEFAULT_MS = 5 * 60_000;
+const ERRORI_CONTESA = new Set(["EEXIST", "ENOTEMPTY", "EPERM", "EACCES"]);
 
 export const ATTI_PERMESSI = new Set([
   "request",   // Richiesta di esecuzione o informazione
@@ -45,14 +51,13 @@ export function atomicWriteJson(filePath, data, maxRetries = 5) {
       renameSync(tmpPath, filePath);
       return true;
     } catch (err) {
-      if (i === maxRetries - 1) {
+      if (i === maxRetries - 1 || !["EPERM", "EACCES", "EBUSY"].includes(err.code)) {
         try { unlinkSync(tmpPath); } catch {}
         throw err;
       }
-      // Attesa breve per sbloccare eventuali lock transitori di filesystem
-      const end = Date.now() + delay;
-      while (Date.now() < end) {}
-      delay *= 2;
+      // Sonno nativo durante il backoff per conservare l'API sincrona.
+      Atomics.wait(ATTESA_RENAME, 0, 0, delay);
+      delay = Math.min(delay * 2, 200);
     }
   }
   return false;
@@ -105,13 +110,100 @@ export function inviaMessaggio({
   return payload;
 }
 
+function rimuoviProprietario(lock, owner) {
+  if (owner) {
+    try {
+      unlinkSync(join(lock, owner));
+    } catch (err) {
+      if (err.code !== "ENOENT") throw err;
+    }
+  }
+  try {
+    rmdirSync(lock);
+  } catch (err) {
+    if (err.code !== "ENOENT" && !(ERRORI_CONTESA.has(err.code) && existsSync(lock))) throw err;
+  }
+}
+
+function processoAttivo(pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0 || pid > 0x7fffffff) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    if (err.code === "ESRCH") return false;
+    if (err.code === "EPERM" || err.code === "EACCES") return true;
+    throw err;
+  }
+}
+
+function recuperaLock(lock, ttlMs) {
+  try {
+    const entries = readdirSync(lock);
+    if (entries.length === 0) {
+      rimuoviProprietario(lock);
+      return true;
+    }
+    const [owner] = entries;
+    if (entries.length !== 1 || !/^owner-[\w-]+\.json$/.test(owner)) return false;
+    const file = join(lock, owner);
+    if (Date.now() - statSync(file).mtimeMs < ttlMs) return false;
+    const raw = readFileSync(file, "utf8");
+    let pid;
+    try { pid = JSON.parse(raw)?.pid; } catch {}
+    if (processoAttivo(pid)) return false;
+    rimuoviProprietario(lock, owner);
+    return true;
+  } catch (err) {
+    if (err.code === "ENOENT") return true;
+    throw err;
+  }
+}
+
+function acquisisciLock(dirCoord, ttlMs) {
+  const mailbox = join(dirCoord, "mailbox");
+  mkdirSync(mailbox, { recursive: true });
+  const lock = join(mailbox, ".router.lock");
+  const token = `${process.pid}-${randomBytes(12).toString("hex")}`;
+  const staging = `${lock}-${token}`;
+  const owner = `owner-${token}.json`;
+  mkdirSync(staging);
+  try {
+    writeFileSync(join(staging, owner), JSON.stringify({ pid: process.pid }), { flag: "wx" });
+    for (let tentativo = 0; tentativo < 2; tentativo++) {
+      try {
+        // Il lock pubblicato contiene già il proprietario. Il recupero può
+        // eliminare solo il vecchio file e una directory vuota.
+        renameSync(staging, lock);
+        return () => rimuoviProprietario(lock, owner);
+      } catch (err) {
+        if (!ERRORI_CONTESA.has(err.code)) throw err;
+        if (tentativo === 0 && recuperaLock(lock, ttlMs)) continue;
+        return null;
+      }
+    }
+  } finally {
+    if (existsSync(staging)) rimuoviProprietario(staging, owner);
+  }
+}
+
 /**
  * Smista tutti i messaggi presenti nelle outbox verso le inbox dei destinatari
  */
-export function smistaPosta(dirCoord) {
+export function smistaPosta(dirCoord, { lockTtlMs = Number(process.env.VIBE_MAIL_ROUTER_LOCK_TTL_MS || TTL_LOCK_DEFAULT_MS) } = {}) {
   const dirAgents = join(dirCoord, "mail", "agents");
   if (!existsSync(dirAgents)) return { consegnati: 0, errori: [] };
+  if (!Number.isFinite(lockTtlMs) || lockTtlMs < 0) throw new RangeError("TTL del lock router non valido");
+  const rilascia = acquisisciLock(dirCoord, lockTtlMs);
+  if (!rilascia) return { consegnati: 0, errori: [], lockOccupato: true };
+  try {
+    return smistaOutbox(dirAgents);
+  } finally {
+    rilascia();
+  }
+}
 
+function smistaOutbox(dirAgents) {
   const report = { consegnati: 0, errori: [] };
   const agents = readdirSync(dirAgents);
 

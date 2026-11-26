@@ -622,6 +622,12 @@
     .graph-node.decision rect { fill: #4c1d45; stroke: #f0abfc; }
     .graph-node:focus rect, .graph-node.selected rect { stroke: #fbbf24; stroke-width: 4; }
     .graph-node text { fill: #f8fafc; font-size: 12px; } .graph-edge { stroke: #94a3b8; stroke-width: 2; }
+    .sw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .sw-grid h4 { margin: 0 0 8px; font-size: 0.85rem; color: var(--text-muted, #94a3b8); text-transform: uppercase; letter-spacing: 0.04em; }
+    .sw-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem; }
+    .sw-table th, .sw-table td { padding: 6px 8px; border-bottom: 1px solid #334155; vertical-align: top; }
+    .sw-table code { font-size: 0.75rem; word-break: break-all; }
+    .sw-empty { color: var(--text-muted, #94a3b8); font-size: 0.8rem; }
   </style>
 </head>
 <body>
@@ -700,6 +706,13 @@
   <div class="v21-panel" id="circuitBreaker"><span id="breakerState" class="breaker-badge breaker-unknown">Non disponibile</span> <span id="breakerCounts"></span></div>
   <div class="section-title">Mailbox FIPA-lite</div>
   <div class="v21-panel" id="mailbox"><p>Non letti: <strong id="mailUnread">0</strong></p><div id="mailMessages"></div></div>
+  <div class="section-title">&#128260; Sessioni Resume &amp; Worktree attivi</div>
+  <div class="v21-panel" id="sessionsWorktrees">
+    <div class="sw-grid">
+      <div><h4>Sessioni resume (<span id="sessionsCount">0</span>)</h4><div id="sessionsList" class="sw-empty">Nessuna sessione registrata.</div></div>
+      <div><h4>Worktree attivi (<span id="worktreesCount">0</span>)</h4><div id="worktreesList" class="sw-empty">Nessun worktree attivo.</div></div>
+    </div>
+  </div>
   <div class="section-title">Memory Graph &mdash; Task DAG &amp; Decisions</div>
   <div class="v21-panel" id="memoryGraph"><div class="graph-scroll" id="graphContainer"></div><p id="graphDetail" aria-live="polite">Seleziona un nodo per i dettagli.</p></div>
   <div class="section-title">&#129302; Flotta Agenti Collaborativi</div>
@@ -790,7 +803,7 @@
       'CHIUSO': 'badge-CHIUSO'
     };
 
-    // Callback per state.js (eseguito se caricato sincronicamente via <script src="state.js">)
+    // Callback per state.js (eseguito se state.js viene caricato sincronicamente dal tag script nel head)
     window.__onVibeStateLoaded = function(data) {
       if (data) {
         document.getElementById('corsBanner').style.display = 'none';
@@ -853,6 +866,7 @@
       document.head.appendChild(s);
     }
 
+    // <vibe-helpers> (blocco puro, estratto ed eseguito da tools/test/dashboard.test.mjs)
     function escapeHtml(str) {
       if (str == null) return '';
       return String(str)
@@ -861,6 +875,58 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    const SW_MAX_RIGHE = 20;
+    const isOggetto = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+    // Sessioni resume: accetta mappa { taskId: {...} } (.coord/state/sessions.json), { sessions: ... } o array.
+    function normalizzaSessioni(raw) {
+      const src = isOggetto(raw) && (Array.isArray(raw.sessions) || isOggetto(raw.sessions)) ? raw.sessions : raw;
+      if (Array.isArray(src)) return src.filter(isOggetto);
+      if (!isOggetto(src)) return [];
+      return Object.keys(src).filter(k => isOggetto(src[k])).map(k => Object.assign({}, src[k], { taskId: src[k].taskId || k }));
+    }
+
+    // Worktree: accetta array, { worktrees: [] } (.coord/state/worktrees.json) o mappa per nome.
+    function normalizzaWorktrees(raw) {
+      const src = isOggetto(raw) && Array.isArray(raw.worktrees) ? raw.worktrees : raw;
+      if (Array.isArray(src)) return src.filter(isOggetto);
+      if (!isOggetto(src)) return [];
+      return Object.keys(src).filter(k => isOggetto(src[k])).map(k => Object.assign({}, src[k], { name: src[k].name || k }));
+    }
+
+    function abbrevia(v, max) {
+      const s = v == null ? '' : String(v);
+      return s.length > max ? s.slice(0, max) + '…' : s;
+    }
+
+    function htmlSessioni(sessioni) {
+      if (!sessioni.length) return 'Nessuna sessione registrata.';
+      return '<table class="sw-table"><thead><tr><th>Task</th><th>Provider</th><th>Profilo</th><th>Sessione</th><th>Aggiornata</th></tr></thead><tbody>' +
+        sessioni.slice(0, SW_MAX_RIGHE).map(s => `<tr><td>${escapeHtml(s.taskId)}</td><td>${escapeHtml(s.provider || '-')}</td><td>${escapeHtml(s.profile || '-')}</td><td><code title="${escapeHtml(s.sessionId)}">${escapeHtml(abbrevia(s.sessionId, 12))}</code></td><td>${escapeHtml(s.updatedAt || '-')}</td></tr>`).join('') +
+        '</tbody></table>';
+    }
+
+    function htmlWorktrees(worktrees) {
+      if (!worktrees.length) return 'Nessun worktree attivo.';
+      return '<table class="sw-table"><thead><tr><th>Nome</th><th>Branch</th><th>Percorso</th><th>Creato</th></tr></thead><tbody>' +
+        worktrees.slice(0, SW_MAX_RIGHE).map(w => `<tr><td>${escapeHtml(w.name || '-')}</td><td>${escapeHtml(w.branch || '-')}</td><td><code>${escapeHtml(w.path || '-')}</code></td><td>${escapeHtml(w.createdAt || '-')}</td></tr>`).join('') +
+        '</tbody></table>';
+    }
+    // </vibe-helpers>
+
+    function renderSessioniWorktree(data) {
+      const sessioni = normalizzaSessioni(data?.sessions ?? data?.state?.sessions);
+      const worktrees = normalizzaWorktrees(data?.worktrees ?? data?.state?.worktrees);
+      document.getElementById('sessionsCount').textContent = sessioni.length;
+      document.getElementById('worktreesCount').textContent = worktrees.length;
+      const elS = document.getElementById('sessionsList');
+      const elW = document.getElementById('worktreesList');
+      elS.className = sessioni.length ? '' : 'sw-empty';
+      elW.className = worktrees.length ? '' : 'sw-empty';
+      elS.innerHTML = htmlSessioni(sessioni);
+      elW.innerHTML = htmlWorktrees(worktrees);
     }
 
     function aggiornaUI(data) {
@@ -913,6 +979,7 @@
 
       renderBreaker(data.circuitBreaker);
       renderMail(data.mail || data.posta);
+      renderSessioniWorktree(data);
       renderMemoryGraph(data.memoryGraph);
 
       // 2. Quota & Fornitori
@@ -1297,7 +1364,54 @@
       }
     });
 
-    document.getElementById('btnManualReload').addEventListener('click', caricaStato);
+    // Modalità MCP App (window.__VIBE_EMBEDDED__ iniettato da tools/mcp-control-room.mjs):
+    // nessun fetch/state.js, aggiornamenti via postMessage JSON-RPC con l'host (SEP-1865).
+    const mcpBridge = { nextId: 1, pending: {}, pronto: false };
+    function mcpInvia(method, params) {
+      const id = mcpBridge.nextId++;
+      window.parent.postMessage({ jsonrpc: '2.0', id, method, params: params || {} }, '*');
+      return new Promise(resolve => { mcpBridge.pending[id] = resolve; });
+    }
+    function mcpApplicaRisultato(result) {
+      const sc = result && result.structuredContent;
+      if (sc && typeof sc === 'object' && !Array.isArray(sc)) aggiornaUI(sc);
+    }
+    function mcpAggiorna() {
+      return mcpInvia('tools/call', { name: 'get_fleet_state', arguments: {} }).then(msg => {
+        if (msg && msg.result) mcpApplicaRisultato(msg.result);
+      });
+    }
+    function avviaBridgeMcp() {
+      document.getElementById('corsBanner').style.display = 'none';
+      window.addEventListener('message', e => {
+        if (e.source !== window.parent) return;
+        const msg = e.data;
+        if (!msg || typeof msg !== 'object' || msg.jsonrpc !== '2.0') return;
+        if (msg.id != null && mcpBridge.pending[msg.id]) {
+          const done = mcpBridge.pending[msg.id];
+          delete mcpBridge.pending[msg.id];
+          done(msg);
+          return;
+        }
+        if (msg.method === 'ui/notifications/tool-result') mcpApplicaRisultato(msg.params);
+      });
+      mcpInvia('ui/initialize', {
+        protocolVersion: '2025-11-21',
+        appInfo: { name: 'vibe-control-room', version: '3.0.0' },
+        appCapabilities: {}
+      }).then(msg => {
+        if (!msg || msg.error) return;
+        mcpBridge.pronto = true;
+        window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized', params: {} }, '*');
+        setInterval(mcpAggiorna, 10000);
+      });
+    }
+    function ricaricaManuale() {
+      if (window.__VIBE_EMBEDDED__) { if (mcpBridge.pronto) mcpAggiorna(); return; }
+      caricaStato();
+    }
+
+    document.getElementById('btnManualReload').addEventListener('click', ricaricaManuale);
 
     const btnSelect = document.getElementById('btnSelectFile');
     const inputSelect = document.getElementById('jsonFileInput');
@@ -1331,9 +1445,13 @@
       aggiornaUI(window.__VIBE_STATE__);
     }
 
-    // Avvio e Polling ogni 1.5s
-    caricaStato();
-    setInterval(caricaStato, 1500);
+    // Avvio: MCP App (bridge postMessage) oppure polling locale ogni 1.5s
+    if (window.__VIBE_EMBEDDED__) {
+      avviaBridgeMcp();
+    } else {
+      caricaStato();
+      setInterval(caricaStato, 1500);
+    }
   </script>
 </body>
 </html>
