@@ -1,8 +1,68 @@
+import { randomUUID } from "node:crypto";
+import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
+const DEFAULT_GATE_SCRIPT = resolve(__dirname, "..", "codex-gate.mjs");
+
+export function mappaSandboxCodex(profile = "workspace-write") {
+  if (profile === "read-only") return "read-only";
+  if (profile === "host-tools") return "danger-full-access";
+  return "workspace-write";
+}
+
+export function assicuraGuardrailCodex(cwd, gateScript = DEFAULT_GATE_SCRIPT) {
+  const dir = join(cwd, ".codex");
+  const path = join(dir, "hooks.json");
+  for (const target of [dir, path]) {
+    if (lstatSync(target, { throwIfNoEntry: false })?.isSymbolicLink()) {
+      throw new Error(`Percorso Codex non locale: ${target}`);
+    }
+  }
+  let raw;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+  const config = raw === undefined ? {} : JSON.parse(raw);
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    throw new Error(`File hooks.json Codex non valido: ${path}`);
+  }
+  const hooks = config.hooks && typeof config.hooks === "object" && !Array.isArray(config.hooks) ? config.hooks : {};
+  const preList = Array.isArray(hooks.PreToolUse) ? hooks.PreToolUse : [];
+  const gateCmd = `node "${String(gateScript).replace(/\\/g, "/")}"`;
+  const giaPresente = preList.some(entry =>
+    Array.isArray(entry?.hooks) && entry.hooks.some(h => typeof h?.command === "string" && h.command.includes("codex-gate.mjs"))
+  );
+  if (!giaPresente) {
+    preList.push({
+      matcher: "*",
+      hooks: [{ type: "command", command: gateCmd, timeout: 10 }],
+    });
+  }
+  config.hooks = { ...hooks, PreToolUse: preList };
+  const updated = JSON.stringify(config, null, 2) + "\n";
+  if (raw !== updated) {
+    mkdirSync(dir, { recursive: true });
+    const temp = `${path}.${randomUUID()}.tmp`;
+    try {
+      writeFileSync(temp, updated, { flag: "wx", mode: 0o600 });
+      renameSync(temp, path);
+    } finally {
+      rmSync(temp, { force: true });
+    }
+  }
+  return path;
+}
+
 export function buildCommand({ prompt = "", profile = "workspace-write", model, resumeId, nativeCli = false }) {
   const args = ["exec"];
+  const sandbox = mappaSandboxCodex(profile);
   // La CLI installata legge --sandbox dal comando exec, prima del sottocomando resume.
   if (resumeId && !nativeCli) args.push("resume", resumeId);
-  args.push("--json", "--sandbox", profile);
+  args.push("--json", "--sandbox", sandbox);
   if (model) args.push("--model", model);
   if (resumeId && nativeCli) args.push("resume", resumeId);
   args.push("-");

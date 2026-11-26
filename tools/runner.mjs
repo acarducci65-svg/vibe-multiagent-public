@@ -12,12 +12,13 @@ import { constants, tmpdir } from "node:os";
 import { StringDecoder } from "node:string_decoder";
 import { raccogliTelemetria, canonicalTaskId } from "./telemetry.mjs";
 import { validaHandover } from "./validate-handover.mjs";
+import { valutaComandoCodex } from "./codex-gate.mjs";
 import * as claude from "./adapters/claude.mjs";
 import * as codex from "./adapters/codex.mjs";
 import * as agy from "./adapters/agy.mjs";
 
 const ADATTATORI = Object.freeze({ claude, codex, agy });
-const PROFILI = new Set(["read-only", "workspace-write"]);
+const PROFILI = new Set(["read-only", "workspace-write", "host-tools"]);
 
 /**
  * Circuit Breaker a 4 livelli (ispirato a Munder Difflin breaker.ts):
@@ -757,6 +758,9 @@ export function eseguiRunner(argv = process.argv) {
     } else {
       const allowlistPath = agent === "claude" && !directorOverride
         ? claude.assicuraAllowlistClaude(cwd, profile) : undefined;
+      if (agent === "codex" && profile === "host-tools" && !directorOverride) {
+        codex.assicuraGuardrailCodex(cwd);
+      }
       command = ADATTATORI[agent].buildCommand({
         prompt, profile, model, cwd, resumeId, allowlistPath, directorOverride, nativeCli: true,
       });
@@ -816,7 +820,19 @@ export function eseguiRunner(argv = process.argv) {
   });
 
   function onEvent(evento) {
-    if (evento.type === "tool_call") breaker.registraToolCall(evento.name ?? "tool", evento.input);
+    if (evento.type === "tool_call") {
+      if (!argomenti.directorOverride) {
+        const cmdText = evento.input?.command ?? evento.input?.cmd ?? evento.input?.CommandLine;
+        if (typeof cmdText === "string" && cmdText.trim()) {
+          const check = valutaComandoCodex(cmdText, cwd);
+          if (!check.allowed) {
+            breaker.trip(check.reason);
+            return;
+          }
+        }
+      }
+      breaker.registraToolCall(evento.name ?? "tool", evento.input);
+    }
     if (evento.type === "tool_result") breaker.registraToolResult(evento.isError, descrivi(evento.detail));
     if (evento.type === "session" && typeof evento.sessionId === "string" && evento.sessionId !== sessionId) {
       try {

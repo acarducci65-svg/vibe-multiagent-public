@@ -61,7 +61,7 @@ export function buildCommand({ prompt = "", profile = "workspace-write", model, 
 }
 
 export function assicuraAllowlistClaude(cwd, profile) {
-  if (profile !== "read-only" && profile !== "workspace-write") {
+  if (profile !== "read-only" && profile !== "workspace-write" && profile !== "host-tools") {
     throw new Error(`Profilo Claude non valido: ${profile}`);
   }
   const dir = join(cwd, ".claude");
