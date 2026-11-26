@@ -2,6 +2,55 @@ import { randomUUID } from "node:crypto";
 import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+export const ALLOW_READ_ONLY = Object.freeze([
+  "Read(./**)",
+  "Glob",
+  "Grep",
+  "Skill",
+  "WebFetch",
+  "WebSearch",
+]);
+
+export const ALLOW_WORKSPACE_WRITE = Object.freeze([
+  "Read(./**)",
+  "Edit(./**)",
+  "Write(./**)",
+  "Glob",
+  "Grep",
+  "Skill",
+  "WebFetch",
+  "WebSearch",
+  "Bash",
+  "PowerShell",
+]);
+
+export const DENY_GUARDRAILS = Object.freeze([
+  "Bash(git push*)",
+  "Bash(npm publish*)",
+  "Bash(pnpm publish*)",
+  "Bash(yarn publish*)",
+  "Bash(*--dangerously-skip-permissions*)",
+  "Bash(*--dangerously-bypass-approvals*)",
+  "PowerShell(*git push*)",
+  "PowerShell(*--dangerously-skip-permissions*)",
+  "PowerShell(*--dangerously-bypass-approvals*)",
+]);
+
+function mergeUnici(base, extra) {
+  const seen = new Set();
+  const out = [];
+  for (const list of [base, extra]) {
+    if (!Array.isArray(list)) continue;
+    for (const item of list) {
+      if (typeof item === "string" && item.trim() && !seen.has(item)) {
+        seen.add(item);
+        out.push(item);
+      }
+    }
+  }
+  return out;
+}
+
 export function buildCommand({ prompt = "", profile = "workspace-write", model, resumeId, directorOverride }) {
   const args = ["-p", "--output-format", "stream-json", "--verbose"];
   if (directorOverride === true) args.push("--dangerously-skip-permissions");
@@ -37,7 +86,8 @@ export function assicuraAllowlistClaude(cwd, profile) {
   const readOnly = profile === "read-only";
   settings.permissions = {
     ...permissions,
-    allow: readOnly ? ["Read(./**)"] : ["Read(./**)", "Edit(./**)"],
+    allow: readOnly ? [...ALLOW_READ_ONLY] : mergeUnici(ALLOW_WORKSPACE_WRITE, permissions.allow),
+    deny: mergeUnici(permissions.deny, DENY_GUARDRAILS),
     defaultMode: readOnly ? "plan" : "acceptEdits",
   };
 

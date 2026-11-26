@@ -538,13 +538,20 @@ for (const [provider, adapter, records] of fixtures) {
 const allowlistPath = claude.assicuraAllowlistClaude(testDir, "workspace-write");
 assert.equal(allowlistPath, join(testDir, ".claude", "settings.local.json"));
 let local = JSON.parse(readFileSync(allowlistPath, "utf8"));
-assert.deepEqual(local.permissions.allow, ["Read(./**)", "Edit(./**)"]);
+assert.deepEqual(local.permissions.allow, [...claude.ALLOW_WORKSPACE_WRITE]);
+assert.ok(local.permissions.deny.includes("Bash(git push*)"));
 local.env = { TEST: "preservato" };
+local.permissions.allow.push("mcp__custom__tool");
 local.permissions.deny = ["Read(./privato/**)"];
 writeFileSync(allowlistPath, JSON.stringify(local));
+claude.assicuraAllowlistClaude(testDir, "workspace-write");
+local = JSON.parse(readFileSync(allowlistPath, "utf8"));
+assert.ok(local.permissions.allow.includes("mcp__custom__tool"), "Regole custom allow devono essere preservate in workspace-write");
+assert.ok(local.permissions.deny.includes("Read(./privato/**)"));
+assert.ok(local.permissions.deny.includes("Bash(git push*)"));
 claude.assicuraAllowlistClaude(testDir, "read-only");
 local = JSON.parse(readFileSync(allowlistPath, "utf8"));
-assert.deepEqual(local.permissions.allow, ["Read(./**)"]);
+assert.deepEqual(local.permissions.allow, [...claude.ALLOW_READ_ONLY]);
 assert.deepEqual(local.env, { TEST: "preservato" });
 assert.ok(local.permissions.deny.includes("Read(./privato/**)"));
 assert.equal(local.permissions.defaultMode, "plan");
@@ -622,7 +629,7 @@ for (const [provider, , records] of fixtures) {
   assert.ok(!args.some(arg => arg.startsWith("--dangerously-")));
   if (provider === "claude") {
     assert.deepEqual(args.slice(-2), ["--resume", "session-claude"]);
-    assert.deepEqual(settings.allow, ["Read(./**)"]);
+    assert.deepEqual(settings.allow, [...claude.ALLOW_READ_ONLY]);
   } else if (provider === "codex") {
     assert.deepEqual(args, ["exec", "--json", "--sandbox", "read-only", "resume", "session-codex", "-"]);
   } else {
